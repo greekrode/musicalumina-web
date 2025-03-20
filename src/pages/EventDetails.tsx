@@ -331,7 +331,7 @@ function EventDetails() {
   if (error || !event) {
     return (
       <div className="min-h-screen bg-[#FFFFF0] animate-fadeIn">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 mt-8">
           <button
             onClick={handleBackClick}
             className="inline-flex items-center text-[#CFB53B] hover:text-[#CFB53B]/90 mb-8"
@@ -357,7 +357,7 @@ function EventDetails() {
 
   return (
     <div className="min-h-screen bg-[#FFFFF0] animate-fadeIn">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 mt-8">
         <button
           onClick={handleBackClick}
           className="inline-flex items-center text-[#CFB53B] hover:text-[#CFB53B]/90 mb-8"
