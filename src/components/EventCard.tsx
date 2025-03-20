@@ -1,6 +1,6 @@
-import { Calendar, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import type { EventStatus, EventType } from '../lib/database.types';
+import { Calendar, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
+import type { EventStatus, EventType } from "../lib/database.types";
 
 interface EventCardProps {
   id: string;
@@ -12,26 +12,34 @@ interface EventCardProps {
   image: string;
 }
 
-function EventCard({ id, title, type, date, location, status, image }: EventCardProps) {
+function EventCard({
+  id,
+  title,
+  type,
+  date,
+  location,
+  status,
+  image,
+}: EventCardProps) {
   const getButtonConfig = () => {
     switch (status) {
-      case 'ongoing':
+      case "ongoing":
         return {
-          text: 'View Details',
+          text: "View Details",
           disabled: false,
-          className: 'bg-[#CFB53B] hover:bg-[#CFB53B]/90'
+          className: "bg-[#CFB53B] hover:bg-[#CFB53B]/90",
         };
-      case 'upcoming':
+      case "upcoming":
         return {
-          text: 'Coming Soon',
+          text: "Coming Soon",
           disabled: true,
-          className: 'bg-gray-400 cursor-not-allowed'
+          className: "bg-gray-400 cursor-not-allowed",
         };
       default:
         return {
-          text: 'View Results',
+          text: "View Results",
           disabled: false,
-          className: 'bg-[#CFB53B] hover:bg-[#CFB53B]/90'
+          className: "bg-[#CFB53B] hover:bg-[#CFB53B]/90",
         };
     }
   };
@@ -42,14 +50,14 @@ function EventCard({ id, title, type, date, location, status, image }: EventCard
 
   const getTypeColor = (type: EventType) => {
     switch (type) {
-      case 'festival':
-        return 'bg-purple-100/90 text-purple-800';
-      case 'competition':
-        return 'bg-blue-100/90 text-blue-800';
-      case 'masterclass':
-        return 'bg-green-100/90 text-green-800';
+      case "festival":
+        return "bg-purple-100/90 text-purple-800";
+      case "competition":
+        return "bg-blue-100/90 text-blue-800";
+      case "masterclass":
+        return "bg-green-100/90 text-green-800";
       default:
-        return 'bg-gray-100/90 text-gray-800';
+        return "bg-gray-100/90 text-gray-800";
     }
   };
 
@@ -60,7 +68,9 @@ function EventCard({ id, title, type, date, location, status, image }: EventCard
     <div className="bg-[#FFFFF0] rounded-lg overflow-hidden shadow-lg h-full flex flex-col">
       <div className="relative">
         <img src={image} alt={title} className="w-full h-48 object-cover" />
-        <span className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-medium ${typeColor}`}>
+        <span
+          className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-medium ${typeColor}`}
+        >
           {formatEventType(type)}
         </span>
       </div>
@@ -77,10 +87,10 @@ function EventCard({ id, title, type, date, location, status, image }: EventCard
           </div>
         </div>
         <div className="mt-auto">
-          <Link 
-            to={status === 'completed' ? `/past-event/${id}` : `/event/${id}`}
+          <Link
+            to={status === "completed" ? `/past-event/${id}` : `/event/${id}`}
             className={`block w-full text-[#FFFFF0] px-4 py-2 rounded-md transition-colors text-center ${buttonConfig.className}`}
-            onClick={e => buttonConfig.disabled && e.preventDefault()}
+            onClick={(e) => buttonConfig.disabled && e.preventDefault()}
           >
             {buttonConfig.text}
           </Link>

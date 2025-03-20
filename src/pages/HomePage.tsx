@@ -1,11 +1,10 @@
-import { Calendar, MapPin } from 'lucide-react';
-import EventList from '../components/EventList';
+import EventList from "../components/EventList";
 
 function HomePage() {
   const handleExploreClick = () => {
-    const eventsSection = document.getElementById('upcoming-events');
+    const eventsSection = document.getElementById("upcoming-events");
     if (eventsSection) {
-      eventsSection.scrollIntoView({ behavior: 'smooth' });
+      eventsSection.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -24,12 +23,14 @@ function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="text-center md:text-left">
             <h1 className="text-4xl md:text-6xl font-playfair text-[#FFFFF0] mb-4">
-              Where Musical Excellence<br />Takes Center Stage
+              Where Musical Excellence
+              <br />
+              Takes Center Stage
             </h1>
             <p className="text-xl text-[#F7E7CE] mb-8">
-              Celebrating 25 Years of Discovering Tomorrow's Virtuosos
+              Celebrating the Virtuosity of Tomorrow's Musicians
             </p>
-            <button 
+            <button
               onClick={handleExploreClick}
               className="bg-[#CFB53B] text-[#FFFFF0] px-8 py-3 rounded-md hover:bg-[#CFB53B]/90 transition-colors"
             >

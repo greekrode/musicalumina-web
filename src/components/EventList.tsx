@@ -1,23 +1,25 @@
-import { useEvents } from '../hooks/useEvents';
-import EventCard from './EventCard';
-import LoadingSpinner from './LoadingSpinner';
-import { formatDate } from '../utils/date';
+import { useEvents } from "../hooks/useEvents";
+import EventCard from "./EventCard";
+import LoadingSpinner from "./LoadingSpinner";
+import { formatDate } from "../utils/date";
 
 interface EventListProps {
-  status?: 'upcoming' | 'completed';
+  status?: "upcoming" | "completed";
 }
 
 function EventList({ status }: EventListProps) {
   const { events, loading, error } = useEvents({ status });
 
   if (loading) {
-    return <LoadingSpinner message={`Loading ${status || ''} events...`} />;
+    return <LoadingSpinner message={`Loading ${status || ""} events...`} />;
   }
 
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">Failed to load events. Please try again later.</p>
+        <p className="text-red-600">
+          Failed to load events. Please try again later.
+        </p>
       </div>
     );
   }
@@ -41,7 +43,10 @@ function EventList({ status }: EventListProps) {
           date={formatDate(event.start_date)}
           location={event.location}
           status={event.status}
-          image="https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&q=80"
+          image={
+            event.poster_image ||
+            "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&q=80"
+          }
         />
       ))}
     </div>
