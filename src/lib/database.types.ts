@@ -28,7 +28,7 @@ export interface Database {
           venue_details: string | null;
           status: EventStatus;
           poster_image: string | null;
-          terms_and_conditions: Json;
+          terms_and_conditions: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -169,6 +169,7 @@ export interface Database {
           name: string;
           description: string | null;
           created_at: string;
+          repertoire: Json | null;
         };
         Insert: {
           id?: string;
@@ -176,6 +177,7 @@ export interface Database {
           name: string;
           description?: string | null;
           created_at?: string;
+          repertoire?: Json | null;
         };
         Update: {
           id?: string;
@@ -183,6 +185,7 @@ export interface Database {
           name?: string;
           description?: string | null;
           created_at?: string;
+          repertoire?: Json | null;
         };
       };
       event_subcategories: {

@@ -1,51 +1,152 @@
-import { useState, Suspense } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Calendar, MapPin, ArrowLeft, BookOpen, Trophy, Users, Award } from 'lucide-react';
-import JuryModal from '../components/JuryModal';
-import TermsModal from '../components/TermsModal';
-import RegistrationModal from '../components/RegistrationModal';
-import { useEvent } from '../hooks/useEvent';
-import { formatDate } from '../utils/date';
-import LoadingSpinner from '../components/LoadingSpinner';
-import type { EventType } from '../lib/database.types';
+import { useState, Suspense } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  Calendar,
+  MapPin,
+  ArrowLeft,
+  BookOpen,
+  Trophy,
+  Users,
+  Award,
+} from "lucide-react";
+import TermsModal from "../components/TermsModal";
+import RegistrationModal from "../components/RegistrationModal";
+import { useEvent } from "../hooks/useEvent";
+import { formatDate } from "../utils/date";
+import LoadingSpinner from "../components/LoadingSpinner";
+import type { Database } from "../lib/database.types";
+import type { EventType } from "../lib/database.types";
+import { usePageTitle } from "../hooks/usePageTitle";
+import type { PostgrestError } from "@supabase/supabase-js";
 
-const EventCategories = ({ categories }) => (
+type EventCategory = Database["public"]["Tables"]["event_categories"]["Row"] & {
+  event_subcategories: Database["public"]["Tables"]["event_subcategories"]["Row"][];
+  prizes: Array<{
+    id: string;
+    title: string;
+    amount?: number;
+    description?: string;
+  }>;
+  global_prizes: Array<{
+    id: string;
+    title: string;
+    amount?: number;
+    description?: string;
+  }>;
+};
+
+type Event = Database["public"]["Tables"]["events"]["Row"] & {
+  event_categories: EventCategory[];
+  event_jury: EventJuror[];
+};
+
+type EventJuror = Omit<
+  Database["public"]["Tables"]["event_jury"]["Row"],
+  "credentials"
+> & {
+  credentials: string | null;
+};
+
+type JuryPanelProps = {
+  juryMembers: EventJuror[];
+};
+
+type EventCategoriesProps = {
+  categories: EventCategory[];
+};
+
+const EventCategories = ({ categories }: EventCategoriesProps) => (
   <div className="space-y-8">
     {categories.map((category) => (
       <div key={category.id} className="bg-[#F7E7CE]/20 p-6 rounded-lg">
-        <h3 className="text-xl font-playfair text-black mb-4">{category.name}</h3>
+        <h2 className="text-xl font-playfair text-black mb-4">
+          {category.name}
+        </h2>
         {category.description && (
           <p className="text-black/80 mb-6">{category.description}</p>
         )}
+        {category.repertoire &&
+          Array.isArray(category.repertoire) &&
+          category.repertoire.length > 0 && (
+            <div className="mb-6">
+              <p className="text-sm font-medium text-black mb-2">
+                Category Repertoire:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, colIndex) => (
+                  <ul
+                    key={colIndex}
+                    className="list-disc list-inside text-sm text-black/80 space-y-1"
+                  >
+                    {(category.repertoire as string[])
+                      .filter((_, i) => i % 3 === colIndex)
+                      .map((rep, i) => (
+                        <li key={i} className="text-sm">
+                          {rep}
+                        </li>
+                      ))}
+                  </ul>
+                ))}
+              </div>
+            </div>
+          )}
         <div className="grid md:grid-cols-3 gap-4">
           {category.event_subcategories.map((subCategory) => (
-            <div key={subCategory.id} className="bg-white p-4 rounded-lg shadow-sm">
-              <h4 className="text-lg font-playfair text-black mb-3">{subCategory.name}</h4>
+            <div
+              key={subCategory.id}
+              className="bg-white p-4 rounded-lg shadow-sm"
+            >
+              <h4 className="text-lg font-playfair text-black mb-3">
+                {subCategory.name}
+              </h4>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium text-black">Age Requirement:</p>
-                  <p className="text-sm text-black/80">{subCategory.age_requirement}</p>
+                  <p className="text-sm font-medium text-black">
+                    Age Requirement:
+                  </p>
+                  <p className="text-sm text-black/80">
+                    {subCategory.age_requirement}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-black">Registration Fee:</p>
+                  <p className="text-sm font-medium text-black">
+                    Registration Fee:
+                  </p>
                   <p className="text-sm text-black/80">
                     IDR {subCategory.registration_fee.toLocaleString()}
                   </p>
                 </div>
-                {subCategory.repertoire && subCategory.repertoire.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium text-black">Repertoire:</p>
-                    <ul className="list-disc list-inside text-sm text-black/80 space-y-1">
-                      {subCategory.repertoire.map((rep, i) => (
-                        <li key={i} className="text-sm">{rep}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {subCategory.repertoire &&
+                  Array.isArray(subCategory.repertoire) &&
+                  subCategory.repertoire.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-black mb-2">
+                        Repertoire:
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {Array.from({ length: 3 }).map((_, colIndex) => (
+                          <ul
+                            key={colIndex}
+                            className="list-disc list-inside text-sm text-black/80 space-y-1"
+                          >
+                            {(subCategory.repertoire as string[])
+                              .filter((_, i) => i % 3 === colIndex)
+                              .map((rep, i) => (
+                                <li key={i} className="text-sm">
+                                  {rep}
+                                </li>
+                              ))}
+                          </ul>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 {subCategory.performance_duration && (
                   <div>
                     <p className="text-sm font-medium text-black">Duration:</p>
-                    <p className="text-sm text-black/80">{subCategory.performance_duration}</p>
+                    <p className="text-sm text-black/80">
+                      {subCategory.performance_duration}
+                    </p>
                   </div>
                 )}
               </div>
@@ -57,7 +158,11 @@ const EventCategories = ({ categories }) => (
   </div>
 );
 
-const PrizesSection = ({ categories }) => {
+type PrizesSectionProps = {
+  categories: EventCategory[];
+};
+
+const PrizesSection = ({ categories }: PrizesSectionProps) => {
   // Collect all global prizes from the first category (they're the same for all)
   const globalPrizes = categories[0]?.global_prizes || [];
 
@@ -66,21 +171,25 @@ const PrizesSection = ({ categories }) => {
       {/* Overall Prizes */}
       {globalPrizes.length > 0 && (
         <div className="bg-[#F7E7CE]/20 p-6 rounded-lg">
-          <h3 className="text-xl font-playfair text-black mb-4">Overall Prizes</h3>
+          <h3 className="text-xl font-playfair text-black mb-4">
+            Overall Prizes
+          </h3>
           <div className="grid md:grid-cols-2 gap-6">
             {globalPrizes.map((prize) => (
               <div key={prize.id} className="bg-white p-4 rounded-lg shadow-sm">
                 <div className="flex items-start space-x-4">
                   <Award className="h-6 w-6 text-[#CFB53B] mt-1" />
                   <div>
-                    <h4 className="text-lg font-medium text-black">{prize.title}</h4>
+                    <h4 className="text-lg font-medium text-black">
+                      {prize.title}
+                    </h4>
                     {prize.amount && (
                       <p className="text-[#CFB53B] font-medium mt-1">
                         IDR {prize.amount.toLocaleString()}
                       </p>
                     )}
                     {prize.description && (
-                      <div 
+                      <div
                         className="prose prose-sm mt-2 text-black/80"
                         dangerouslySetInnerHTML={{ __html: prize.description }}
                       />
@@ -94,59 +203,76 @@ const PrizesSection = ({ categories }) => {
       )}
 
       {/* Category Prizes */}
-      {categories.map((category) => (
-        category.prizes && category.prizes.length > 0 && (
-          <div key={category.id} className="bg-[#F7E7CE]/20 p-6 rounded-lg">
-            <h3 className="text-xl font-playfair text-black mb-4">
-              {category.name} Prizes
-            </h3>
-            <div className="grid md:grid-cols-2 gap-6">
-              {category.prizes.map((prize) => (
-                <div key={prize.id} className="bg-white p-4 rounded-lg shadow-sm">
-                  <div className="flex items-start space-x-4">
-                    <Award className="h-6 w-6 text-[#CFB53B] mt-1" />
-                    <div>
-                      <h4 className="text-lg font-medium text-black">{prize.title}</h4>
-                      {prize.amount && (
-                        <p className="text-[#CFB53B] font-medium mt-1">
-                          IDR {prize.amount.toLocaleString()}
-                        </p>
-                      )}
-                      {prize.description && (
-                        <div 
-                          className="prose prose-sm mt-2 text-black/80"
-                          dangerouslySetInnerHTML={{ __html: prize.description }}
-                        />
-                      )}
+      {categories.map(
+        (category) =>
+          category.prizes &&
+          category.prizes.length > 0 && (
+            <div key={category.id} className="bg-[#F7E7CE]/20 p-6 rounded-lg">
+              <h3 className="text-xl font-playfair text-black mb-4">
+                {category.name} Prizes
+              </h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                {category.prizes.map((prize) => (
+                  <div
+                    key={prize.id}
+                    className="bg-white p-4 rounded-lg shadow-sm"
+                  >
+                    <div className="flex items-start space-x-4">
+                      <Award className="h-6 w-6 text-[#CFB53B] mt-1" />
+                      <div>
+                        <h4 className="text-lg font-medium text-black">
+                          {prize.title}
+                        </h4>
+                        {prize.amount && (
+                          <p className="text-[#CFB53B] font-medium mt-1">
+                            IDR {prize.amount.toLocaleString()}
+                          </p>
+                        )}
+                        {prize.description && (
+                          <div
+                            className="prose prose-sm mt-2 text-black/80"
+                            dangerouslySetInnerHTML={{
+                              __html: prize.description,
+                            }}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )
-      ))}
+          )
+      )}
     </div>
   );
 };
 
-const JuryPanel = ({ juryMembers, onJurorClick }) => (
+const JuryPanel = ({ juryMembers }: JuryPanelProps) => (
   <div className="grid md:grid-cols-2 gap-8">
     {juryMembers.map((juror) => (
-      <div 
-        key={juror.id}
-        className="bg-[#F7E7CE]/20 p-6 rounded-lg cursor-pointer hover:bg-[#F7E7CE]/30 transition-colors"
-        onClick={() => onJurorClick(juror)}
-      >
-        <div className="flex items-center space-x-4">
-          <img 
-            src={juror.avatar_url}
+      <div key={juror.id} className="bg-[#F7E7CE]/20 p-6 rounded-lg">
+        <div className="flex flex-col items-center space-y-4">
+          <img
+            src={juror.avatar_url || ""}
             alt={juror.name}
-            className="w-16 h-16 rounded-full object-cover"
+            className="w-32 h-32 rounded-full object-cover shadow-lg"
           />
-          <div>
-            <h3 className="text-xl font-playfair text-black">{juror.name}</h3>
-            <p className="text-sm font-medium text-[#CFB53B]">{juror.title}</p>
+          <div className="text-center">
+            <h3 className="text-2xl font-playfair text-black">{juror.name}</h3>
+            <p className="text-sm font-medium text-[#CFB53B] mb-3">
+              {juror.title}
+            </p>
+            {juror.description && (
+              <div className="text-sm text-black/80 mb-3 space-y-2">
+                {juror.description
+                  .replace(/\\n/g, "\n")
+                  .split("\n")
+                  .map((line, index) => (
+                    <p key={index}>{line}</p>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -155,20 +281,25 @@ const JuryPanel = ({ juryMembers, onJurorClick }) => (
 );
 
 function EventDetails() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [selectedJuror, setSelectedJuror] = useState(null);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
-  const { event, loading, error } = useEvent(id);
+  const { event, loading, error } = useEvent(id || "") as {
+    event: Event | null;
+    loading: boolean;
+    error: PostgrestError | null;
+  };
+
+  usePageTitle(event?.title || "");
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const section = document.getElementById('upcoming-events');
-    if (section && window.location.pathname === '/') {
-      section.scrollIntoView({ behavior: 'smooth' });
+    const section = document.getElementById("upcoming-events");
+    if (section && window.location.pathname === "/") {
+      section.scrollIntoView({ behavior: "smooth" });
     } else {
-      navigate('/', { state: { scrollToSection: 'upcoming-events' } });
+      navigate("/", { state: { scrollToSection: "upcoming-events" } });
     }
   };
 
@@ -178,26 +309,30 @@ function EventDetails() {
 
   const getTypeColor = (type: EventType) => {
     switch (type) {
-      case 'festival':
-        return 'bg-purple-100/90 text-purple-800';
-      case 'competition':
-        return 'bg-blue-100/90 text-blue-800';
-      case 'masterclass':
-        return 'bg-green-100/90 text-green-800';
+      case "festival":
+        return "bg-purple-100/90 text-purple-800";
+      case "competition":
+        return "bg-blue-100/90 text-blue-800";
+      case "masterclass":
+        return "bg-green-100/90 text-green-800";
       default:
-        return 'bg-gray-100/90 text-gray-800';
+        return "bg-gray-100/90 text-gray-800";
     }
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading event details..." />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
+        <LoadingSpinner message="Loading event details..." />
+      </div>
+    );
   }
 
   if (error || !event) {
     return (
-      <div className="pt-20 pb-12 bg-[#FFFFF0] min-h-screen animate-fadeIn">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <button 
+      <div className="min-h-screen bg-[#FFFFF0] animate-fadeIn">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+          <button
             onClick={handleBackClick}
             className="inline-flex items-center text-[#CFB53B] hover:text-[#CFB53B]/90 mb-8"
           >
@@ -205,7 +340,9 @@ function EventDetails() {
             Back to all events
           </button>
           <div className="text-center py-12">
-            <h2 className="text-2xl font-playfair text-[#808080]">Event not found</h2>
+            <h2 className="text-2xl font-playfair text-[#808080]">
+              Event not found
+            </h2>
           </div>
         </div>
       </div>
@@ -213,14 +350,15 @@ function EventDetails() {
   }
 
   const hasAnyPrizes = event.event_categories.some(
-    category => (category.prizes && category.prizes.length > 0) || 
-                (category.global_prizes && category.global_prizes.length > 0)
+    (category) =>
+      (category.prizes && category.prizes.length > 0) ||
+      (category.global_prizes && category.global_prizes.length > 0)
   );
 
   return (
-    <div className="pt-20 pb-12 bg-[#FFFFF0] animate-fadeIn">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <button 
+    <div className="min-h-screen bg-[#FFFFF0] animate-fadeIn">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+        <button
           onClick={handleBackClick}
           className="inline-flex items-center text-[#CFB53B] hover:text-[#CFB53B]/90 mb-8"
         >
@@ -231,7 +369,11 @@ function EventDetails() {
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <div className="flex items-start justify-between mb-6">
             <h1 className="text-4xl font-playfair text-black">{event.title}</h1>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getTypeColor(event.type)}`}>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${getTypeColor(
+                event.type
+              )}`}
+            >
               {formatEventType(event.type)}
             </span>
           </div>
@@ -256,14 +398,18 @@ function EventDetails() {
               <div className="flex items-start space-x-3">
                 <Calendar className="h-5 w-5 text-[#CFB53B] mt-1" />
                 <div>
-                  <h3 className="font-medium text-black">Registration Deadline</h3>
-                  <p className="text-black/80">{formatDate(event.registration_deadline)}</p>
+                  <h3 className="font-medium text-black">
+                    Registration Deadline
+                  </h3>
+                  <p className="text-black/80">
+                    {formatDate(event.registration_deadline)}
+                  </p>
                 </div>
               </div>
             )}
           </div>
 
-          {event.status === 'ongoing' && (
+          {event.status === "ongoing" && (
             <div className="mt-8">
               <button
                 onClick={() => setIsRegistrationModalOpen(true)}
@@ -278,12 +424,15 @@ function EventDetails() {
         <div className="bg-[#F7E7CE]/30 rounded-lg p-8 mb-8">
           <div className="flex items-center space-x-3 mb-6">
             <BookOpen className="h-6 w-6 text-[#CFB53B]" />
-            <h2 className="text-2xl font-playfair text-black">Important Information</h2>
+            <h2 className="text-2xl font-playfair text-black">
+              Important Information
+            </h2>
           </div>
           <p className="text-black/80 mb-4">
-            Please review our terms and conditions before proceeding with registration.
+            Please review our terms and conditions before proceeding with
+            registration.
           </p>
-          <button 
+          <button
             onClick={() => setIsTermsModalOpen(true)}
             className="bg-[#CFB53B] text-[#FFFFF0] px-6 py-2 rounded-md hover:bg-[#CFB53B]/90 transition-colors inline-flex items-center"
           >
@@ -296,7 +445,9 @@ function EventDetails() {
             <Trophy className="h-6 w-6 text-[#CFB53B]" />
             <h2 className="text-2xl font-playfair text-black">Categories</h2>
           </div>
-          <Suspense fallback={<LoadingSpinner message="Loading categories..." />}>
+          <Suspense
+            fallback={<LoadingSpinner message="Loading categories..." />}
+          >
             <EventCategories categories={event.event_categories} />
           </Suspense>
         </div>
@@ -318,11 +469,10 @@ function EventDetails() {
             <Users className="h-6 w-6 text-[#CFB53B]" />
             <h2 className="text-2xl font-playfair text-black">Jury Panel</h2>
           </div>
-          <Suspense fallback={<LoadingSpinner message="Loading jury panel..." />}>
-            <JuryPanel 
-              juryMembers={event.event_jury} 
-              onJurorClick={setSelectedJuror}
-            />
+          <Suspense
+            fallback={<LoadingSpinner message="Loading jury panel..." />}
+          >
+            <JuryPanel juryMembers={event.event_jury} />
           </Suspense>
         </div>
       </div>
@@ -341,18 +491,7 @@ function EventDetails() {
       <TermsModal
         isOpen={isTermsModalOpen}
         onClose={() => setIsTermsModalOpen(false)}
-        terms={event?.terms_and_conditions}
-      />
-
-      <JuryModal
-        isOpen={!!selectedJuror}
-        onClose={() => setSelectedJuror(null)}
-        juror={{
-          name: selectedJuror?.name || '',
-          title: selectedJuror?.title || '',
-          avatar: selectedJuror?.avatar_url || '',
-          description: selectedJuror?.description || ''
-        }}
+        terms={event?.terms_and_conditions as string | undefined}
       />
     </div>
   );

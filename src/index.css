@@ -35,10 +35,6 @@
     @apply transition-transform duration-300 hover:scale-105;
   }
 
-  .nav-link {
-    @apply text-burgundy hover:text-marigold transition-colors duration-300;
-  }
-
   .btn-primary {
     @apply bg-marigold text-offWhite px-6 py-2 rounded-md hover:bg-marigold/90 transition-colors;
   }

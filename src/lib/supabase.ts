@@ -32,6 +32,7 @@ export async function getEvents({
           id,
           name,
           description,
+          repertoire,
           event_subcategories (
             id,
             name,
@@ -51,7 +52,8 @@ export async function getEvents({
           avatar_url,
           credentials
         )
-      `, { count: 'exact' });
+      `, { count: 'exact' })
+      .order('start_date', { ascending: true });
 
     if (status === 'upcoming') {
       query = query.in('status', ['upcoming', 'ongoing']);
@@ -100,6 +102,7 @@ export async function getEventById(id: string) {
           id,
           name,
           description,
+          repertoire,
           event_subcategories (
             id,
             name,
@@ -246,3 +249,24 @@ export async function getEventById(id: string) {
     throw error;
   }
 }
+
+export const getLatestUpcomingEvent = async () => {
+  const { data, error } = await supabase
+    .from("events")
+    .select(`
+      id,
+      title,
+      start_date
+    `)
+    .eq("status", "ongoing")
+    .order("start_date", { ascending: true })
+    .limit(1)
+    .single();
+
+  if (error) {
+    console.error("Error fetching latest event:", error);
+    return null;
+  }
+
+  return data;
+};

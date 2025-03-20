@@ -1,62 +1,73 @@
-import EventList from "../components/EventList";
+import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import heroBg from "../assets/hero-bg.jpg";
+import { useLatestEvent } from "../hooks/useLatestEvent";
+import { usePageTitle } from "../hooks/usePageTitle";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 function HomePage() {
+  usePageTitle("Discovering Tomorrow's Virtuosos");
+  const navigate = useNavigate();
+  const { event, loading } = useLatestEvent();
+
   const handleExploreClick = () => {
-    const eventsSection = document.getElementById("upcoming-events");
-    if (eventsSection) {
-      eventsSection.scrollIntoView({ behavior: "smooth" });
-    }
+    navigate("/events");
   };
 
+  const handleEventClick = (eventId: string) => {
+    navigate(`/event/${eventId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
+        <LoadingSpinner message="Loading content..." />
+      </div>
+    );
+  }
+
   return (
-    <div className="animate-fadeIn">
+    <div className="min-h-screen animate-fadeIn">
       {/* Hero Section */}
-      <section id="hero" className="relative h-screen">
+      <section className="h-screen">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&q=80"
+            src={heroBg}
             alt="Piano keys"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/50"></div>
+          <div className="absolute inset-0 bg-black/70"></div>
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="text-center md:text-left">
-            <h1 className="text-4xl md:text-6xl font-playfair text-[#FFFFF0] mb-4">
+            <h1 className="text-4xl md:text-6xl font-playfair text-offWhite mb-4">
               Where Musical Excellence
               <br />
               Takes Center Stage
             </h1>
-            <p className="text-xl text-[#F7E7CE] mb-8">
+            <p className="text-xl text-offWhite/90 mb-8">
               Celebrating the Virtuosity of Tomorrow's Musicians
             </p>
-            <button
-              onClick={handleExploreClick}
-              className="bg-[#CFB53B] text-[#FFFFF0] px-8 py-3 rounded-md hover:bg-[#CFB53B]/90 transition-colors"
-            >
-              Explore Events
-            </button>
+            <div className="space-y-4">
+              {event && (
+                <button
+                  onClick={() => handleEventClick(event.id)}
+                  className="bg-marigold/40 text-offWhite px-8 py-3 rounded-md hover:bg-marigold/50 transition-colors flex items-center justify-center md:justify-start w-full md:w-auto mb-4"
+                >
+                  <span className="flex-1 md:flex-none">
+                    Latest Event: {event.title}
+                  </span>
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </button>
+              )}
+              <button
+                onClick={handleExploreClick}
+                className="bg-marigold text-offWhite px-8 py-3 rounded-md hover:bg-marigold/90 transition-colors w-full md:w-auto"
+              >
+                Explore All Events
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* Upcoming Events */}
-      <section id="upcoming-events" className="py-20 bg-[#F7E7CE]/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-playfair text-[#808080] mb-12 text-center">
-            Upcoming Events
-          </h2>
-          <EventList status="upcoming" />
-        </div>
-      </section>
-
-      {/* Past Events */}
-      <section id="past-events" className="py-20 bg-[#FFFFF0]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-playfair text-[#808080] mb-12 text-center">
-            Past Events
-          </h2>
-          <EventList status="completed" />
         </div>
       </section>
     </div>

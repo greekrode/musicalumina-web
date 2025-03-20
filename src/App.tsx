@@ -8,28 +8,26 @@ import PageTransition from './components/PageTransition';
 
 // Lazy load pages
 const HomePage = lazy(() => import('./pages/HomePage'));
+const EventsPage = lazy(() => import('./pages/EventsPage'));
 const EventDetails = lazy(() => import('./pages/EventDetails'));
 const PastEventDetails = lazy(() => import('./pages/PastEventDetails'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 
 function ScrollToTop() {
-  const { pathname, state } = useLocation();
+  const { pathname } = useLocation();
 
   useEffect(() => {
-    if (state?.scrollToSection) {
-      setTimeout(() => {
-        const section = document.getElementById(state.scrollToSection);
-        if (section) {
-          section.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 300);
-    } else {
-      window.scrollTo(0, 0);
-    }
-  }, [pathname, state]);
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return null;
+}
+
+function FooterWrapper() {
+  const location = useLocation();
+  // Only show footer on pages other than homepage
+  return location.pathname !== '/' ? <Footer /> : null;
 }
 
 function AnimatedRoutes() {
@@ -44,6 +42,16 @@ function AnimatedRoutes() {
             <Suspense fallback={<LoadingSpinner fullScreen message="Loading homepage..." />}>
               <PageTransition>
                 <HomePage />
+              </PageTransition>
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/events" 
+          element={
+            <Suspense fallback={<LoadingSpinner fullScreen message="Loading events..." />}>
+              <PageTransition>
+                <EventsPage />
               </PageTransition>
             </Suspense>
           } 
@@ -102,7 +110,7 @@ function App() {
         <main className="flex-grow">
           <AnimatedRoutes />
         </main>
-        <Footer />
+        <FooterWrapper />
       </div>
     </Router>
   );

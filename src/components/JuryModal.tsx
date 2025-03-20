@@ -1,41 +1,88 @@
-import { type ReactNode } from 'react';
-import Modal from './Modal';
+import { Dialog, Transition } from "@headlessui/react";
+import { Fragment } from "react";
+import type { Database } from "../lib/database.types";
 
-interface JuryModalProps {
+type Json = Database["public"]["Tables"]["event_jury"]["Row"]["credentials"];
+
+type JuryModalProps = {
   isOpen: boolean;
   onClose: () => void;
   juror: {
     name: string;
     title: string;
-    avatar: string;
-    description?: string;
-  } | null;
-}
+    avatar: string | null;
+    description: string | null;
+    credentials?: Json;
+  };
+};
 
-function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
-  if (!juror) return null;
-
+export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Jury Profile" maxWidth="2xl">
-      <div className="flex flex-col items-center mb-6">
-        <img 
-          src={juror.avatar}
-          alt={juror.name}
-          className="w-48 h-48 rounded-full object-cover mb-4"
-        />
-        <h3 className="text-2xl font-serif text-black text-center">{juror.name}</h3>
-        <p className="text-[#CFB53B] font-medium text-center mt-2">{juror.title}</p>
-      </div>
-      
-      {juror.description && (
-        <div className="text-black/80 text-left">
-          {juror.description.split('\\n').map((line, index) => (
-            <p key={index} className="mb-2">{line}</p>
-          ))}
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-10" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black bg-opacity-25" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <div className="flex items-center space-x-4 mb-4">
+                  {juror.avatar && (
+                    <img
+                      src={juror.avatar}
+                      alt={juror.name}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  )}
+                  <div>
+                    <Dialog.Title
+                      as="h3"
+                      className="text-lg font-medium leading-6 text-gray-900"
+                    >
+                      {juror.name}
+                    </Dialog.Title>
+                    <p className="text-sm text-[#CFB53B]">{juror.title}</p>
+                  </div>
+                </div>
+
+                {juror.description && (
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">{juror.description}</p>
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    className="inline-flex justify-center rounded-md border border-transparent bg-[#CFB53B] px-4 py-2 text-sm font-medium text-white hover:bg-[#CFB53B]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#CFB53B] focus-visible:ring-offset-2"
+                    onClick={onClose}
+                  >
+                    Close
+                  </button>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
         </div>
-      )}
-    </Modal>
+      </Dialog>
+    </Transition>
   );
 }
-
-export default JuryModal;

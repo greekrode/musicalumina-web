@@ -16,17 +16,14 @@ function Footer() {
         <div className="grid md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center space-x-2 mb-4 hover-scale">
-              <img src={logo} alt="MusicaLumina Logo" className="h-8 w-auto" />
+              <img src={logo} alt="MusicaLumina Logo" className="h-12 w-auto" />
             </div>
-            <p className="text-sm text-offWhite/80 font-light">
-              Celebrating musical excellence and nurturing young talents since
-              1999.
-            </p>
+            <p className="text-sm text-offWhite/80 font-light"></p>
           </div>
           <div>
-            <h3 className="text-lg font-playfair mb-4 text-offWhite/80">
+            <h2 className="text-lg font-playfair mb-4 text-offWhite/90">
               Quick Links
-            </h3>
+            </h2>
             <ul className="space-y-2">
               <li>
                 <a
@@ -35,6 +32,15 @@ function Footer() {
                   className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
                 >
                   Home
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  onClick={handleNavigation("/events")}
+                  className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
+                >
+                  Events
                 </a>
               </li>
               <li>
@@ -63,28 +69,20 @@ function Footer() {
             </h3>
             <div className="flex space-x-6">
               <a
-                href="#"
-                className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
-                aria-label="Facebook"
-              >
-                <Facebook className="h-6 w-6" />
-              </a>
-              <a
-                href="#"
+                href="https://www.instagram.com/musicalumina/"
                 className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
                 aria-label="Instagram"
               >
                 <Instagram className="h-6 w-6" />
               </a>
-              <a
-                href="#"
-                className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
-                aria-label="YouTube"
-              >
-                <Youtube className="h-6 w-6" />
-              </a>
             </div>
           </div>
+        </div>
+        <div className="mt-8">
+          <p className="text-sm text-offWhite/80 font-light text-center">
+            Copyright &copy; {new Date().getFullYear()} MusicaLumina. All rights
+            reserved.
+          </p>
         </div>
       </div>
     </footer>
