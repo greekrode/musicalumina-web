@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Open Sans', sans-serif;
+    @apply bg-offWhite text-charcoal;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    @apply text-burgundy;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  main {
+    flex: 1;
+  }
+}
+
+@layer components {
+  .hover-scale {
+    @apply transition-transform duration-300 hover:scale-105;
+  }
+
+  .nav-link {
+    @apply text-burgundy hover:text-marigold transition-colors duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-marigold text-offWhite px-6 py-2 rounded-md hover:bg-marigold/90 transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-burgundy text-offWhite px-6 py-2 rounded-md hover:bg-burgundy/90 transition-colors;
+  }
+
+  .card {
+    @apply bg-offWhite rounded-lg shadow-lg p-6 border border-burgundy/10;
+  }
+}
