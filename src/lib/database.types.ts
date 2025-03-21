@@ -115,6 +115,7 @@ export interface Database {
           bank_account_name: string;
           payment_receipt_url: string;
           status: RegistrationState;
+          email_sent_at: string | null;
           created_at: string;
           updated_at: string;
         };

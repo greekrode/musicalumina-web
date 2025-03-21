@@ -262,7 +262,9 @@ const JuryPanel = ({ juryMembers }: JuryPanelProps) => (
             className="w-48 h-48 rounded-full object-cover shadow-lg"
           />
           <div className="text-center">
-            <h2 className="text-2xl font-playfair text-black mb-2">{juror.name}</h2>
+            <h2 className="text-2xl font-playfair text-black mb-2">
+              {juror.name}
+            </h2>
             <p className="text-lg font-medium text-marigold mb-4">
               {juror.title}
             </p>
@@ -495,6 +497,7 @@ function EventDetails() {
         isOpen={isRegistrationModalOpen}
         onClose={() => setIsRegistrationModalOpen(false)}
         eventId={event.id}
+        eventName={event.title}
         categories={event.event_categories}
         onOpenTerms={() => {
           setIsTermsModalOpen(true);

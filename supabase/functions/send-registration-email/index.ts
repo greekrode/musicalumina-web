@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { Resend } from 'https://esm.sh/resend@2.0.0'
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { compile } from 'https://esm.sh/handlebars@4.7.7'
+import Handlebars from 'https://esm.sh/handlebars@4.7.7'
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
 
@@ -25,6 +25,8 @@ interface EmailData {
   registration_ref_code: string
   registrationId: string
   event_name: string
+  language: 'en' | 'id'
+  template_html: string
 }
 
 serve(async (req) => {
@@ -36,7 +38,7 @@ serve(async (req) => {
   try {
     const { data } = await req.json() as { data: EmailData }
 
-    if (!data.registrant_email || !data.registration_ref_code || !data.registrationId) {
+    if (!data.registrant_email || !data.registration_ref_code || !data.registrationId || !data.template_html) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { 
@@ -46,11 +48,6 @@ serve(async (req) => {
       )
     }
 
-    // Get the email template
-    const templateResponse = await fetch(new URL('./template.html', import.meta.url))
-    const templateText = await templateResponse.text()
-    const template = compile(templateText)
-
     // Prepare template data
     const templateData = {
       ...data,
@@ -59,11 +56,14 @@ serve(async (req) => {
       showParticipant: data.registrant_status !== 'personal'
     }
 
+    // Compile and use the provided template
+    const template = Handlebars.compile(data.template_html)
+
     // Generate and send email
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: 'Musica Lumina <noreply@hi.musicalumina.com>',
       to: data.registrant_email,
-      subject: `${data.event_name} - Registration`,
+      subject: `${data.event_name} - ${data.language === 'id' ? 'Pendaftaran' : 'Registration'}`,
       html: template(templateData),
     });
 

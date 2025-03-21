@@ -57,7 +57,30 @@ export const translations = {
       uploadBirthCert: "Please upload your birth certificate or passport",
       uploadSongPdf: "Please upload your song PDF",
       uploadPayment: "Please upload your payment receipt",
-      fileSizeLimit: "File size must be less than 10MB",
+      fileSizeLimit: "File size must be less than 5MB",
+      onlyNumbers: "Please enter only numbers",
+      maxAccountLength: "Account number cannot exceed 25 digits",
+      maxNameLength: "Name cannot exceed 100 characters",
+      maxSongTitleLength: "Song title cannot exceed 150 characters",
+      maxDurationLength: "Song duration cannot exceed 10 characters",
+      maxBankNameLength: "Bank name cannot exceed 100 characters",
+      maxAccountNameLength: "Account holder name cannot exceed 100 characters",
+    },
+    loading: {
+      title: "Processing Registration",
+      message: "Please wait while we process your registration...",
+      warning:
+        "Please do not close your browser or refresh this page during the process.",
+    },
+    thankYou: {
+      title: "Thank You!",
+      message: "Thank you for registering,",
+      referenceNumber: "Reference Number",
+      accepted:
+        "Your registration has been accepted. Please save your reference number for future reference.",
+      screenshotReminder:
+        "Don't forget to take a screenshot of this page as proof of your registration.",
+      close: "Close",
     },
   },
   id: {
@@ -116,7 +139,32 @@ export const translations = {
       uploadBirthCert: "Unggah akta kelahiran atau paspor Anda",
       uploadSongPdf: "Unggah PDF lagu Anda",
       uploadPayment: "Unggah bukti pembayaran Anda",
-      fileSizeLimit: "Ukuran file harus kurang dari 10MB",
+      fileSizeLimit: "Ukuran file harus kurang dari 5MB",
+      onlyNumbers: "Mohon masukkan angka saja",
+      maxAccountLength: "Nomor rekening tidak boleh melebihi 25 digit",
+      maxNameLength: "Nama tidak boleh melebihi 100 karakter",
+      maxSongTitleLength: "Judul lagu tidak boleh melebihi 150 karakter",
+      maxDurationLength: "Durasi lagu tidak boleh melebihi 10 karakter",
+      maxBankNameLength: "Nama bank tidak boleh melebihi 100 karakter",
+      maxAccountNameLength:
+        "Nama pemilik rekening tidak boleh melebihi 100 karakter",
+    },
+    loading: {
+      title: "Memproses Pendaftaran",
+      message:
+        "Mohon tunggu sebentar, kami sedang memproses pendaftaran Anda...",
+      warning:
+        "Jangan tutup browser atau refresh halaman ini selama proses berlangsung.",
+    },
+    thankYou: {
+      title: "Terima Kasih!",
+      message: "Terima kasih telah mendaftar,",
+      referenceNumber: "Nomor Referensi",
+      accepted:
+        "Pendaftaran Anda telah diterima. Silakan simpan nomor referensi Anda untuk referensi di masa mendatang.",
+      screenshotReminder:
+        "Jangan lupa untuk mengambil screenshot halaman ini sebagai bukti pendaftaran Anda.",
+      close: "Tutup",
     },
   },
 };

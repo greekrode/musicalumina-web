@@ -32,8 +32,8 @@ function FileUpload({
       return;
     }
 
-    // Check file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
       if (inputRef.current) {
         inputRef.current.value = "";
       }
@@ -74,12 +74,12 @@ function FileUpload({
     if (accept.includes(".png")) types.push("PNG");
 
     if (types.length === 1) {
-      return `${types[0]} file up to 10MB`;
+      return `${types[0]} file up to 5MB`;
     } else if (types.length > 1) {
       const lastType = types.pop();
-      return `${types.join(", ")} or ${lastType} file up to 10MB`;
+      return `${types.join(", ")} or ${lastType} file up to 5MB`;
     }
-    return "File up to 10MB";
+    return "File up to 5MB";
   };
 
   const getFileIcon = () => {

@@ -12,7 +12,7 @@ function TermsModal({ isOpen, onClose, terms }: TermsModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       title="Terms and Conditions"
-      maxWidth="4xl"
+      maxWidth="2xl"
     >
       <div className="prose prose-sm max-w-none text-black/80 font-sans">
         {terms ? (
