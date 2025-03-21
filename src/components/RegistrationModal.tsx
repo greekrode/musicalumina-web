@@ -11,6 +11,7 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useLanguage } from "../lib/LanguageContext";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { track } from '@vercel/analytics';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -277,6 +278,13 @@ function RegistrationModal({
       const phone = data.registrant_whatsapp.replace(/\D/g, "");
       const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
+      // Add analytics tracking
+      track('event_registration', {
+        eventId,
+        categoryId: data.category_id,
+        subcategoryId: data.subcategory_id
+      });
+
       setRegistrationRef(refNumber);
       setRegisteredName(data.participant_name);
       setShowThankYou(true);
@@ -308,12 +316,14 @@ function RegistrationModal({
 
   if (showThankYou) {
     return (
-      <ThankYouModal
-        isOpen={true}
-        onClose={handleClose}
-        participantName={registeredName}
-        referenceNumber={registrationRef}
-      />
+      <>
+        <ThankYouModal
+          isOpen={true}
+          onClose={handleClose}
+          participantName={registeredName}
+          referenceNumber={registrationRef}
+        />
+      </>
     );
   }
 
