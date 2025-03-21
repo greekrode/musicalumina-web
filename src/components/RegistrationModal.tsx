@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { supabase } from "../lib/supabase";
 import FileUpload from "./FileUpload";
 import Modal from "./Modal";
-import { supabase } from "../lib/supabase";
 
 const registrationSchema = z.object({
   registration_status: z.enum(["personal", "parents", "teacher"]),
@@ -20,16 +20,16 @@ const registrationSchema = z.object({
   song_title: z.string().min(1, "Please enter the song title"),
   song_duration: z.string().optional(),
   birth_certificate: z.instanceof(File, {
-    message: "Please upload your birth certificate or passport"
+    message: "Please upload your birth certificate or passport",
   }),
   song_pdf: z.instanceof(File, {
-    message: "Please upload your song PDF"
+    message: "Please upload your song PDF",
   }),
   bank_name: z.string().min(1, "Please enter the bank name"),
   bank_account_number: z.string().min(1, "Please enter the account number"),
   bank_account_name: z.string().min(1, "Please enter the account holder name"),
   payment_receipt: z.instanceof(File, {
-    message: "Please upload your payment receipt"
+    message: "Please upload your payment receipt",
   }),
   terms_accepted: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms and conditions" }),
@@ -54,7 +54,7 @@ interface RegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   eventId: string;
-  categories?: Category[];
+  categories: Category[];
   onOpenTerms: () => void;
 }
 
@@ -89,21 +89,21 @@ function RegistrationModal({
     );
 
   const uploadFile = async (file: File, path: string) => {
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
     const filePath = `${path}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('registration-documents')
+      .from("registration-documents")
       .upload(filePath, file);
 
     if (uploadError) {
       throw new Error(`Error uploading ${path}: ${uploadError.message}`);
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('registration-documents')
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("registration-documents").getPublicUrl(filePath);
 
     return publicUrl;
   };
@@ -112,14 +112,14 @@ function RegistrationModal({
     try {
       // Upload files to storage
       const [birthCertUrl, songPdfUrl, paymentReceiptUrl] = await Promise.all([
-        uploadFile(data.birth_certificate, 'birth-certificates'),
-        uploadFile(data.song_pdf, 'song-pdfs'),
-        uploadFile(data.payment_receipt, 'payment-receipts')
+        uploadFile(data.birth_certificate, "birth-certificates"),
+        uploadFile(data.song_pdf, "song-pdfs"),
+        uploadFile(data.payment_receipt, "payment-receipts"),
       ]);
 
       // Submit registration data
       const { error: registrationError } = await supabase
-        .from('registrations')
+        .from("registrations")
         .insert({
           event_id: eventId,
           registration_status: data.registration_status,
@@ -137,7 +137,7 @@ function RegistrationModal({
           bank_account_number: data.bank_account_number,
           bank_account_name: data.bank_account_name,
           payment_receipt_url: paymentReceiptUrl,
-          status: 'pending'
+          status: "pending",
         });
 
       if (registrationError) {
@@ -146,13 +146,14 @@ function RegistrationModal({
 
       onClose();
     } catch (error) {
-      console.error('Registration failed:', error);
-      
+      console.error("Registration failed:", error);
+
       // Show error to user
       if (error instanceof Error) {
-        setError('root', { 
-          type: 'manual',
-          message: 'Registration failed. Please try again or contact support if the problem persists.' 
+        setError("root", {
+          type: "manual",
+          message:
+            "Registration failed. Please try again or contact support if the problem persists.",
         });
       }
     }
@@ -479,4 +480,3 @@ function RegistrationModal({
 }
 
 export default RegistrationModal;
-

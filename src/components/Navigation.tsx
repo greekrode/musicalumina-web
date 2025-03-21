@@ -58,24 +58,24 @@ function Navigation() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-8">
+          <div className="hidden md:flex space-x-8 font-playfair text-lg">
             <button
               onClick={handleNavigation("/events")}
               className={getNavLinkClass("/events")}
             >
-              Events
+              EVENTS
             </button>
             <button
               onClick={handleNavigation("/about")}
               className={getNavLinkClass("/about")}
             >
-              About
+              ABOUT
             </button>
             <button
               onClick={handleNavigation("/contact")}
               className={getNavLinkClass("/contact")}
             >
-              Contact
+              CONTACT
             </button>
           </div>
 

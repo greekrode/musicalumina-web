@@ -256,15 +256,15 @@ const JuryPanel = ({ juryMembers }: JuryPanelProps) => (
           <img
             src={juror.avatar_url || ""}
             alt={juror.name}
-            className="w-32 h-32 rounded-full object-cover shadow-lg"
+            className="w-48 h-48 rounded-full object-cover shadow-lg"
           />
           <div className="text-center">
-            <h3 className="text-2xl font-playfair text-black">{juror.name}</h3>
-            <p className="text-sm font-medium text-[#CFB53B] mb-3">
+            <h2 className="text-2xl font-playfair text-black mb-2">{juror.name}</h2>
+            <p className="text-lg font-medium text-[#CFB53B] mb-4">
               {juror.title}
             </p>
             {juror.description && (
-              <div className="text-sm text-black/80 mb-3 space-y-2">
+              <div className="text-sm text-black/80 mb-3 space-y-2 text-left">
                 {juror.description
                   .replace(/\\n/g, "\n")
                   .split("\n")
