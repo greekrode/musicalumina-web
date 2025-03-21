@@ -4,5 +4,18 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "lspf.musicalumina.com"
+        }
+      ],
+      "destination": "https://www.musicalumina.com/event/793b10ef-dbf2-431b-813f-0b979d638944",
+      "permanent": true
+    }
   ]
 } 
