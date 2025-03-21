@@ -1,8 +1,8 @@
-import { Music, Award, Users, Heart } from "lucide-react";
-import { usePageTitle } from "../hooks/usePageTitle";
-import { useImagePreloader } from "../hooks/useImagePreloader";
+import { Award, Heart, Music } from "lucide-react";
 import heroBg from "../assets/about-hero-bg.jpg";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useImagePreloader } from "../hooks/useImagePreloader";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 function AboutPage() {
   usePageTitle("About");
@@ -65,7 +65,7 @@ function AboutPage() {
           </div>
 
           {/* Core Values */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          <div className="grid grid-cols-3 gap-8 mb-12">
             <div className="bg-white p-6 rounded-lg shadow-lg text-center">
               <Music className="h-8 w-8 text-[#CFB53B] mx-auto mb-4" />
               <h3 className="text-xl font-playfair text-[#808080] mb-2">
