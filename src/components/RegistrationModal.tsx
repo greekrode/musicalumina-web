@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import FileUpload from "./FileUpload";
 import Modal from "./Modal";
 import ThankYouModal from "./ThankYouModal";
+import LoadingModal from "./LoadingModal";
 import { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -38,7 +39,7 @@ const registrationSchema = z.object({
   category_id: z.string().uuid("Please select a category"),
   subcategory_id: z.string().uuid("Please select a subcategory"),
   song_title: z.string().min(1, "Please enter the song title"),
-  song_duration: z.string().optional(),
+  song_duration: z.string(),
   bank_name: z.string().min(1, "Please enter the bank name"),
   bank_account_number: z.string().min(1, "Please enter the account number"),
   bank_account_name: z.string().min(1, "Please enter the account holder name"),
@@ -80,6 +81,7 @@ function RegistrationModal({
   const [registrationRef, setRegistrationRef] = useState("");
   const [registeredName, setRegisteredName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [files, setFiles] = useState<FileStates>({
     birth_certificate: { file: null },
     song_pdf: { file: null },
@@ -99,17 +101,22 @@ function RegistrationModal({
     defaultValues: {
       registrant_status: "personal",
       registrant_whatsapp: "",
+      song_duration: "",
     },
   });
 
-  const registrantStatus = watch("registrant_status");
-  const categoryId = watch("category_id");
+  const registrantStatus = watch("registrant_status") as
+    | "personal"
+    | "parents"
+    | "teacher";
+  const categoryId = watch("category_id") as string;
 
   const selectedCategory = categories.find((cat) => cat.id === categoryId);
   const hasRepertoire =
     (selectedCategory?.repertoire && selectedCategory.repertoire.length > 0) ||
     selectedCategory?.event_subcategories.some(
-      (sub) => sub.repertoire && sub.repertoire.length > 0
+      (sub: { repertoire?: string[] }) =>
+        sub.repertoire && sub.repertoire.length > 0
     );
 
   const handleFileChange = (type: keyof FileStates) => (file: File | null) => {
@@ -160,33 +167,59 @@ function RegistrationModal({
       const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
       const filePath = `${path}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from("registration-documents")
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
       if (uploadError) {
+        console.error("Upload error:", uploadError);
         throw new Error(`Error uploading ${path}: ${uploadError.message}`);
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage
-        .from("registration-documents")
-        .getPublicUrl(filePath);
+      if (!data?.path) {
+        throw new Error("Upload succeeded but no path returned");
+      }
 
-      return publicUrl;
+      const { data: signedUrlData, error: signedUrlError } =
+        await supabase.storage
+          .from("registration-documents")
+          .createSignedUrl(data.path, 31536000); // 1 year expiry
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error("Signed URL error:", signedUrlError);
+        throw new Error("Failed to generate signed URL for uploaded file");
+      }
+
+      return signedUrlData.signedUrl;
     } catch (error) {
       console.error("Error uploading file:", error);
-      throw new Error(`Failed to upload file to ${path}`);
+      throw error;
     }
   };
 
   const onSubmit = async (data: RegistrationForm) => {
     try {
       setIsSubmitting(true);
+      setShowLoadingModal(true);
 
       // Validate files first
       if (!validateFiles()) {
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
+
+      // Validate song duration if no repertoire
+      if (!hasRepertoire && !data.song_duration) {
+        setError("song_duration", {
+          type: "manual",
+          message: "Please enter the song duration",
+        });
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
         return;
       }
 
@@ -203,7 +236,7 @@ function RegistrationModal({
       const uploadedFiles = await Promise.all(uploadPromises);
       const [birthCertUrl, paymentReceiptUrl, songPdfUrl] = uploadedFiles;
 
-      if (data.registrant_name === null) {
+      if (!data.registrant_name || data.registrant_name === "") {
         data.registrant_name = data.participant_name;
       }
 
@@ -261,6 +294,7 @@ function RegistrationModal({
       });
     } finally {
       setIsSubmitting(false);
+      setShowLoadingModal(false);
     }
   };
 
@@ -281,390 +315,400 @@ function RegistrationModal({
   }
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Event Registration"
-      maxWidth="4xl"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        {errors.root && (
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  {errors.root.message}
-                </h3>
+    <>
+      <LoadingModal isOpen={showLoadingModal} />
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Event Registration"
+        maxWidth="4xl"
+      >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {errors.root && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    {errors.root.message}
+                  </h3>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Registrant's Data */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">
-            Registrant's Data
-          </h3>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Registrant Status
-            </label>
-            <select
-              {...register("registrant_status")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-            >
-              <option value="personal">Personal</option>
-              <option value="parents">Parents</option>
-              <option value="teacher">Teacher</option>
-            </select>
-          </div>
-
-          {registrantStatus !== "personal" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Registrant Full Name
-              </label>
-              <input
-                type="text"
-                {...register("registrant_name")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-              />
-            </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              WhatsApp Number
-            </label>
-            <div className="mt-1">
-              <Controller
-                name="registrant_whatsapp"
-                control={control}
-                render={({ field: { onChange, value } }) => (
-                  <PhoneInput
-                    country="id"
-                    preferredCountries={["id", "sg", "my"]}
-                    enableSearch
-                    searchPlaceholder="Search country..."
-                    inputClass="!w-full !py-2 !text-base !rounded-md !border-gray-300 focus:!border-marigold focus:!ring focus:!ring-marigold focus:!ring-opacity-50"
-                    buttonClass="!border-gray-300 !rounded-l-md hover:!bg-gray-50"
-                    dropdownClass="!text-base"
-                    value={value}
-                    onChange={(phone) => {
-                      onChange(`+${phone}`);
-                    }}
-                    placeholder="Enter phone number without country code"
-                  />
-                )}
-              />
-              {errors.registrant_whatsapp && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.registrant_whatsapp.message}
-                </p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                Please select your country code and enter your phone number
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              {...register("registrant_email")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-            />
-            {errors.registrant_email && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.registrant_email.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Participant's Data */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">
-            Participant's Data
-          </h3>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Full Name
-            </label>
-            <input
-              type="text"
-              {...register("participant_name")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-            />
-            {errors.participant_name && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.participant_name.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Category
-            </label>
-            <select
-              {...register("category_id")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-            >
-              <option value="">Select a category</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            {errors.category_id && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.category_id.message}
-              </p>
-            )}
-          </div>
-
-          {selectedCategory && selectedCategory.event_subcategories && (
+          {/* Registrant's Data */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              Registrant's Data
+            </h3>
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Sub Category
+                Registrant Status
               </label>
               <select
-                {...register("subcategory_id")}
+                {...register("registrant_status")}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               >
-                <option value="">Select a sub category</option>
-                {selectedCategory.event_subcategories.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {`${sub.name} (${sub.age_requirement})`}
-                  </option>
-                ))}
+                <option value="personal">Personal</option>
+                <option value="parents">Parents</option>
+                <option value="teacher">Teacher</option>
               </select>
-              {errors.subcategory_id && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.subcategory_id.message}
-                </p>
-              )}
             </div>
-          )}
 
-          {hasRepertoire ? (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Song Selection
-              </label>
-              <select
-                {...register("song_title")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-              >
-                <option value="">Select a song</option>
-                {(selectedCategory?.repertoire || []).map((song, index) => (
-                  <option key={index} value={song}>
-                    {song}
-                  </option>
-                ))}
-                {selectedCategory?.event_subcategories.map((sub) =>
-                  (sub.repertoire || []).map((song, index) => (
-                    <option key={`${sub.id}-${index}`} value={song}>
-                      {song}
-                    </option>
-                  ))
-                )}
-              </select>
-              {errors.song_title && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.song_title.message}
-                </p>
-              )}
-            </div>
-          ) : (
-            <>
+            {registrantStatus !== "personal" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Song Title
+                  Registrant Full Name
                 </label>
                 <input
                   type="text"
-                  {...register("song_title")}
+                  {...register("registrant_name")}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                 />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                WhatsApp Number
+              </label>
+              <div className="mt-1">
+                <Controller
+                  name="registrant_whatsapp"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
+                      country="id"
+                      preferredCountries={["id", "sg", "my"]}
+                      enableSearch
+                      searchPlaceholder="Search country..."
+                      inputClass="!w-full !py-2 !text-base !rounded-md !border-gray-300 focus:!border-marigold focus:!ring focus:!ring-marigold focus:!ring-opacity-50"
+                      buttonClass="!border-gray-300 !rounded-l-md hover:!bg-gray-50"
+                      dropdownClass="!text-base"
+                      value={value}
+                      onChange={(phone) => {
+                        onChange(`+${phone}`);
+                      }}
+                      placeholder="Enter phone number without country code"
+                    />
+                  )}
+                />
+                {errors.registrant_whatsapp && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.registrant_whatsapp.message}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Please select your country code and enter your phone number
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <input
+                type="email"
+                {...register("registrant_email")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.registrant_email && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.registrant_email.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Participant's Data */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              Participant's Data
+            </h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <input
+                type="text"
+                {...register("participant_name")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.participant_name && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.participant_name.message}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-4">
+              <div className="w-[40%]">
+                <label className="block text-sm font-medium text-gray-700">
+                  Category
+                </label>
+                <select
+                  {...register("category_id")}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.category_id && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.category_id.message}
+                  </p>
+                )}
+              </div>
+
+              {selectedCategory && selectedCategory.event_subcategories && (
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Sub Category
+                  </label>
+                  <select
+                    {...register("subcategory_id")}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                  >
+                    <option value="">Select a sub category</option>
+                    {selectedCategory.event_subcategories.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {`${sub.name} (${sub.age_requirement})`}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.subcategory_id && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.subcategory_id.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {hasRepertoire ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Song Selection
+                </label>
+                <select
+                  {...register("song_title")}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                >
+                  <option value="">Select a song</option>
+                  {(selectedCategory?.repertoire || []).map((song, index) => (
+                    <option key={index} value={song}>
+                      {song}
+                    </option>
+                  ))}
+                  {selectedCategory?.event_subcategories.map((sub) =>
+                    (sub.repertoire || []).map((song, index) => (
+                      <option key={`${sub.id}-${index}`} value={song}>
+                        {song}
+                      </option>
+                    ))
+                  )}
+                </select>
                 {errors.song_title && (
                   <p className="mt-1 text-sm text-red-600">
                     {errors.song_title.message}
                   </p>
                 )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Song Duration
-                </label>
-                <input
-                  type="text"
-                  {...register("song_duration")}
-                  placeholder="e.g., 3:30"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-                />
-              </div>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Song Title
+                  </label>
+                  <input
+                    type="text"
+                    {...register("song_title")}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                  />
+                  {errors.song_title && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.song_title.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Song Duration
+                  </label>
+                  <input
+                    type="text"
+                    {...register("song_duration")}
+                    placeholder="e.g., 3:30"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                  />
+                  {errors.song_duration && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.song_duration.message}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
-        {/* Document Uploads */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">Documents</h3>
+          {/* Document Uploads */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Documents</h3>
 
-          <FileUpload
-            label="Birth Certificate/Passport"
-            accept=".pdf,.jpg,.jpeg,.png"
-            registration={{
-              name: "birth_certificate",
-              onChange: async () => true,
-              onBlur: async () => true,
-            }}
-            error={files.birth_certificate.error}
-            onFileChange={handleFileChange("birth_certificate")}
-          />
-
-          {!hasRepertoire && (
             <FileUpload
-              label="Song PDF"
-              accept=".pdf"
+              label="Birth Certificate/Passport"
+              accept=".pdf,.jpg,.jpeg,.png"
               registration={{
-                name: "song_pdf",
+                name: "birth_certificate",
                 onChange: async () => true,
                 onBlur: async () => true,
               }}
-              error={files.song_pdf.error}
-              onFileChange={handleFileChange("song_pdf")}
+              error={files.birth_certificate.error}
+              onFileChange={handleFileChange("birth_certificate")}
             />
-          )}
-        </div>
 
-        {/* Payment Information */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">
-            Payment Information
-          </h3>
-          <div className="bg-gray-50 p-4 rounded-md">
-            <p className="font-medium">Bank Transfer Details:</p>
-            <p>Bank Central Asia (BCA)</p>
-            <p>3720421151</p>
-            <p>RODERICK OR NICHOLAS</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Bank Name
-            </label>
-            <input
-              type="text"
-              {...register("bank_name")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-            />
-            {errors.bank_name && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.bank_name.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Account Number
-            </label>
-            <input
-              type="text"
-              {...register("bank_account_number")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-            />
-            {errors.bank_account_number && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.bank_account_number.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Account Holder Name
-            </label>
-            <input
-              type="text"
-              {...register("bank_account_name")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-            />
-            {errors.bank_account_name && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.bank_account_name.message}
-              </p>
-            )}
-          </div>
-
-          <FileUpload
-            label="Payment Receipt"
-            accept=".pdf,.jpg,.jpeg,.png"
-            registration={{
-              name: "payment_receipt",
-              onChange: async () => true,
-              onBlur: async () => true,
-            }}
-            error={files.payment_receipt.error}
-            onFileChange={handleFileChange("payment_receipt")}
-          />
-        </div>
-
-        {/* Terms and Conditions */}
-        <div className="space-y-4">
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                type="checkbox"
-                {...register("terms_accepted")}
-                className="h-4 w-4 text-marigold border-gray-300 rounded focus:ring-marigold"
+            {!hasRepertoire && (
+              <FileUpload
+                label="Song PDF"
+                accept=".pdf"
+                registration={{
+                  name: "song_pdf",
+                  onChange: async () => true,
+                  onBlur: async () => true,
+                }}
+                error={files.song_pdf.error}
+                onFileChange={handleFileChange("song_pdf")}
               />
+            )}
+          </div>
+
+          {/* Payment Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              Payment Information
+            </h3>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <p className="font-medium">Bank Transfer Details:</p>
+              <p>Bank Central Asia (BCA)</p>
+              <p>3720421151</p>
+              <p>RODERICK OR NICHOLAS</p>
             </div>
-            <div className="ml-3">
-              <label className="text-sm text-gray-700">
-                By registering, I agree to all the{" "}
-                <button
-                  type="button"
-                  onClick={onOpenTerms}
-                  className="text-marigold hover:text-marigold/90 underline"
-                >
-                  terms & conditions
-                </button>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Bank Name
               </label>
-              {errors.terms_accepted && (
+              <input
+                type="text"
+                {...register("bank_name")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.bank_name && (
                 <p className="mt-1 text-sm text-red-600">
-                  {errors.terms_accepted.message}
+                  {errors.bank_name.message}
                 </p>
               )}
             </div>
-          </div>
-        </div>
 
-        <div className="flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Submitting..." : "Submit Registration"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Account Number
+              </label>
+              <input
+                type="text"
+                {...register("bank_account_number")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.bank_account_number && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.bank_account_number.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Account Holder Name
+              </label>
+              <input
+                type="text"
+                {...register("bank_account_name")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.bank_account_name && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.bank_account_name.message}
+                </p>
+              )}
+            </div>
+
+            <FileUpload
+              label="Payment Receipt"
+              accept=".pdf,.jpg,.jpeg,.png"
+              registration={{
+                name: "payment_receipt",
+                onChange: async () => true,
+                onBlur: async () => true,
+              }}
+              error={files.payment_receipt.error}
+              onFileChange={handleFileChange("payment_receipt")}
+            />
+          </div>
+
+          {/* Terms and Conditions */}
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  type="checkbox"
+                  {...register("terms_accepted")}
+                  className="h-4 w-4 text-marigold border-gray-300 rounded focus:ring-marigold"
+                />
+              </div>
+              <div className="ml-3">
+                <label className="text-sm text-gray-700">
+                  By registering, I agree to all the{" "}
+                  <button
+                    type="button"
+                    onClick={onOpenTerms}
+                    className="text-marigold hover:text-marigold/90 underline"
+                  >
+                    terms & conditions
+                  </button>
+                </label>
+                {errors.terms_accepted && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.terms_accepted.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "Submitting..." : "Submit Registration"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </>
   );
 }
 
