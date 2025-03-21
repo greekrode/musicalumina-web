@@ -309,9 +309,20 @@ function PastEventDetails() {
             Back to all events
           </button>
           <div className="text-center py-12">
-            <h2 className="text-2xl font-playfair text-[#808080]">
-              Event not found
+            <h2 className="text-3xl font-playfair text-[#808080] mb-4">
+              {eventError ? "Error Loading Event" : "Event Not Found"}
             </h2>
+            <p className="text-lg text-black/60 mb-6">
+              {eventError
+                ? "There was an error loading this event. Please try again later."
+                : "The event you're looking for doesn't exist or has been removed."}
+            </p>
+            <button
+              onClick={() => navigate("/events")}
+              className="inline-flex items-center px-6 py-3 bg-marigold text-white rounded-lg hover:bg-marigold/90 transition-colors"
+            >
+              View All Events
+            </button>
           </div>
         </div>
       </div>
