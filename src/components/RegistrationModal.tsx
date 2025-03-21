@@ -71,6 +71,7 @@ interface RegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   eventId: string;
+  eventName: string;
   categories: Category[];
   onOpenTerms: () => void;
 }
@@ -79,6 +80,7 @@ function RegistrationModal({
   isOpen,
   onClose,
   eventId,
+  eventName,
   categories = [],
   onOpenTerms,
 }: RegistrationModalProps) {
@@ -284,6 +286,40 @@ function RegistrationModal({
         categoryId: data.category_id,
         subcategoryId: data.subcategory_id
       });
+
+      // Get category and subcategory names
+      const category = categories.find((cat) => cat.id === data.category_id);
+      const subCategory = category?.event_subcategories.find(
+        (sub) => sub.id === data.subcategory_id
+      );
+
+      // Send confirmation email
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-registration-email', {
+          body: {
+            data: {
+              registrant_status: data.registrant_status,
+              registrant_name: data.registrant_name || data.participant_name,
+              registrant_email: data.registrant_email,
+              registrant_whatsapp: data.registrant_whatsapp,
+              participant_name: data.participant_name,
+              song_title: data.song_title,
+              song_duration: data.song_duration || undefined,
+              category: category?.name || '',
+              sub_category: subCategory?.name || '',
+              registration_ref_code: refNumber,
+              registrationId: registration.id,
+              event_name: eventName
+            }
+          }
+        });
+
+        if (emailError) {
+          console.error('Error sending confirmation email:', emailError);
+        }
+      } catch (error) {
+        console.error('Error sending confirmation email:', error);
+      }
 
       setRegistrationRef(refNumber);
       setRegisteredName(data.participant_name);
