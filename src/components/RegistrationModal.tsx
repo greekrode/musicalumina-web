@@ -1,36 +1,47 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
 import FileUpload from "./FileUpload";
 import Modal from "./Modal";
+import ThankYouModal from "./ThankYouModal";
+import { useState } from "react";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+interface FileState {
+  file: File | null;
+  error?: string;
+}
+
+interface FileStates {
+  birth_certificate: FileState;
+  song_pdf: FileState;
+  payment_receipt: FileState;
+}
 
 const registrationSchema = z.object({
-  registration_status: z.enum(["personal", "parents", "teacher"]),
+  registrant_status: z.enum(["personal", "parents", "teacher"]),
   registrant_name: z.string().optional(),
   registrant_whatsapp: z
     .string()
-    .min(10, "Please enter a valid WhatsApp number"),
+    .regex(
+      /^\+[1-9]\d{1,14}$/,
+      "Please enter a valid phone number with country code"
+    ),
   registrant_email: z.string().email("Please enter a valid email address"),
   participant_name: z
     .string()
     .min(3, "Please enter the participant's full name"),
-  category_id: z.string().uuid(),
-  subcategory_id: z.string().uuid(),
+  category_id: z.string().uuid("Please select a category"),
+  subcategory_id: z.string().uuid("Please select a subcategory"),
   song_title: z.string().min(1, "Please enter the song title"),
   song_duration: z.string().optional(),
-  birth_certificate: z.instanceof(File, {
-    message: "Please upload your birth certificate or passport",
-  }),
-  song_pdf: z.instanceof(File, {
-    message: "Please upload your song PDF",
-  }),
   bank_name: z.string().min(1, "Please enter the bank name"),
   bank_account_number: z.string().min(1, "Please enter the account number"),
   bank_account_name: z.string().min(1, "Please enter the account holder name"),
-  payment_receipt: z.instanceof(File, {
-    message: "Please upload your payment receipt",
-  }),
   terms_accepted: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms and conditions" }),
   }),
@@ -65,20 +76,33 @@ function RegistrationModal({
   categories = [],
   onOpenTerms,
 }: RegistrationModalProps) {
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [registrationRef, setRegistrationRef] = useState("");
+  const [registeredName, setRegisteredName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [files, setFiles] = useState<FileStates>({
+    birth_certificate: { file: null },
+    song_pdf: { file: null },
+    payment_receipt: { file: null },
+  });
+
   const {
     register,
     handleSubmit,
     watch,
     setError,
+    control,
+    reset,
     formState: { errors },
   } = useForm<RegistrationForm>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      registration_status: "personal",
+      registrant_status: "personal",
+      registrant_whatsapp: "",
     },
   });
 
-  const registrationStatus = watch("registration_status");
+  const registrantStatus = watch("registrant_status");
   const categoryId = watch("category_id");
 
   const selectedCategory = categories.find((cat) => cat.id === categoryId);
@@ -88,41 +112,107 @@ function RegistrationModal({
       (sub) => sub.repertoire && sub.repertoire.length > 0
     );
 
-  const uploadFile = async (file: File, path: string) => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
-    const filePath = `${path}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("registration-documents")
-      .upload(filePath, file);
-
-    if (uploadError) {
-      throw new Error(`Error uploading ${path}: ${uploadError.message}`);
+  const handleFileChange = (type: keyof FileStates) => (file: File | null) => {
+    if (file && file.size > MAX_FILE_SIZE) {
+      setFiles((prev) => ({
+        ...prev,
+        [type]: { file: null, error: "File size must be less than 10MB" },
+      }));
+      return;
     }
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("registration-documents").getPublicUrl(filePath);
+    setFiles((prev) => ({
+      ...prev,
+      [type]: { file, error: undefined },
+    }));
+  };
 
-    return publicUrl;
+  const validateFiles = () => {
+    let isValid = true;
+    const newFiles = { ...files };
+
+    // Validate birth certificate
+    if (!files.birth_certificate.file) {
+      newFiles.birth_certificate.error =
+        "Please upload your birth certificate or passport";
+      isValid = false;
+    }
+
+    // Validate payment receipt
+    if (!files.payment_receipt.file) {
+      newFiles.payment_receipt.error = "Please upload your payment receipt";
+      isValid = false;
+    }
+
+    // Validate song PDF only if no repertoire
+    if (!hasRepertoire && !files.song_pdf.file) {
+      newFiles.song_pdf.error = "Please upload your song PDF";
+      isValid = false;
+    }
+
+    setFiles(newFiles);
+    return isValid;
+  };
+
+  const uploadFile = async (file: File, path: string) => {
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
+      const filePath = `${path}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("registration-documents")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw new Error(`Error uploading ${path}: ${uploadError.message}`);
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage
+        .from("registration-documents")
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      throw new Error(`Failed to upload file to ${path}`);
+    }
   };
 
   const onSubmit = async (data: RegistrationForm) => {
     try {
+      setIsSubmitting(true);
+
+      // Validate files first
+      if (!validateFiles()) {
+        return;
+      }
+
       // Upload files to storage
-      const [birthCertUrl, songPdfUrl, paymentReceiptUrl] = await Promise.all([
-        uploadFile(data.birth_certificate, "birth-certificates"),
-        uploadFile(data.song_pdf, "song-pdfs"),
-        uploadFile(data.payment_receipt, "payment-receipts"),
-      ]);
+      const uploadPromises = [
+        uploadFile(files.birth_certificate.file!, "birth-certificates"),
+        uploadFile(files.payment_receipt.file!, "payment-receipts"),
+      ];
+
+      if (files.song_pdf.file) {
+        uploadPromises.push(uploadFile(files.song_pdf.file, "song-pdfs"));
+      }
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      const [birthCertUrl, paymentReceiptUrl, songPdfUrl] = uploadedFiles;
+
+      if (data.registrant_name === null) {
+        data.registrant_name = data.participant_name;
+      }
 
       // Submit registration data
-      const { error: registrationError } = await supabase
+      const { data: registration, error: registrationError } = await supabase
         .from("registrations")
         .insert({
           event_id: eventId,
-          registration_status: data.registration_status,
+          registrant_status: data.registrant_status,
           registrant_name: data.registrant_name,
           registrant_whatsapp: data.registrant_whatsapp,
           registrant_email: data.registrant_email,
@@ -132,32 +222,63 @@ function RegistrationModal({
           song_title: data.song_title,
           song_duration: data.song_duration,
           birth_certificate_url: birthCertUrl,
-          song_pdf_url: songPdfUrl,
+          song_pdf_url: songPdfUrl || null,
           bank_name: data.bank_name,
           bank_account_number: data.bank_account_number,
           bank_account_name: data.bank_account_name,
           payment_receipt_url: paymentReceiptUrl,
           status: "pending",
-        });
+        })
+        .select()
+        .single();
 
       if (registrationError) {
         throw new Error(`Registration failed: ${registrationError.message}`);
       }
 
-      onClose();
+      // Generate reference number (last 4 of UUID - last 4 of phone)
+      const uuid = registration.id;
+      const phone = data.registrant_whatsapp.replace(/\D/g, "");
+      const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
+
+      setRegistrationRef(refNumber);
+      setRegisteredName(data.participant_name);
+      setShowThankYou(true);
+      reset();
+      setFiles({
+        birth_certificate: { file: null },
+        song_pdf: { file: null },
+        payment_receipt: { file: null },
+      });
     } catch (error) {
       console.error("Registration failed:", error);
-
-      // Show error to user
-      if (error instanceof Error) {
-        setError("root", {
-          type: "manual",
-          message:
-            "Registration failed. Please try again or contact support if the problem persists.",
-        });
-      }
+      setError("root", {
+        type: "manual",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Registration failed. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const handleClose = () => {
+    setShowThankYou(false);
+    onClose();
+  };
+
+  if (showThankYou) {
+    return (
+      <ThankYouModal
+        isOpen={true}
+        onClose={handleClose}
+        participantName={registeredName}
+        referenceNumber={registrationRef}
+      />
+    );
+  }
 
   return (
     <Modal
@@ -186,11 +307,11 @@ function RegistrationModal({
           </h3>
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Registration Status
+              Registrant Status
             </label>
             <select
-              {...register("registration_status")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+              {...register("registrant_status")}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
             >
               <option value="personal">Personal</option>
               <option value="parents">Parents</option>
@@ -198,7 +319,7 @@ function RegistrationModal({
             </select>
           </div>
 
-          {registrationStatus !== "personal" && (
+          {registrantStatus !== "personal" && (
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Registrant Full Name
@@ -206,7 +327,7 @@ function RegistrationModal({
               <input
                 type="text"
                 {...register("registrant_name")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               />
             </div>
           )}
@@ -215,16 +336,36 @@ function RegistrationModal({
             <label className="block text-sm font-medium text-gray-700">
               WhatsApp Number
             </label>
-            <input
-              type="text"
-              {...register("registrant_whatsapp")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
-            />
-            {errors.registrant_whatsapp && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.registrant_whatsapp.message}
+            <div className="mt-1">
+              <Controller
+                name="registrant_whatsapp"
+                control={control}
+                render={({ field: { onChange, value } }) => (
+                  <PhoneInput
+                    country="id"
+                    preferredCountries={["id", "sg", "my"]}
+                    enableSearch
+                    searchPlaceholder="Search country..."
+                    inputClass="!w-full !py-2 !text-base !rounded-md !border-gray-300 focus:!border-marigold focus:!ring focus:!ring-marigold focus:!ring-opacity-50"
+                    buttonClass="!border-gray-300 !rounded-l-md hover:!bg-gray-50"
+                    dropdownClass="!text-base"
+                    value={value}
+                    onChange={(phone) => {
+                      onChange(`+${phone}`);
+                    }}
+                    placeholder="Enter phone number without country code"
+                  />
+                )}
+              />
+              {errors.registrant_whatsapp && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.registrant_whatsapp.message}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Please select your country code and enter your phone number
               </p>
-            )}
+            </div>
           </div>
 
           <div>
@@ -234,7 +375,7 @@ function RegistrationModal({
             <input
               type="email"
               {...register("registrant_email")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
             />
             {errors.registrant_email && (
               <p className="mt-1 text-sm text-red-600">
@@ -256,7 +397,7 @@ function RegistrationModal({
             <input
               type="text"
               {...register("participant_name")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
             />
             {errors.participant_name && (
               <p className="mt-1 text-sm text-red-600">
@@ -271,7 +412,7 @@ function RegistrationModal({
             </label>
             <select
               {...register("category_id")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
             >
               <option value="">Select a category</option>
               {categories.map((category) => (
@@ -280,6 +421,11 @@ function RegistrationModal({
                 </option>
               ))}
             </select>
+            {errors.category_id && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.category_id.message}
+              </p>
+            )}
           </div>
 
           {selectedCategory && selectedCategory.event_subcategories && (
@@ -289,7 +435,7 @@ function RegistrationModal({
               </label>
               <select
                 {...register("subcategory_id")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               >
                 <option value="">Select a sub category</option>
                 {selectedCategory.event_subcategories.map((sub) => (
@@ -298,6 +444,11 @@ function RegistrationModal({
                   </option>
                 ))}
               </select>
+              {errors.subcategory_id && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.subcategory_id.message}
+                </p>
+              )}
             </div>
           )}
 
@@ -308,7 +459,7 @@ function RegistrationModal({
               </label>
               <select
                 {...register("song_title")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               >
                 <option value="">Select a song</option>
                 {(selectedCategory?.repertoire || []).map((song, index) => (
@@ -324,6 +475,11 @@ function RegistrationModal({
                   ))
                 )}
               </select>
+              {errors.song_title && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.song_title.message}
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -334,7 +490,7 @@ function RegistrationModal({
                 <input
                   type="text"
                   {...register("song_title")}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                 />
                 {errors.song_title && (
                   <p className="mt-1 text-sm text-red-600">
@@ -350,7 +506,7 @@ function RegistrationModal({
                   type="text"
                   {...register("song_duration")}
                   placeholder="e.g., 3:30"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                 />
               </div>
             </>
@@ -364,16 +520,28 @@ function RegistrationModal({
           <FileUpload
             label="Birth Certificate/Passport"
             accept=".pdf,.jpg,.jpeg,.png"
-            registration={register("birth_certificate")}
-            error={errors.birth_certificate?.message}
+            registration={{
+              name: "birth_certificate",
+              onChange: async () => true,
+              onBlur: async () => true,
+            }}
+            error={files.birth_certificate.error}
+            onFileChange={handleFileChange("birth_certificate")}
           />
 
-          <FileUpload
-            label="Song PDF"
-            accept=".pdf"
-            registration={register("song_pdf")}
-            error={errors.song_pdf?.message}
-          />
+          {!hasRepertoire && (
+            <FileUpload
+              label="Song PDF"
+              accept=".pdf"
+              registration={{
+                name: "song_pdf",
+                onChange: async () => true,
+                onBlur: async () => true,
+              }}
+              error={files.song_pdf.error}
+              onFileChange={handleFileChange("song_pdf")}
+            />
+          )}
         </div>
 
         {/* Payment Information */}
@@ -395,8 +563,13 @@ function RegistrationModal({
             <input
               type="text"
               {...register("bank_name")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
             />
+            {errors.bank_name && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.bank_name.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -406,8 +579,13 @@ function RegistrationModal({
             <input
               type="text"
               {...register("bank_account_number")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
             />
+            {errors.bank_account_number && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.bank_account_number.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -417,15 +595,25 @@ function RegistrationModal({
             <input
               type="text"
               {...register("bank_account_name")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#CFB53B] focus:ring focus:ring-[#CFB53B] focus:ring-opacity-50"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
             />
+            {errors.bank_account_name && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.bank_account_name.message}
+              </p>
+            )}
           </div>
 
           <FileUpload
             label="Payment Receipt"
             accept=".pdf,.jpg,.jpeg,.png"
-            registration={register("payment_receipt")}
-            error={errors.payment_receipt?.message}
+            registration={{
+              name: "payment_receipt",
+              onChange: async () => true,
+              onBlur: async () => true,
+            }}
+            error={files.payment_receipt.error}
+            onFileChange={handleFileChange("payment_receipt")}
           />
         </div>
 
@@ -436,7 +624,7 @@ function RegistrationModal({
               <input
                 type="checkbox"
                 {...register("terms_accepted")}
-                className="h-4 w-4 text-[#CFB53B] border-gray-300 rounded focus:ring-[#CFB53B]"
+                className="h-4 w-4 text-marigold border-gray-300 rounded focus:ring-marigold"
               />
             </div>
             <div className="ml-3">
@@ -445,7 +633,7 @@ function RegistrationModal({
                 <button
                   type="button"
                   onClick={onOpenTerms}
-                  className="text-[#CFB53B] hover:text-[#CFB53B]/90 underline"
+                  className="text-marigold hover:text-marigold/90 underline"
                 >
                   terms & conditions
                 </button>
@@ -469,9 +657,10 @@ function RegistrationModal({
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-[#CFB53B] text-white rounded-md hover:bg-[#CFB53B]/90"
+            disabled={isSubmitting}
+            className="px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Submit Registration
+            {isSubmitting ? "Submitting..." : "Submit Registration"}
           </button>
         </div>
       </form>

@@ -98,8 +98,9 @@ export interface Database {
         Row: {
           id: string;
           event_id: string;
+          category_id: string;
           subcategory_id: string;
-          registration_status: RegistrationStatus;
+          registrant_status: RegistrationStatus;
           registrant_name: string | null;
           registrant_whatsapp: string;
           registrant_email: string;
