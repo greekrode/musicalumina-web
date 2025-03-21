@@ -36,8 +36,8 @@ function Navigation() {
   const getNavLinkClass = (path: string) => {
     const isCurrentPage = isActive(path);
     if (isHomePage) {
-      return `text-offWhite hover:text-[#CFB53B] transition-colors duration-300 ${
-        isCurrentPage ? "text-[#CFB53B]" : ""
+      return `text-offWhite hover:text-marigold transition-colors duration-300 ${
+        isCurrentPage ? "text-marigold" : ""
       }`;
     }
     return `text-burgundy hover:text-marigold transition-colors duration-300 ${
@@ -51,7 +51,7 @@ function Navigation() {
         isScrolled || !isHomePage ? "bg-offWhite shadow-md" : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex justify-between items-center">
           <Link to="/" className="flex items-center space-x-2 hover-scale">
             <img src={logo} alt="MusicaLumina Logo" className="h-10 w-auto" />
