@@ -59,7 +59,7 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
                     >
                       {juror.name}
                     </Dialog.Title>
-                    <p className="text-sm text-[#CFB53B]">{juror.title}</p>
+                    <p className="text-sm text-marigold">{juror.title}</p>
                   </div>
                 </div>
 
@@ -72,7 +72,7 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
                 <div className="mt-4">
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-transparent bg-[#CFB53B] px-4 py-2 text-sm font-medium text-white hover:bg-[#CFB53B]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#CFB53B] focus-visible:ring-offset-2"
+                    className="inline-flex justify-center rounded-md border border-transparent bg-marigold px-4 py-2 text-sm font-medium text-white hover:bg-marigold/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2"
                     onClick={onClose}
                   >
                     Close

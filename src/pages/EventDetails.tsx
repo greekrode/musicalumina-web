@@ -58,7 +58,7 @@ type EventCategoriesProps = {
 const EventCategories = ({ categories }: EventCategoriesProps) => (
   <div className="space-y-8">
     {categories.map((category) => (
-      <div key={category.id} className="bg-[#F7E7CE]/20 p-6 rounded-lg">
+      <div key={category.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
         <h2 className="text-xl font-playfair text-black mb-4">
           {category.name}
         </h2>
@@ -178,13 +178,13 @@ const PrizesSection = ({ categories }: PrizesSectionProps) => {
             {globalPrizes.map((prize) => (
               <div key={prize.id} className="bg-white p-4 rounded-lg shadow-sm">
                 <div className="flex items-start space-x-4">
-                  <Award className="h-6 w-6 text-[#CFB53B] mt-1" />
+                  <Award className="h-6 w-6 text-marigold mt-1" />
                   <div>
                     <h4 className="text-lg font-medium text-black">
                       {prize.title}
                     </h4>
                     {prize.amount && (
-                      <p className="text-[#CFB53B] font-medium mt-1">
+                      <p className="text-marigold font-medium mt-1">
                         IDR {prize.amount.toLocaleString()}
                       </p>
                     )}
@@ -218,13 +218,13 @@ const PrizesSection = ({ categories }: PrizesSectionProps) => {
                     className="bg-white p-4 rounded-lg shadow-sm"
                   >
                     <div className="flex items-start space-x-4">
-                      <Award className="h-6 w-6 text-[#CFB53B] mt-1" />
+                      <Award className="h-6 w-6 text-marigold mt-1" />
                       <div>
                         <h4 className="text-lg font-medium text-black">
                           {prize.title}
                         </h4>
                         {prize.amount && (
-                          <p className="text-[#CFB53B] font-medium mt-1">
+                          <p className="text-marigold font-medium mt-1">
                             IDR {prize.amount.toLocaleString()}
                           </p>
                         )}
@@ -251,7 +251,7 @@ const PrizesSection = ({ categories }: PrizesSectionProps) => {
 const JuryPanel = ({ juryMembers }: JuryPanelProps) => (
   <div className="grid md:grid-cols-2 gap-8">
     {juryMembers.map((juror) => (
-      <div key={juror.id} className="bg-[#F7E7CE]/20 p-6 rounded-lg">
+      <div key={juror.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
         <div className="flex flex-col items-center space-y-4">
           <img
             src={juror.avatar_url || ""}
@@ -260,7 +260,7 @@ const JuryPanel = ({ juryMembers }: JuryPanelProps) => (
           />
           <div className="text-center">
             <h2 className="text-2xl font-playfair text-black mb-2">{juror.name}</h2>
-            <p className="text-lg font-medium text-[#CFB53B] mb-4">
+            <p className="text-lg font-medium text-marigold mb-4">
               {juror.title}
             </p>
             {juror.description && (
@@ -334,7 +334,7 @@ function EventDetails() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 mt-8">
           <button
             onClick={handleBackClick}
-            className="inline-flex items-center text-[#CFB53B] hover:text-[#CFB53B]/90 mb-8"
+            className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to all events
@@ -360,7 +360,7 @@ function EventDetails() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 mt-8">
         <button
           onClick={handleBackClick}
-          className="inline-flex items-center text-[#CFB53B] hover:text-[#CFB53B]/90 mb-8"
+          className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to all events
@@ -381,14 +381,14 @@ function EventDetails() {
 
           <div className="grid md:grid-cols-3 gap-6">
             <div className="flex items-start space-x-3">
-              <Calendar className="h-5 w-5 text-[#CFB53B] mt-1" />
+              <Calendar className="h-5 w-5 text-marigold mt-1" />
               <div>
                 <h3 className="font-medium text-black">Event Date</h3>
                 <p className="text-black/80">{formatDate(event.start_date)}</p>
               </div>
             </div>
             <div className="flex items-start space-x-3">
-              <MapPin className="h-5 w-5 text-[#CFB53B] mt-1" />
+              <MapPin className="h-5 w-5 text-marigold mt-1" />
               <div>
                 <h3 className="font-medium text-black">Venue</h3>
                 <p className="text-black/80">{event.location}</p>
@@ -396,7 +396,7 @@ function EventDetails() {
             </div>
             {event.registration_deadline && (
               <div className="flex items-start space-x-3">
-                <Calendar className="h-5 w-5 text-[#CFB53B] mt-1" />
+                <Calendar className="h-5 w-5 text-marigold mt-1" />
                 <div>
                   <h3 className="font-medium text-black">
                     Registration Deadline
@@ -413,7 +413,7 @@ function EventDetails() {
             <div className="mt-8">
               <button
                 onClick={() => setIsRegistrationModalOpen(true)}
-                className="bg-[#CFB53B] text-white px-6 py-3 rounded-md hover:bg-[#CFB53B]/90 transition-colors w-full md:w-auto"
+                className="bg-marigold text-white px-6 py-3 rounded-md hover:bg-marigold/90 transition-colors w-full md:w-auto"
               >
                 Register Now
               </button>
@@ -421,9 +421,9 @@ function EventDetails() {
           )}
         </div>
 
-        <div className="bg-[#F7E7CE]/30 rounded-lg p-8 mb-8">
+        <div className="bg-[#F7E7CE]/50 rounded-lg p-8 mb-8">
           <div className="flex items-center space-x-3 mb-6">
-            <BookOpen className="h-6 w-6 text-[#CFB53B]" />
+            <BookOpen className="h-6 w-6 text-marigold" />
             <h2 className="text-2xl font-playfair text-black">
               Important Information
             </h2>
@@ -434,7 +434,7 @@ function EventDetails() {
           </p>
           <button
             onClick={() => setIsTermsModalOpen(true)}
-            className="bg-[#CFB53B] text-[#FFFFF0] px-6 py-2 rounded-md hover:bg-[#CFB53B]/90 transition-colors inline-flex items-center"
+            className="bg-marigold text-[#FFFFF0] px-6 py-2 rounded-md hover:bg-marigold/90 transition-colors inline-flex items-center"
           >
             View Terms & Conditions
           </button>
@@ -442,7 +442,7 @@ function EventDetails() {
 
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <div className="flex items-center space-x-3 mb-6">
-            <Trophy className="h-6 w-6 text-[#CFB53B]" />
+            <Trophy className="h-6 w-6 text-marigold" />
             <h2 className="text-2xl font-playfair text-black">Categories</h2>
           </div>
           <Suspense
@@ -455,7 +455,7 @@ function EventDetails() {
         {hasAnyPrizes && (
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <div className="flex items-center space-x-3 mb-6">
-              <Award className="h-6 w-6 text-[#CFB53B]" />
+              <Award className="h-6 w-6 text-marigold" />
               <h2 className="text-2xl font-playfair text-black">Prizes</h2>
             </div>
             <Suspense fallback={<LoadingSpinner message="Loading prizes..." />}>
@@ -466,7 +466,7 @@ function EventDetails() {
 
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="flex items-center space-x-3 mb-6">
-            <Users className="h-6 w-6 text-[#CFB53B]" />
+            <Users className="h-6 w-6 text-marigold" />
             <h2 className="text-2xl font-playfair text-black">Jury Panel</h2>
           </div>
           <Suspense

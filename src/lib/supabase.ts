@@ -1,32 +1,33 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './database.types';
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error("Missing Supabase environment variables");
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
-export async function getEvents({ 
-  page = 1, 
-  limit = 10, 
+export async function getEvents({
+  page = 1,
+  limit = 10,
   status,
   startDate,
-  endDate 
+  endDate,
 }: {
   page?: number;
   limit?: number;
-  status?: 'upcoming' | 'ongoing' | 'completed';
+  status?: "upcoming" | "ongoing" | "completed";
   startDate?: Date;
   endDate?: Date;
 }) {
   try {
     let query = supabase
-      .from('events')
-      .select(`
+      .from("events")
+      .select(
+        `
         *,
         event_categories (
           id,
@@ -52,21 +53,24 @@ export async function getEvents({
           avatar_url,
           credentials
         )
-      `, { count: 'exact' })
-      .order('start_date', { ascending: true });
+      `,
+        { count: "exact" }
+      )
+      .order("status", { ascending: false })
+      .order("start_date", { ascending: true });
 
-    if (status === 'upcoming') {
-      query = query.in('status', ['upcoming', 'ongoing']);
+    if (status === "upcoming") {
+      query = query.in("status", ["upcoming", "ongoing"]);
     } else if (status) {
-      query = query.eq('status', status);
+      query = query.eq("status", status);
     }
 
     if (startDate) {
-      query = query.gte('start_date', startDate.toISOString());
+      query = query.gte("start_date", startDate.toISOString());
     }
 
     if (endDate) {
-      query = query.lte('start_date', endDate.toISOString());
+      query = query.lte("start_date", endDate.toISOString());
     }
 
     const from = (page - 1) * limit;
@@ -83,10 +87,10 @@ export async function getEvents({
       events: data || [],
       total: count || 0,
       page,
-      limit
+      limit,
     };
   } catch (error) {
-    console.error('Error fetching events:', error);
+    console.error("Error fetching events:", error);
     throw error;
   }
 }
@@ -95,8 +99,9 @@ export async function getEventById(id: string) {
   try {
     // First, fetch the event with its basic data
     const { data: event, error: eventError } = await supabase
-      .from('events')
-      .select(`
+      .from("events")
+      .select(
+        `
         *,
         event_categories (
           id,
@@ -122,8 +127,9 @@ export async function getEventById(id: string) {
           avatar_url,
           credentials
         )
-      `)
-      .eq('id', id)
+      `
+      )
+      .eq("id", id)
       .single();
 
     if (eventError) {
@@ -132,19 +138,21 @@ export async function getEventById(id: string) {
 
     // Sort subcategories by order_index
     if (event.event_categories) {
-      event.event_categories = event.event_categories.map(category => ({
+      event.event_categories = event.event_categories.map((category) => ({
         ...category,
-        event_subcategories: category.event_subcategories.sort((a, b) => a.order_index - b.order_index)
+        event_subcategories: category.event_subcategories.sort(
+          (a, b) => a.order_index - b.order_index
+        ),
       }));
     }
 
     // For upcoming and ongoing events, fetch prizes
-    if (event.status === 'upcoming' || event.status === 'ongoing') {
+    if (event.status === "upcoming" || event.status === "ongoing") {
       // Fetch all prizes for this event
       const { data: prizes, error: prizesError } = await supabase
-        .from('event_prizes')
-        .select('*')
-        .eq('event_id', id);
+        .from("event_prizes")
+        .select("*")
+        .eq("event_id", id);
 
       if (prizesError) {
         throw prizesError;
@@ -168,18 +176,19 @@ export async function getEventById(id: string) {
       }, {});
 
       // Add prizes to their respective categories
-      event.event_categories = event.event_categories.map(category => ({
+      event.event_categories = event.event_categories.map((category) => ({
         ...category,
         prizes: prizesByCategory[category.id] || [],
-        global_prizes: prizesByCategory.global || []
+        global_prizes: prizesByCategory.global || [],
       }));
     }
 
     // For completed events, fetch winners
-    if (event.status === 'completed') {
+    if (event.status === "completed") {
       const { data: winners, error: winnersError } = await supabase
-        .from('event_winners')
-        .select(`
+        .from("event_winners")
+        .select(
+          `
           id,
           participant_name,
           prize_title,
@@ -195,9 +204,10 @@ export async function getEventById(id: string) {
             name,
             order_index
           )
-        `)
-        .eq('event_id', id)
-        .order('prize_title');
+        `
+        )
+        .eq("event_id", id)
+        .order("prize_title");
 
       if (winnersError) {
         throw winnersError;
@@ -208,29 +218,29 @@ export async function getEventById(id: string) {
         const category = winner.event_categories.name;
         const subcategory = winner.event_subcategories.name;
         const orderIndex = winner.event_subcategories.order_index;
-        
+
         if (!acc[category]) {
           acc[category] = {};
         }
-        
+
         if (!acc[category][subcategory]) {
           acc[category][subcategory] = {
             order: orderIndex,
-            winners: []
+            winners: [],
           };
         }
-        
+
         acc[category][subcategory].winners.push({
           participant_name: winner.participant_name,
           prize_title: winner.prize_title,
-          prize_amount: winner.prize_amount
+          prize_amount: winner.prize_amount,
         });
-        
+
         return acc;
       }, {});
 
       // Sort subcategories within each category by order_index
-      Object.keys(groupedWinners).forEach(category => {
+      Object.keys(groupedWinners).forEach((category) => {
         const sortedSubcategories = {};
         Object.entries(groupedWinners[category])
           .sort(([, a], [, b]) => a.order - b.order)
@@ -245,7 +255,7 @@ export async function getEventById(id: string) {
 
     return event;
   } catch (error) {
-    console.error('Error fetching event:', error);
+    console.error("Error fetching event:", error);
     throw error;
   }
 }
@@ -253,11 +263,13 @@ export async function getEventById(id: string) {
 export const getLatestUpcomingEvent = async () => {
   const { data, error } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       id,
       title,
       start_date
-    `)
+    `
+    )
     .eq("status", "ongoing")
     .order("start_date", { ascending: true })
     .limit(1)
@@ -280,31 +292,36 @@ export async function sendContactMessage(data: {
   try {
     // First, insert the message into the database
     const { data: insertedMessage, error: dbError } = await supabase
-      .from('contact_messages')
-      .insert([{
-        ...data,
-        created_at: new Date().toISOString(),
-        sent_at: null
-      }])
+      .from("contact_messages")
+      .insert([
+        {
+          ...data,
+          created_at: new Date().toISOString(),
+          sent_at: null,
+        },
+      ])
       .select()
       .single();
 
     if (dbError) throw dbError;
-    if (!insertedMessage) throw new Error('Failed to insert message');
+    if (!insertedMessage) throw new Error("Failed to insert message");
 
     // Then, trigger the Edge Function to send the email
-    const { error: functionError } = await supabase.functions.invoke('send-contact-email', {
-      body: { ...data, messageId: insertedMessage.id }
-    });
+    const { error: functionError } = await supabase.functions.invoke(
+      "send-contact-email",
+      {
+        body: { ...data, messageId: insertedMessage.id },
+      }
+    );
 
     if (functionError) throw functionError;
 
     return { success: true };
   } catch (error) {
-    console.error('Error sending contact message:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to send message' 
+    console.error("Error sending contact message:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to send message",
     };
   }
 }

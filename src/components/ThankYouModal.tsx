@@ -1,4 +1,5 @@
 import Modal from './Modal';
+import { useLanguage } from '../lib/LanguageContext';
 
 interface ThankYouModalProps {
   isOpen: boolean;
@@ -8,34 +9,35 @@ interface ThankYouModalProps {
 }
 
 function ThankYouModal({ isOpen, onClose, participantName, referenceNumber }: ThankYouModalProps) {
+  const { t } = useLanguage();
+  
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Thank You!" maxWidth="2xl">
-      <div className="space-y-6 py-4">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('registration.thankYou')} maxWidth="2xl">
+      <div className="space-y-6">
         <h2 className="text-3xl font-serif text-center">
-          Thank you for registering, {participantName}
+          {t('registration.thankYouMessage')} {participantName}
         </h2>
         
         <div className="text-center">
           <h3 className="text-xl font-medium mb-2">
-            Registration reference number: {referenceNumber}
+            {t('registration.referenceNumber')}: {referenceNumber}
           </h3>
         </div>
 
         <p className="text-gray-700 text-center">
-          We really appreciate your participation in this competition. Your registration has been accepted by us. 
-          We will reconfirm with you via Whatsapp. Happy practicing and see you!
+          {t('registration.registrationAccepted')}
         </p>
 
         <p className="text-sm text-gray-600 italic font-semibold text-center">
-          *Please screenshot this page or keep the registration reference number.
+          {t('registration.screenshotReminder')}
         </p>
 
         <div className="flex justify-center pt-4">
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-[#CFB53B] text-white rounded-md hover:bg-[#CFB53B]/90 transition-colors"
+            className="px-6 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 transition-colors"
           >
-            Close
+            {t('registration.close')}
           </button>
         </div>
       </div>

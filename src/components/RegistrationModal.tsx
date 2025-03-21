@@ -9,6 +9,8 @@ import LoadingModal from "./LoadingModal";
 import { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import { useLanguage } from "../lib/LanguageContext";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -23,32 +25,34 @@ interface FileStates {
   payment_receipt: FileState;
 }
 
-const registrationSchema = z.object({
-  registrant_status: z.enum(["personal", "parents", "teacher"]),
-  registrant_name: z.string().optional(),
-  registrant_whatsapp: z
-    .string()
-    .regex(
-      /^\+[1-9]\d{1,14}$/,
-      "Please enter a valid phone number with country code"
-    ),
-  registrant_email: z.string().email("Please enter a valid email address"),
-  participant_name: z
-    .string()
-    .min(3, "Please enter the participant's full name"),
-  category_id: z.string().uuid("Please select a category"),
-  subcategory_id: z.string().uuid("Please select a subcategory"),
-  song_title: z.string().min(1, "Please enter the song title"),
-  song_duration: z.string(),
-  bank_name: z.string().min(1, "Please enter the bank name"),
-  bank_account_number: z.string().min(1, "Please enter the account number"),
-  bank_account_name: z.string().min(1, "Please enter the account holder name"),
-  terms_accepted: z.literal(true, {
-    errorMap: () => ({ message: "You must accept the terms and conditions" }),
-  }),
-});
+function createRegistrationSchema(t: (key: string) => string) {
+  return z.object({
+    registrant_status: z.enum(["personal", "parents", "teacher"]),
+    registrant_name: z.string().optional(),
+    registrant_whatsapp: z
+      .string()
+      .regex(
+        /^\+[1-9]\d{1,14}$/,
+        t('validation.invalidPhone')
+      ),
+    registrant_email: z.string().email(t('validation.invalidEmail')),
+    participant_name: z
+      .string()
+      .min(3, t('validation.minName')),
+    category_id: z.string().uuid(t('validation.selectCategory')),
+    subcategory_id: z.string().uuid(t('validation.selectSubCategory')),
+    song_title: z.string().min(1, t('validation.enterSongTitle')),
+    song_duration: z.string(),
+    bank_name: z.string().min(1, t('validation.enterBankName')),
+    bank_account_number: z.string().min(1, t('validation.enterAccountNumber')),
+    bank_account_name: z.string().min(1, t('validation.enterAccountName')),
+    terms_accepted: z.literal(true, {
+      errorMap: () => ({ message: t('validation.acceptTerms') }),
+    }),
+  });
+}
 
-type RegistrationForm = z.infer<typeof registrationSchema>;
+type RegistrationForm = z.infer<ReturnType<typeof createRegistrationSchema>>;
 
 interface Category {
   id: string;
@@ -77,6 +81,7 @@ function RegistrationModal({
   categories = [],
   onOpenTerms,
 }: RegistrationModalProps) {
+  const { t } = useLanguage();
   const [showThankYou, setShowThankYou] = useState(false);
   const [registrationRef, setRegistrationRef] = useState("");
   const [registeredName, setRegisteredName] = useState("");
@@ -87,6 +92,8 @@ function RegistrationModal({
     song_pdf: { file: null },
     payment_receipt: { file: null },
   });
+
+  const registrationSchema = createRegistrationSchema(t);
 
   const {
     register,
@@ -123,7 +130,7 @@ function RegistrationModal({
     if (file && file.size > MAX_FILE_SIZE) {
       setFiles((prev) => ({
         ...prev,
-        [type]: { file: null, error: "File size must be less than 10MB" },
+        [type]: { file: null, error: t('validation.fileSizeLimit') },
       }));
       return;
     }
@@ -138,22 +145,18 @@ function RegistrationModal({
     let isValid = true;
     const newFiles = { ...files };
 
-    // Validate birth certificate
     if (!files.birth_certificate.file) {
-      newFiles.birth_certificate.error =
-        "Please upload your birth certificate or passport";
+      newFiles.birth_certificate.error = t('validation.uploadBirthCert');
       isValid = false;
     }
 
-    // Validate payment receipt
     if (!files.payment_receipt.file) {
-      newFiles.payment_receipt.error = "Please upload your payment receipt";
+      newFiles.payment_receipt.error = t('validation.uploadPayment');
       isValid = false;
     }
 
-    // Validate song PDF only if no repertoire
     if (!hasRepertoire && !files.song_pdf.file) {
-      newFiles.song_pdf.error = "Please upload your song PDF";
+      newFiles.song_pdf.error = t('validation.uploadSongPdf');
       isValid = false;
     }
 
@@ -320,8 +323,9 @@ function RegistrationModal({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title="Event Registration"
+        title={t('registration.title')}
         maxWidth="4xl"
+        headerContent={<LanguageSwitcher />}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {errors.root && (
@@ -339,26 +343,26 @@ function RegistrationModal({
           {/* Registrant's Data */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">
-              Registrant's Data
+              {t('registration.registrantData')}
             </h3>
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Registrant Status
+                {t('registration.registrantStatus')}
               </label>
               <select
                 {...register("registrant_status")}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               >
-                <option value="personal">Personal</option>
-                <option value="parents">Parents</option>
-                <option value="teacher">Teacher</option>
+                <option value="personal">{t('registration.personal')}</option>
+                <option value="parents">{t('registration.parents')}</option>
+                <option value="teacher">{t('registration.teacher')}</option>
               </select>
             </div>
 
             {registrantStatus !== "personal" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Registrant Full Name
+                  {t('registration.registrantName')}
                 </label>
                 <input
                   type="text"
@@ -370,7 +374,7 @@ function RegistrationModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                WhatsApp Number
+                {t('registration.whatsappNumber')}
               </label>
               <div className="mt-1">
                 <Controller
@@ -389,7 +393,7 @@ function RegistrationModal({
                       onChange={(phone) => {
                         onChange(`+${phone}`);
                       }}
-                      placeholder="Enter phone number without country code"
+                      placeholder={t('registration.whatsappPlaceholder')}
                     />
                   )}
                 />
@@ -399,14 +403,14 @@ function RegistrationModal({
                   </p>
                 )}
                 <p className="mt-1 text-xs text-gray-500">
-                  Please select your country code and enter your phone number
+                  {t('registration.whatsappHelp')}
                 </p>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Email
+                {t('registration.email')}
               </label>
               <input
                 type="email"
@@ -424,11 +428,11 @@ function RegistrationModal({
           {/* Participant's Data */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">
-              Participant's Data
+              {t('registration.participantData')}
             </h3>
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Full Name
+                {t('registration.fullName')}
               </label>
               <input
                 type="text"
@@ -445,13 +449,13 @@ function RegistrationModal({
             <div className="flex gap-4">
               <div className="w-[40%]">
                 <label className="block text-sm font-medium text-gray-700">
-                  Category
+                  {t('registration.category')}
                 </label>
                 <select
                   {...register("category_id")}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                 >
-                  <option value="">Select a category</option>
+                  <option value="">{t('registration.selectCategory')}</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
@@ -468,13 +472,13 @@ function RegistrationModal({
               {selectedCategory && selectedCategory.event_subcategories && (
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Sub Category
+                    {t('registration.subCategory')}
                   </label>
                   <select
                     {...register("subcategory_id")}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                   >
-                    <option value="">Select a sub category</option>
+                    <option value="">{t('registration.selectSubCategory')}</option>
                     {selectedCategory.event_subcategories.map((sub) => (
                       <option key={sub.id} value={sub.id}>
                         {`${sub.name} (${sub.age_requirement})`}
@@ -493,13 +497,13 @@ function RegistrationModal({
             {hasRepertoire ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Song Selection
+                  {t('registration.songSelection')}
                 </label>
                 <select
                   {...register("song_title")}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                 >
-                  <option value="">Select a song</option>
+                  <option value="">{t('registration.selectSong')}</option>
                   {(selectedCategory?.repertoire || []).map((song, index) => (
                     <option key={index} value={song}>
                       {song}
@@ -523,7 +527,7 @@ function RegistrationModal({
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Song Title
+                    {t('registration.songTitle')}
                   </label>
                   <input
                     type="text"
@@ -538,12 +542,12 @@ function RegistrationModal({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Song Duration
+                    {t('registration.songDuration')}
                   </label>
                   <input
                     type="text"
                     {...register("song_duration")}
-                    placeholder="e.g., 3:30"
+                    placeholder={t('registration.songDurationPlaceholder')}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                   />
                   {errors.song_duration && (
@@ -558,10 +562,12 @@ function RegistrationModal({
 
           {/* Document Uploads */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Documents</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              {t('registration.documents')}
+            </h3>
 
             <FileUpload
-              label="Birth Certificate/Passport"
+              label={t('registration.birthCertificate')}
               accept=".pdf,.jpg,.jpeg,.png"
               registration={{
                 name: "birth_certificate",
@@ -574,7 +580,7 @@ function RegistrationModal({
 
             {!hasRepertoire && (
               <FileUpload
-                label="Song PDF"
+                label={t('registration.songPdf')}
                 accept=".pdf"
                 registration={{
                   name: "song_pdf",
@@ -590,10 +596,10 @@ function RegistrationModal({
           {/* Payment Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">
-              Payment Information
+              {t('registration.paymentInfo')}
             </h3>
-            <div className="bg-gray-50 p-4 rounded-md">
-              <p className="font-medium">Bank Transfer Details:</p>
+            <div className="bg-gray-200 p-4 rounded-md">
+              <p className="font-medium">{t('registration.bankTransferDetails')}</p>
               <p>Bank Central Asia (BCA)</p>
               <p>3720421151</p>
               <p>RODERICK OR NICHOLAS</p>
@@ -601,7 +607,7 @@ function RegistrationModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Bank Name
+                {t('registration.bankName')}
               </label>
               <input
                 type="text"
@@ -617,7 +623,7 @@ function RegistrationModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Account Number
+                {t('registration.accountNumber')}
               </label>
               <input
                 type="text"
@@ -633,7 +639,7 @@ function RegistrationModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Account Holder Name
+                {t('registration.accountHolderName')}
               </label>
               <input
                 type="text"
@@ -648,7 +654,7 @@ function RegistrationModal({
             </div>
 
             <FileUpload
-              label="Payment Receipt"
+              label={t('registration.paymentReceipt')}
               accept=".pdf,.jpg,.jpeg,.png"
               registration={{
                 name: "payment_receipt",
@@ -672,13 +678,13 @@ function RegistrationModal({
               </div>
               <div className="ml-3">
                 <label className="text-sm text-gray-700">
-                  By registering, I agree to all the{" "}
+                  {t('registration.termsAndConditions')}{" "}
                   <button
                     type="button"
                     onClick={onOpenTerms}
                     className="text-marigold hover:text-marigold/90 underline"
                   >
-                    terms & conditions
+                    {t('registration.termsLink')}
                   </button>
                 </label>
                 {errors.terms_accepted && (
@@ -696,14 +702,14 @@ function RegistrationModal({
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
-              Cancel
+              {t('registration.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Submitting..." : "Submit Registration"}
+              {isSubmitting ? t('registration.submitting') : t('registration.submit')}
             </button>
           </div>
         </form>

@@ -5,6 +5,7 @@ import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 import PageTransition from './components/PageTransition';
+import { LanguageProvider } from './lib/LanguageContext';
 
 // Lazy load pages
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -104,14 +105,16 @@ function AnimatedRoutes() {
 function App() {
   return (
     <Router>
-      <ScrollToTop />
-      <div className="min-h-screen flex flex-col bg-offWhite">
-        <Navigation />
-        <main className="flex-grow">
-          <AnimatedRoutes />
-        </main>
-        <FooterWrapper />
-      </div>
+      <LanguageProvider>
+        <div className="min-h-screen flex flex-col bg-offWhite">
+          <Navigation />
+          <main className="flex-1">
+            <ScrollToTop />
+            <AnimatedRoutes />
+          </main>
+          <FooterWrapper />
+        </div>
+      </LanguageProvider>
     </Router>
   );
 }
