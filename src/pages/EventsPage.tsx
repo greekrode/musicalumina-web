@@ -1,9 +1,22 @@
 import EventList from "../components/EventList";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useImagePreloader } from "../hooks/useImagePreloader";
 import heroBg from "../assets/hero-bg.jpg";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { useEvents } from "../hooks/useEvents";
 
 function EventsPage() {
   usePageTitle("Events");
+  const { loading: eventsLoading } = useEvents();
+  const isLoading = useImagePreloader(heroBg, eventsLoading);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
+        <LoadingSpinner message="Loading events..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen animate-fadeIn">

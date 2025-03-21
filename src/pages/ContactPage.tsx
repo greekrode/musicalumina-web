@@ -1,6 +1,8 @@
 import { Mail, Phone, MapPin } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useImagePreloader } from "../hooks/useImagePreloader";
 import heroBg from "../assets/contact-hero-bg.jpg";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { useState } from "react";
 import { sendContactMessage } from "../lib/supabase";
 import { z } from "zod";
@@ -16,6 +18,7 @@ type ContactFormData = z.infer<typeof contactSchema>;
 
 function ContactPage() {
   usePageTitle("Contact");
+  const isLoading = useImagePreloader(heroBg);
 
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
@@ -59,6 +62,14 @@ function ContactPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
+        <LoadingSpinner message="Loading contact page..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen animate-fadeIn">

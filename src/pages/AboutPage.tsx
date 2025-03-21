@@ -1,9 +1,20 @@
 import { Music, Award, Users, Heart } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useImagePreloader } from "../hooks/useImagePreloader";
 import heroBg from "../assets/about-hero-bg.jpg";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 function AboutPage() {
   usePageTitle("About");
+  const isLoading = useImagePreloader(heroBg);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
+        <LoadingSpinner message="Loading about page..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen animate-fadeIn">
@@ -61,8 +72,8 @@ function AboutPage() {
                 Excellence
               </h3>
               <p className="text-[#808080]/80">
-                Maintaining the highest standards in musical education and
-                performance
+                Setting the highest standards in musical education and
+                competition
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-lg text-center">
@@ -71,17 +82,8 @@ function AboutPage() {
                 Innovation
               </h3>
               <p className="text-[#808080]/80">
-                Embracing new approaches to music education and performance
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-              <Users className="h-8 w-8 text-[#CFB53B] mx-auto mb-4" />
-              <h3 className="text-xl font-playfair text-[#808080] mb-2">
-                Community
-              </h3>
-              <p className="text-[#808080]/80">
-                Building a supportive network of musicians, educators, and
-                enthusiasts
+                Pioneering fresh approaches to musical development and
+                performance
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-lg text-center">
@@ -90,7 +92,7 @@ function AboutPage() {
                 Passion
               </h3>
               <p className="text-[#808080]/80">
-                Inspiring a lifelong love for music in every participant
+                Nurturing the love of music in every student and participant
               </p>
             </div>
           </div>
