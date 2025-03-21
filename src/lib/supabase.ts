@@ -270,3 +270,41 @@ export const getLatestUpcomingEvent = async () => {
 
   return data;
 };
+
+export async function sendContactMessage(data: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    // First, insert the message into the database
+    const { data: insertedMessage, error: dbError } = await supabase
+      .from('contact_messages')
+      .insert([{
+        ...data,
+        created_at: new Date().toISOString(),
+        sent_at: null
+      }])
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+    if (!insertedMessage) throw new Error('Failed to insert message');
+
+    // Then, trigger the Edge Function to send the email
+    const { error: functionError } = await supabase.functions.invoke('send-contact-email', {
+      body: { ...data, messageId: insertedMessage.id }
+    });
+
+    if (functionError) throw functionError;
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending contact message:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to send message' 
+    };
+  }
+}

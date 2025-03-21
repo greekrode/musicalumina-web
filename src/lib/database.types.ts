@@ -162,6 +162,35 @@ export interface Database {
           updated_at?: string;
         };
       };
+      contact_messages: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          created_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          created_at?: string
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          subject?: string
+          message?: string
+          created_at?: string
+          sent_at?: string | null
+        }
+      };
       event_categories: {
         Row: {
           id: string;

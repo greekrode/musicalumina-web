@@ -1,9 +1,64 @@
 import { Mail, Phone, MapPin } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import heroBg from "../assets/contact-hero-bg.jpg";
+import { useState } from "react";
+import { sendContactMessage } from "../lib/supabase";
+import { z } from "zod";
+
+const contactSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  subject: z.string().min(1, "Subject is required"),
+  message: z.string().min(10, "Message must be at least 10 characters"),
+});
+
+type ContactFormData = z.infer<typeof contactSchema>;
 
 function ContactPage() {
   usePageTitle("Contact");
+
+  const [formData, setFormData] = useState<ContactFormData>({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+
+    const result = contactSchema.safeParse(formData);
+    if (!result.success) {
+      setError(result.error.errors[0].message);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await sendContactMessage(formData);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to send message');
+      }
+      setSuccess(true);
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'Failed to send message. Please try again later.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen animate-fadeIn">
@@ -44,7 +99,17 @@ function ContactPage() {
               <h2 className="text-2xl font-playfair text-[#808080] mb-6">
                 Send Us a Message
               </h2>
-              <form className="space-y-6">
+              {error && (
+                <div className="mb-6 p-4 rounded-md bg-red-100 text-red-700">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="mb-6 p-4 rounded-md bg-green-100 text-green-700">
+                  Message sent successfully! We'll get back to you soon.
+                </div>
+              )}
+              <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
                   <label
                     htmlFor="name"
@@ -55,6 +120,10 @@ function ContactPage() {
                   <input
                     type="text"
                     id="name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, name: e.target.value }))
+                    }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
                     placeholder="John Doe"
                   />
@@ -69,6 +138,13 @@ function ContactPage() {
                   <input
                     type="email"
                     id="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
                     placeholder="john@example.com"
                   />
@@ -83,6 +159,13 @@ function ContactPage() {
                   <input
                     type="text"
                     id="subject"
+                    value={formData.subject}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        subject: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
                     placeholder="Competition Inquiry"
                   />
@@ -97,15 +180,27 @@ function ContactPage() {
                   <textarea
                     id="message"
                     rows={4}
+                    value={formData.message}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        message: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
                     placeholder="Your message here..."
                   ></textarea>
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-[#CFB53B] text-white px-6 py-3 rounded-md hover:bg-[#CFB53B]/90 transition-colors"
+                  disabled={isSubmitting}
+                  className={`w-full bg-[#CFB53B] text-white px-6 py-3 rounded-md transition-colors ${
+                    isSubmitting
+                      ? "opacity-70 cursor-not-allowed"
+                      : "hover:bg-[#CFB53B]/90"
+                  }`}
                 >
-                  Send Message
+                  {isSubmitting ? "Sending..." : "Send Message"}
                 </button>
               </form>
             </div>
