@@ -8,6 +8,7 @@ import {
   Trophy,
   Users,
   Award,
+  FileDown,
 } from "lucide-react";
 import TermsModal from "../components/TermsModal";
 import RegistrationModal from "../components/RegistrationModal";
@@ -18,6 +19,7 @@ import type { Database } from "../lib/database.types";
 import type { EventType } from "../lib/database.types";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { useRepertoirePdf } from "../hooks/useRepertoirePdf";
 
 type EventCategory = Database["public"]["Tables"]["event_categories"]["Row"] & {
   event_subcategories: (Database["public"]["Tables"]["event_subcategories"]["Row"] & {
@@ -58,105 +60,130 @@ type EventCategoriesProps = {
   categories: EventCategory[];
 };
 
+type CategoryCardProps = {
+  category: EventCategory;
+};
+
+const CategoryCard = ({ category }: CategoryCardProps) => {
+  const { pdfUrl } = useRepertoirePdf(category.id);
+  
+  return (
+    <div className="bg-[#F7E7CE]/30 p-6 rounded-lg">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-playfair text-black">
+          {category.name}
+        </h2>
+        {pdfUrl && (
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 transition-colors"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Download Repertoire PDF
+          </a>
+        )}
+      </div>
+      {category.description && (
+        <p className="text-black/80 mb-6">{category.description}</p>
+      )}
+      {category.repertoire &&
+        Array.isArray(category.repertoire) &&
+        category.repertoire.length > 0 && (
+          <div className="mb-6">
+            <p className="text-sm font-medium text-black mb-2">
+              Category Repertoire:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, colIndex) => (
+                <ul
+                  key={colIndex}
+                  className="list-disc list-inside text-sm text-black/80 space-y-1"
+                >
+                  {(category.repertoire as string[])
+                    .filter((_, i) => i % 3 === colIndex)
+                    .map((rep, i) => (
+                      <li key={i} className="text-sm">
+                        {rep}
+                      </li>
+                    ))}
+                </ul>
+              ))}
+            </div>
+          </div>
+        )}
+      <div className="grid md:grid-cols-3 gap-4">
+        {category.event_subcategories.map((subCategory) => (
+          <div
+            key={subCategory.id}
+            className="bg-white p-4 rounded-lg shadow-sm"
+          >
+            <h4 className="text-lg font-playfair text-black mb-3">
+              {subCategory.name}
+            </h4>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-black">
+                  Age Requirement:
+                </p>
+                <p className="text-sm text-black/80">
+                  {subCategory.age_requirement}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-black">
+                  Registration Fee:
+                </p>
+                <p className="text-sm text-black/80">
+                  IDR {subCategory.registration_fee.toLocaleString()}
+                </p>
+              </div>
+              {subCategory.repertoire &&
+                Array.isArray(subCategory.repertoire) &&
+                subCategory.repertoire.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-black mb-2">
+                      Repertoire:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {Array.from({ length: 3 }).map((_, colIndex) => (
+                        <ul
+                          key={colIndex}
+                          className="list-disc list-inside text-sm text-black/80 space-y-1"
+                        >
+                          {(subCategory.repertoire as string[])
+                            .filter((_, i) => i % 3 === colIndex)
+                            .map((rep, i) => (
+                              <li key={i} className="text-sm">
+                                {rep}
+                              </li>
+                            ))}
+                        </ul>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              {subCategory.performance_duration && (
+                <div>
+                  <p className="text-sm font-medium text-black">Duration:</p>
+                  <p className="text-sm text-black/80">
+                    {subCategory.performance_duration}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const EventCategories = ({ categories }: EventCategoriesProps) => (
   <div className="space-y-8">
     {categories.map((category) => (
-      <div key={category.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
-        <h2 className="text-xl font-playfair text-black mb-4">
-          {category.name}
-        </h2>
-        {category.description && (
-          <p className="text-black/80 mb-6">{category.description}</p>
-        )}
-        {category.repertoire &&
-          Array.isArray(category.repertoire) &&
-          category.repertoire.length > 0 && (
-            <div className="mb-6">
-              <p className="text-sm font-medium text-black mb-2">
-                Category Repertoire:
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {Array.from({ length: 3 }).map((_, colIndex) => (
-                  <ul
-                    key={colIndex}
-                    className="list-disc list-inside text-sm text-black/80 space-y-1"
-                  >
-                    {(category.repertoire as string[])
-                      .filter((_, i) => i % 3 === colIndex)
-                      .map((rep, i) => (
-                        <li key={i} className="text-sm">
-                          {rep}
-                        </li>
-                      ))}
-                  </ul>
-                ))}
-              </div>
-            </div>
-          )}
-        <div className="grid md:grid-cols-3 gap-4">
-          {category.event_subcategories.map((subCategory) => (
-            <div
-              key={subCategory.id}
-              className="bg-white p-4 rounded-lg shadow-sm"
-            >
-              <h4 className="text-lg font-playfair text-black mb-3">
-                {subCategory.name}
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-black">
-                    Age Requirement:
-                  </p>
-                  <p className="text-sm text-black/80">
-                    {subCategory.age_requirement}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-black">
-                    Registration Fee:
-                  </p>
-                  <p className="text-sm text-black/80">
-                    IDR {subCategory.registration_fee.toLocaleString()}
-                  </p>
-                </div>
-                {subCategory.repertoire &&
-                  Array.isArray(subCategory.repertoire) &&
-                  subCategory.repertoire.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-black mb-2">
-                        Repertoire:
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {Array.from({ length: 3 }).map((_, colIndex) => (
-                          <ul
-                            key={colIndex}
-                            className="list-disc list-inside text-sm text-black/80 space-y-1"
-                          >
-                            {(subCategory.repertoire as string[])
-                              .filter((_, i) => i % 3 === colIndex)
-                              .map((rep, i) => (
-                                <li key={i} className="text-sm">
-                                  {rep}
-                                </li>
-                              ))}
-                          </ul>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                {subCategory.performance_duration && (
-                  <div>
-                    <p className="text-sm font-medium text-black">Duration:</p>
-                    <p className="text-sm text-black/80">
-                      {subCategory.performance_duration}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <CategoryCard key={category.id} category={category} />
     ))}
   </div>
 );
