@@ -71,16 +71,16 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
 
   return (
     <div className="bg-[#F7E7CE]/30 p-6 rounded-lg">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h2 className="text-xl font-playfair text-black">{category.name}</h2>
         {pdfUrl && (
           <a
             href={pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 transition-colors"
+            className="inline-flex items-center px-3 py-1.5 text-sm bg-marigold text-white rounded-md hover:bg-marigold/90 transition-colors w-fit"
           >
-            <FileDown className="h-4 w-4 mr-2" />
+            <FileDown className="h-3.5 w-3.5 mr-1.5" />
             {t("eventDetails.downloadRepertoire")}
           </a>
         )}
@@ -95,16 +95,16 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
             <p className="text-sm font-medium text-black mb-2">
               {t("eventDetails.categoryRepertoire")}:
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
               {Array.from({ length: 3 }).map((_, colIndex) => (
                 <ul
                   key={colIndex}
-                  className="list-disc list-inside text-sm text-black/80 space-y-1"
+                  className="list-disc list-inside text-sm text-black/80"
                 >
                   {(category.repertoire as string[])
                     .filter((_, i) => i % 3 === colIndex)
                     .map((rep, i) => (
-                      <li key={i} className="text-sm">
+                      <li key={i} className="text-sm mb-1 md:mb-1">
                         {rep}
                       </li>
                     ))}
@@ -146,16 +146,16 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                     <p className="text-sm font-medium text-black mb-2">
                       {t("eventDetails.repertoire")}:
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
                       {Array.from({ length: 3 }).map((_, colIndex) => (
                         <ul
                           key={colIndex}
-                          className="list-disc list-inside text-sm text-black/80 space-y-1"
+                          className="list-disc list-inside text-sm text-black/80"
                         >
                           {(subCategory.repertoire as string[])
                             .filter((_, i) => i % 3 === colIndex)
                             .map((rep, i) => (
-                              <li key={i} className="text-sm">
+                              <li key={i} className="text-sm mb-1 md:mb-1">
                                 {rep}
                               </li>
                             ))}
