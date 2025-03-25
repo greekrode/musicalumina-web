@@ -9,12 +9,13 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEvent } from "../hooks/useEvent";
-import { formatDate } from "../utils/date";
+import { formatDateWithLocale } from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/LanguageContext";
 
 type EventJuror = Omit<
   Database["public"]["Tables"]["event_jury"]["Row"],
@@ -270,6 +271,7 @@ function useEventPhotos(eventId: string) {
 function PastEventDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
   const {
     event,
     loading: eventLoading,
@@ -285,16 +287,11 @@ function PastEventDetails() {
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const section = document.getElementById("past-events");
-    if (section && window.location.pathname === "/") {
-      section.scrollIntoView({ behavior: "smooth" });
-    } else {
-      navigate("/", { state: { scrollToSection: "past-events" } });
-    }
+    navigate("/events");
   };
 
   if (eventLoading) {
-    return <LoadingSpinner message="Loading past event details..." />;
+    return <LoadingSpinner message={t("loading.loadingEventDetails")} />;
   }
 
   if (eventError || !event) {
@@ -306,22 +303,22 @@ function PastEventDetails() {
             className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to all events
+            {t("eventDetails.backToEvents")}
           </button>
           <div className="text-center py-12">
             <h2 className="text-3xl font-playfair text-[#808080] mb-4">
-              {eventError ? "Error Loading Event" : "Event Not Found"}
+              {eventError ? t("eventDetails.errorLoading") : t("eventDetails.notFound")}
             </h2>
             <p className="text-lg text-black/60 mb-6">
               {eventError
-                ? "There was an error loading this event. Please try again later."
-                : "The event you're looking for doesn't exist or has been removed."}
+                ? t("eventDetails.errorMessage")
+                : t("eventDetails.notFoundMessage")}
             </p>
             <button
               onClick={() => navigate("/events")}
               className="inline-flex items-center px-6 py-3 bg-marigold text-white rounded-lg hover:bg-marigold/90 transition-colors"
             >
-              View All Events
+              {t("eventDetails.viewAllEvents")}
             </button>
           </div>
         </div>
@@ -337,27 +334,29 @@ function PastEventDetails() {
           className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to all events
+          {t("eventDetails.backToEvents")}
         </button>
 
         <EventHighlightsCarousel images={photos} isLoading={photosLoading} />
 
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <h1 className="text-4xl font-serif text-black mb-8">{event.title}</h1>
-          <p className="text-black/80 mb-8">{event.description}</p>
+          <p className="text-black/80 mb-8">
+            {event.description?.[language] || event.description?.en}
+          </p>
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="flex items-center space-x-3">
               <Calendar className="h-5 w-5 text-marigold" />
               <div>
-                <h3 className="font-medium text-black">Event Date</h3>
-                <p className="text-black/80">{formatDate(event.start_date)}</p>
+                <h3 className="font-medium text-black">{t("eventDetails.eventDate")}</h3>
+                <p className="text-black/80">{formatDateWithLocale(event.start_date, language)}</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <MapPin className="h-5 w-5 text-marigold" />
               <div>
-                <h3 className="font-medium text-black">Venue</h3>
+                <h3 className="font-medium text-black">{t("eventDetails.venue")}</h3>
                 <p className="text-black/80">{event.location}</p>
               </div>
             </div>
@@ -367,7 +366,7 @@ function PastEventDetails() {
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <div className="flex items-center space-x-3 mb-6">
             <Users className="h-6 w-6 text-marigold" />
-            <h2 className="text-2xl font-serif text-black">Jury Panel</h2>
+            <h2 className="text-2xl font-serif text-black">{t("eventDetails.juryPanel")}</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {event.event_jury.map((juror) => (
@@ -406,7 +405,7 @@ function PastEventDetails() {
           <div className="flex items-center space-x-3 mb-6">
             <Trophy className="h-6 w-6 text-marigold" />
             <h2 className="text-2xl font-serif text-black">
-              Competition Winners
+              {t("eventDetails.prizes")}
             </h2>
           </div>
           <div className="space-y-8">

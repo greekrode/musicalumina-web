@@ -19,8 +19,7 @@ export interface Database {
           id: string;
           title: string;
           type: EventType;
-          description: string | null;
-          overview: string | null;
+          description: { en: string; id: string } | null;
           start_date: string;
           end_date: string | null;
           registration_deadline: string | null;
@@ -28,7 +27,7 @@ export interface Database {
           venue_details: string | null;
           status: EventStatus;
           poster_image: string | null;
-          terms_and_conditions: string | null;
+          terms_and_conditions: { en: string; id: string } | null;
           created_at: string;
           updated_at: string;
         };
@@ -36,15 +35,14 @@ export interface Database {
           id?: string;
           title: string;
           type: EventType;
-          description?: string | null;
-          overview?: string | null;
+          description?: { en: string; id: string } | null;
           start_date: string;
           end_date?: string | null;
           registration_deadline?: string | null;
           location: string;
           venue_details?: string | null;
           status?: EventStatus;
-          terms_and_conditions?: Json;
+          terms_and_conditions?: { en: string; id: string } | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -52,15 +50,14 @@ export interface Database {
           id?: string;
           title?: string;
           type?: EventType;
-          description?: string | null;
-          overview?: string | null;
+          description?: { en: string; id: string } | null;
           start_date?: string;
           end_date?: string | null;
           registration_deadline?: string | null;
           location?: string;
           venue_details?: string | null;
           status?: EventStatus;
-          terms_and_conditions?: Json;
+          terms_and_conditions?: { en: string; id: string } | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -166,32 +163,32 @@ export interface Database {
       };
       contact_messages: {
         Row: {
-          id: string
-          name: string
-          email: string
-          subject: string
-          message: string
-          created_at: string
-          sent_at: string | null
-        }
+          id: string;
+          name: string;
+          email: string;
+          subject: string;
+          message: string;
+          created_at: string;
+          sent_at: string | null;
+        };
         Insert: {
-          id?: string
-          name: string
-          email: string
-          subject: string
-          message: string
-          created_at?: string
-          sent_at?: string | null
-        }
+          id?: string;
+          name: string;
+          email: string;
+          subject: string;
+          message: string;
+          created_at?: string;
+          sent_at?: string | null;
+        };
         Update: {
-          id?: string
-          name?: string
-          email?: string
-          subject?: string
-          message?: string
-          created_at?: string
-          sent_at?: string | null
-        }
+          id?: string;
+          name?: string;
+          email?: string;
+          subject?: string;
+          message?: string;
+          created_at?: string;
+          sent_at?: string | null;
+        };
       };
       event_categories: {
         Row: {

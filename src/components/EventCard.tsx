@@ -1,6 +1,8 @@
 import { Calendar, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { EventStatus, EventType } from "../lib/database.types";
+import { useLanguage } from "../lib/LanguageContext";
+import { formatDateWithLocale } from "../lib/utils";
 
 interface EventCardProps {
   id: string;
@@ -21,31 +23,33 @@ function EventCard({
   status,
   image,
 }: EventCardProps) {
+  const { t, language } = useLanguage();
+
   const getButtonConfig = () => {
     switch (status) {
       case "ongoing":
         return {
-          text: "View Details",
+          text: t("eventCard.viewDetails"),
           disabled: false,
-          className: "bg-[#CFB53B] hover:bg-[#CFB53B]/90",
+          className: "bg-marigold hover:bg-marigold/90",
         };
       case "upcoming":
         return {
-          text: "Coming Soon",
+          text: t("eventCard.comingSoon"),
           disabled: true,
           className: "bg-gray-400 cursor-not-allowed",
         };
       default:
         return {
-          text: "View Results",
+          text: t("eventCard.viewResults"),
           disabled: false,
-          className: "bg-[#CFB53B] hover:bg-[#CFB53B]/90",
+          className: "bg-marigold hover:bg-marigold/90",
         };
     }
   };
 
   const formatEventType = (type: EventType) => {
-    return type.charAt(0).toUpperCase() + type.slice(1);
+    return t(`eventCard.eventTypes.${type}`);
   };
 
   const getTypeColor = (type: EventType) => {
@@ -63,6 +67,7 @@ function EventCard({
 
   const buttonConfig = getButtonConfig();
   const typeColor = getTypeColor(type);
+  const formattedDate = formatDateWithLocale(date, language);
 
   return (
     <div className="bg-[#FFFFF0] rounded-lg overflow-hidden shadow-lg h-full flex flex-col">
@@ -78,11 +83,11 @@ function EventCard({
         <h3 className="text-xl font-serif text-[#808080] mb-4">{title}</h3>
         <div className="space-y-2 mb-6">
           <div className="flex items-center space-x-2">
-            <Calendar className="h-4 w-4 text-[#CFB53B]" />
-            <span className="text-sm text-[#808080]">{date}</span>
+            <Calendar className="h-4 w-4 text-marigold" />
+            <span className="text-sm text-[#808080]">{formattedDate}</span>
           </div>
           <div className="flex items-center space-x-2">
-            <MapPin className="h-4 w-4 text-[#CFB53B]" />
+            <MapPin className="h-4 w-4 text-marigold" />
             <span className="text-sm text-[#808080]">{location}</span>
           </div>
         </div>

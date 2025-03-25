@@ -1,9 +1,11 @@
 import { Facebook, Instagram, Youtube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/ML-LogoColor.png";
+import { useLanguage } from "../lib/LanguageContext";
 
 function Footer() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleNavigation = (path: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -21,8 +23,8 @@ function Footer() {
             <p className="text-sm text-offWhite/80 font-light"></p>
           </div>
           <div>
-            <h2 className="text-lg font-playfair mb-4 text-offWhite/90">
-              Quick Links
+            <h2 className="text-2xl font-playfair mb-4 text-offWhite/90">
+              {t("footer.quickLinks")}
             </h2>
             <ul className="space-y-2">
               <li>
@@ -31,7 +33,7 @@ function Footer() {
                   onClick={handleNavigation("/")}
                   className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
                 >
-                  Home
+                  {t("footer.home")}
                 </a>
               </li>
               <li>
@@ -40,7 +42,7 @@ function Footer() {
                   onClick={handleNavigation("/events")}
                   className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
                 >
-                  Events
+                  {t("footer.events")}
                 </a>
               </li>
               <li>
@@ -49,7 +51,7 @@ function Footer() {
                   onClick={handleNavigation("/about")}
                   className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
                 >
-                  About
+                  {t("footer.about")}
                 </a>
               </li>
               <li>
@@ -58,14 +60,14 @@ function Footer() {
                   onClick={handleNavigation("/contact")}
                   className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
                 >
-                  Contact
+                  {t("footer.contact")}
                 </a>
               </li>
             </ul>
           </div>
           <div>
-            <h3 className="text-lg font-playfair mb-4 text-offWhite/80">
-              Follow Us
+            <h3 className="text-2xl font-playfair mb-4 text-offWhite/80">
+              {t("footer.followUs")}
             </h3>
             <div className="flex space-x-6">
               <a
@@ -80,8 +82,7 @@ function Footer() {
         </div>
         <div className="mt-8">
           <p className="text-sm text-offWhite/80 font-light text-center">
-            Copyright &copy; {new Date().getFullYear()} MusicaLumina. All rights
-            reserved.
+            {t("footer.copyright").replace("{year}", new Date().getFullYear().toString())}
           </p>
         </div>
       </div>

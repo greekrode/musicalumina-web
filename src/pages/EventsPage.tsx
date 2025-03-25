@@ -4,16 +4,18 @@ import { useImagePreloader } from "../hooks/useImagePreloader";
 import heroBg from "../assets/hero-bg.jpg";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useEvents } from "../hooks/useEvents";
+import { useLanguage } from "../lib/LanguageContext";
 
 function EventsPage() {
-  usePageTitle("Events");
+  const { t } = useLanguage();
+  usePageTitle(t("events.title"));
   const { loading: eventsLoading } = useEvents();
   const isLoading = useImagePreloader(heroBg, eventsLoading);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
-        <LoadingSpinner message="Loading events..." />
+        <LoadingSpinner message={t("events.loading")} />
       </div>
     );
   }
@@ -25,7 +27,7 @@ function EventsPage() {
         <div className="absolute inset-0">
           <img
             src={heroBg}
-            alt="Piano keys"
+            alt="Piano performance"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black/70"></div>
@@ -33,10 +35,10 @@ function EventsPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="text-center w-full">
             <h1 className="text-4xl md:text-5xl font-playfair text-[#FFFFF0] mb-4">
-              Our Events
+              {t("events.title")}
             </h1>
             <p className="text-xl text-[#F7E7CE]">
-              Discover upcoming events and past achievements
+              {t("events.subtitle")}
             </p>
           </div>
         </div>
@@ -46,7 +48,7 @@ function EventsPage() {
       <section className="py-20 bg-[#F7E7CE]/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-playfair text-[#808080] mb-12 text-center">
-            Upcoming Events
+            {t("events.upcomingEvents")}
           </h2>
           <EventList status="upcoming" />
         </div>
@@ -56,7 +58,7 @@ function EventsPage() {
       <section className="py-20 bg-[#FFFFF0]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-playfair text-[#808080] mb-12 text-center">
-            Past Events
+            {t("events.pastEvents")}
           </h2>
           <EventList status="completed" />
         </div>

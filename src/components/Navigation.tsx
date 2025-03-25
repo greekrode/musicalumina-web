@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../assets/ML-LogoColor.png";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useLanguage } from "../lib/LanguageContext";
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -58,97 +61,80 @@ function Navigation() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-8 font-playfair text-lg">
+          <div className="hidden md:flex items-center space-x-8 font-playfair text-lg">
             <button
               onClick={handleNavigation("/events")}
               className={getNavLinkClass("/events")}
             >
-              EVENTS
+              {t("navigation.events")}
             </button>
             <button
               onClick={handleNavigation("/about")}
               className={getNavLinkClass("/about")}
             >
-              ABOUT
+              {t("navigation.about")}
             </button>
             <button
               onClick={handleNavigation("/contact")}
               className={getNavLinkClass("/contact")}
             >
-              CONTACT
+              {t("navigation.contact")}
             </button>
+            <LanguageSwitcher />
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2"
-            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={isMenuOpen}
-          >
-            {isMenuOpen ? (
-              <X
-                className={`h-6 w-6 ${
-                  isHomePage ? "text-offWhite" : "text-burgundy"
-                }`}
-              />
-            ) : (
-              <Menu
-                className={`h-6 w-6 ${
-                  isHomePage ? "text-offWhite" : "text-burgundy"
-                }`}
-              />
-            )}
-          </button>
+          {/* Mobile Navigation */}
+          <div className="md:hidden flex items-center space-x-4">
+            <LanguageSwitcher />
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-2"
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={isMenuOpen}
+            >
+              {isMenuOpen ? (
+                <X
+                  className={`h-6 w-6 ${
+                    isHomePage ? "text-offWhite" : "text-burgundy"
+                  }`}
+                />
+              ) : (
+                <Menu
+                  className={`h-6 w-6 ${
+                    isHomePage ? "text-offWhite" : "text-burgundy"
+                  }`}
+                />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         <div
           className={`md:hidden transition-all duration-300 overflow-hidden ${
             isMenuOpen
-              ? `max-h-64 opacity-100 mt-4 rounded-lg `
+              ? `max-h-64 opacity-100 mt-4 rounded-lg bg-offWhite`
               : "max-h-0 opacity-0"
           }`}
         >
           <div className="py-6 px-4 space-y-6">
             <button
               onClick={handleNavigation("/events")}
-              className={`block w-full text-left ${
-                isHomePage
-                  ? getNavLinkClass("/events").replace(
-                      "text-burgundy",
-                      "text-offWhite"
-                    )
-                  : getNavLinkClass("/events")
-              }`}
+              className={`block w-full text-left ${getNavLinkClass("/events")}`}
             >
-              Events
+              {t("navigation.events")}
             </button>
             <button
               onClick={handleNavigation("/about")}
-              className={`block w-full text-left ${
-                isHomePage
-                  ? getNavLinkClass("/about").replace(
-                      "text-burgundy",
-                      "text-offWhite"
-                    )
-                  : getNavLinkClass("/about")
-              }`}
+              className={`block w-full text-left ${getNavLinkClass("/about")}`}
             >
-              About
+              {t("navigation.about")}
             </button>
             <button
               onClick={handleNavigation("/contact")}
-              className={`block w-full text-left ${
-                isHomePage
-                  ? getNavLinkClass("/contact").replace(
-                      "text-burgundy",
-                      "text-offWhite"
-                    )
-                  : getNavLinkClass("/contact")
-              }`}
+              className={`block w-full text-left ${getNavLinkClass("/contact")}`}
             >
-              Contact
+              {t("navigation.contact")}
             </button>
           </div>
         </div>

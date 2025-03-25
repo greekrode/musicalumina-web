@@ -192,7 +192,6 @@ export async function getEventById(id: string) {
           id,
           participant_name,
           prize_title,
-          prize_amount,
           category_id,
           subcategory_id,
           event_categories!inner (
@@ -233,7 +232,6 @@ export async function getEventById(id: string) {
         acc[category][subcategory].winners.push({
           participant_name: winner.participant_name,
           prize_title: winner.prize_title,
-          prize_amount: winner.prize_amount,
         });
 
         return acc;

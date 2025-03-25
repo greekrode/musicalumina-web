@@ -6,6 +6,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { useState } from "react";
 import { sendContactMessage } from "../lib/supabase";
 import { z } from "zod";
+import { useLanguage } from "../lib/LanguageContext";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -17,7 +18,8 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>;
 
 function ContactPage() {
-  usePageTitle("Contact");
+  const { t } = useLanguage();
+  usePageTitle(t("contact.title"));
   const isLoading = useImagePreloader(heroBg);
 
   const [formData, setFormData] = useState<ContactFormData>({
@@ -47,16 +49,16 @@ function ContactPage() {
     try {
       const response = await sendContactMessage(formData);
       if (!response.success) {
-        throw new Error(response.error || 'Failed to send message');
+        throw new Error(response.error || "Failed to send message");
       }
       setSuccess(true);
       setFormData({ name: "", email: "", subject: "", message: "" });
     } catch (err) {
-      console.error('Error sending message:', err);
+      console.error("Error sending message:", err);
       setError(
-        err instanceof Error 
-          ? err.message 
-          : 'Failed to send message. Please try again later.'
+        err instanceof Error
+          ? err.message
+          : "Failed to send message. Please try again later."
       );
     } finally {
       setIsSubmitting(false);
@@ -86,9 +88,9 @@ function ContactPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="text-center w-full">
             <h1 className="text-4xl md:text-5xl font-playfair text-[#FFFFF0] mb-4">
-              Contact Us
+              {t("contact.title")}
             </h1>
-            <p className="text-xl text-[#F7E7CE]">Get in touch with our team</p>
+            <p className="text-xl text-[#F7E7CE]">{t("contact.subtitle")}</p>
           </div>
         </div>
       </section>
@@ -97,18 +99,17 @@ function ContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-playfair text-[#808080] mb-4">
-              How Can We Help?
+              {t("contact.howCanWeHelp")}
             </h2>
             <p className="text-lg text-[#808080]/80 max-w-2xl mx-auto">
-              Have questions about our competitions or programs? We'd love to
-              hear from you.
+              {t("contact.inquiryText")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-start">
             <div className="bg-white p-8 rounded-lg shadow-lg">
               <h2 className="text-2xl font-playfair text-[#808080] mb-6">
-                Send Us a Message
+                {t("contact.form.title")}
               </h2>
               {error && (
                 <div className="mb-6 p-4 rounded-md bg-red-100 text-red-700">
@@ -117,7 +118,7 @@ function ContactPage() {
               )}
               {success && (
                 <div className="mb-6 p-4 rounded-md bg-green-100 text-green-700">
-                  Message sent successfully! We'll get back to you soon.
+                  {t("contact.form.successMessage")}
                 </div>
               )}
               <form className="space-y-6" onSubmit={handleSubmit}>
@@ -126,7 +127,7 @@ function ContactPage() {
                     htmlFor="name"
                     className="block text-sm font-medium text-[#808080] mb-2"
                   >
-                    Your Name
+                    {t("contact.form.name")}
                   </label>
                   <input
                     type="text"
@@ -136,7 +137,7 @@ function ContactPage() {
                       setFormData((prev) => ({ ...prev, name: e.target.value }))
                     }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
-                    placeholder="John Doe"
+                    placeholder={t("contact.form.namePlaceholder")}
                   />
                 </div>
                 <div>
@@ -144,7 +145,7 @@ function ContactPage() {
                     htmlFor="email"
                     className="block text-sm font-medium text-[#808080] mb-2"
                   >
-                    Email Address
+                    {t("contact.form.email")}
                   </label>
                   <input
                     type="email"
@@ -157,7 +158,7 @@ function ContactPage() {
                       }))
                     }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
-                    placeholder="john@example.com"
+                    placeholder={t("contact.form.emailPlaceholder")}
                   />
                 </div>
                 <div>
@@ -165,7 +166,7 @@ function ContactPage() {
                     htmlFor="subject"
                     className="block text-sm font-medium text-[#808080] mb-2"
                   >
-                    Subject
+                    {t("contact.form.subject")}
                   </label>
                   <input
                     type="text"
@@ -178,7 +179,7 @@ function ContactPage() {
                       }))
                     }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
-                    placeholder="Competition Inquiry"
+                    placeholder={t("contact.form.subjectPlaceholder")}
                   />
                 </div>
                 <div>
@@ -186,7 +187,7 @@ function ContactPage() {
                     htmlFor="message"
                     className="block text-sm font-medium text-[#808080] mb-2"
                   >
-                    Message
+                    {t("contact.form.message")}
                   </label>
                   <textarea
                     id="message"
@@ -199,7 +200,7 @@ function ContactPage() {
                       }))
                     }
                     className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
-                    placeholder="Your message here..."
+                    placeholder={t("contact.form.messagePlaceholder")}
                   ></textarea>
                 </div>
                 <button
@@ -211,7 +212,9 @@ function ContactPage() {
                       : "hover:bg-[#CFB53B]/90"
                   }`}
                 >
-                  {isSubmitting ? "Sending..." : "Send Message"}
+                  {isSubmitting
+                    ? t("contact.form.sending")
+                    : t("contact.form.sendMessage")}
                 </button>
               </form>
             </div>
@@ -219,13 +222,15 @@ function ContactPage() {
             <div className="space-y-8">
               <div className="bg-white p-8 rounded-lg shadow-lg">
                 <h2 className="text-2xl font-playfair text-[#808080] mb-6">
-                  Contact Information
+                  {t("contact.info.title")}
                 </h2>
                 <div className="space-y-4">
                   <div className="flex items-start space-x-4">
                     <Mail className="h-6 w-6 text-[#CFB53B] mt-1" />
                     <div>
-                      <h3 className="font-medium text-[#808080]">Email</h3>
+                      <h3 className="font-medium text-[#808080]">
+                        {t("contact.info.email")}
+                      </h3>
                       <a
                         href="mailto:contact@musicalumina.com"
                         className="text-[#808080]/80 hover:text-[#CFB53B] transition-colors"
@@ -237,7 +242,9 @@ function ContactPage() {
                   <div className="flex items-start space-x-4">
                     <Phone className="h-6 w-6 text-[#CFB53B] mt-1" />
                     <div>
-                      <h3 className="font-medium text-[#808080]">Phone</h3>
+                      <h3 className="font-medium text-[#808080]">
+                        {t("contact.info.phone")}
+                      </h3>
                       <a
                         href="https://wa.me/6282161505577"
                         target="_blank"
@@ -251,7 +258,9 @@ function ContactPage() {
                   <div className="flex items-start space-x-4">
                     <MapPin className="h-6 w-6 text-[#CFB53B] mt-1" />
                     <div>
-                      <h3 className="font-medium text-[#808080]">Location</h3>
+                      <h3 className="font-medium text-[#808080]">
+                        {t("contact.info.location")}
+                      </h3>
                       <p className="text-[#808080]/80">Jakarta, Indonesia</p>
                     </div>
                   </div>
@@ -260,27 +269,29 @@ function ContactPage() {
 
               <div className="bg-white p-8 rounded-lg shadow-lg">
                 <h2 className="text-2xl font-playfair text-[#808080] mb-6">
-                  Office Hours
+                  {t("contact.info.officeHours.title")}
                 </h2>
                 <div className="space-y-2">
                   <p className="text-[#808080]/80">
                     <span className="font-medium text-[#808080]">
-                      Monday - Friday:
+                      {t("contact.info.officeHours.weekdays")}:
                     </span>
                     <br />
-                    9:00 AM - 6:00 PM
+                    {t("contact.info.officeHours.weekdayHours")}
                   </p>
                   <p className="text-[#808080]/80">
                     <span className="font-medium text-[#808080]">
-                      Saturday:
+                      {t("contact.info.officeHours.saturday")}:
                     </span>
                     <br />
-                    9:00 AM - 1:00 PM
+                    {t("contact.info.officeHours.saturdayHours")}
                   </p>
                   <p className="text-[#808080]/80">
-                    <span className="font-medium text-[#808080]">Sunday:</span>
+                    <span className="font-medium text-[#808080]">
+                      {t("contact.info.officeHours.sunday")}:
+                    </span>
                     <br />
-                    Closed
+                    {t("contact.info.officeHours.closed")}
                   </p>
                 </div>
               </div>

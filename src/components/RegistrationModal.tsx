@@ -10,7 +10,6 @@ import { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useLanguage } from "../lib/LanguageContext";
-import LanguageSwitcher from "./LanguageSwitcher";
 import { track } from "@vercel/analytics";
 import { loadEmailTemplate } from "../lib/emailTemplates";
 
@@ -397,7 +396,6 @@ function RegistrationModal({
         onClose={onClose}
         title={t("registration.title")}
         maxWidth="2xl"
-        headerContent={<LanguageSwitcher />}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {errors.root && (

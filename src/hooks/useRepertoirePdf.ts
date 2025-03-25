@@ -26,11 +26,19 @@ export function useRepertoirePdf(categoryId: string) {
           return;
         }
 
-        // Get signed URL for the first PDF file
-        const firstFile = files[0];
+        // Find the first PDF file
+        const pdfFile = files.find(file => file.name.toLowerCase().endsWith('.pdf'));
+        
+        // If no PDF file found, return null without error
+        if (!pdfFile) {
+          if (mounted) setPdfUrl(null);
+          return;
+        }
+
+        // Get signed URL for the PDF file
         const { data: signedUrlData, error: signedUrlError } = await supabase.storage
           .from("categories-repertoires")
-          .createSignedUrl(`${categoryId}/${firstFile.name}`, 3600); // 1 hour expiry
+          .createSignedUrl(`${categoryId}/${pdfFile.name}`, 3600); // 1 hour expiry
 
         if (signedUrlError) throw signedUrlError;
         if (mounted) setPdfUrl(signedUrlData?.signedUrl || null);

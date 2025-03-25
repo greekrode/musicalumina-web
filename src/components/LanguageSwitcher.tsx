@@ -6,7 +6,7 @@ function LanguageSwitcher() {
   return (
     <button
       onClick={() => setLanguage(language === 'en' ? 'id' : 'en')}
-      className="flex items-center space-x-2 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
+      className="flex items-center space-x-2 px-3 py-1 rounded-md hover:bg-gray-200 transition-colors"
       title={t('registration.changeLanguage')}
     >
       <span className="w-6 h-4 relative">
@@ -24,7 +24,7 @@ function LanguageSwitcher() {
           />
         )}
       </span>
-      <span className="text-sm text-gray-600">
+      <span className="text-sm text-gray-500">
         {language === 'en' ? 'EN' : 'ID'}
       </span>
       <span className="text-sm text-gray-500 hidden sm:inline">

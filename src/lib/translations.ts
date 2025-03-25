@@ -2,6 +2,81 @@ export type Language = "en" | "id";
 
 export const translations = {
   en: {
+    navigation: {
+      events: "EVENTS",
+      about: "ABOUT",
+      contact: "CONTACT",
+    },
+    about: {
+      title: "About Us",
+      subtitle: "Empowering Musical Excellence",
+      description:
+        "Musica Lumina is a premier international music competition platform dedicated to discovering and nurturing exceptional musical talent.\n\nFounded by a team of passionate musicians and educators, we believe in creating opportunities for young musicians to showcase their artistry, connect with fellow performers, and receive guidance from world-renowned adjudicators.\n\nOur competitions span various musical disciplines and age categories, providing a platform for musicians at different stages of their journey to grow and excel.",
+      coreValues: {
+        title: "Our Core Values",
+        excellence: {
+          title: "Excellence",
+          description:
+            "We uphold the highest standards in music education and performance, fostering an environment where talent can flourish.",
+        },
+        innovation: {
+          title: "Innovation",
+          description:
+            "We embrace modern approaches to music education and competition, utilizing technology to enhance the learning experience.",
+        },
+        passion: {
+          title: "Passion",
+          description:
+            "We are driven by our love for music and our commitment to nurturing the next generation of musicians.",
+        },
+      },
+    },
+    contact: {
+      title: "Contact Us",
+      subtitle: "Get in touch with our team",
+      howCanWeHelp: "How Can We Help?",
+      inquiryText:
+        "Have questions about our competitions or programs? We'd love to hear from you.",
+      form: {
+        title: "Send Us a Message",
+        successMessage:
+          "Message sent successfully! We'll get back to you soon.",
+        name: "Your Name",
+        namePlaceholder: "John Doe",
+        email: "Email Address",
+        emailPlaceholder: "john@example.com",
+        subject: "Subject",
+        subjectPlaceholder: "Competition Inquiry",
+        message: "Message",
+        messagePlaceholder: "Your message here...",
+        sending: "Sending...",
+        sendMessage: "Send Message",
+      },
+      info: {
+        title: "Contact Information",
+        email: "Email",
+        phone: "WhatsApp",
+        location: "Location",
+        officeHours: {
+          title: "Office Hours",
+          weekdays: "Monday - Friday",
+          weekdayHours: "9:00 AM - 6:00 PM",
+          saturday: "Saturday",
+          saturdayHours: "9:00 AM - 1:00 PM",
+          sunday: "Sunday",
+          closed: "Closed",
+        },
+      },
+    },
+    footer: {
+      quickLinks: "Quick Links",
+      home: "Home",
+      events: "Events",
+      about: "About",
+      contact: "Contact",
+      followUs: "Follow Us",
+      copyright: "Copyright © {year} MusicaLumina. All rights reserved.",
+    },
     registration: {
       title: "Event Registration",
       registrantData: "Registrant's Data",
@@ -67,10 +142,13 @@ export const translations = {
       maxAccountNameLength: "Account holder name cannot exceed 100 characters",
     },
     loading: {
-      title: "Processing Registration",
-      message: "Please wait while we process your registration...",
-      warning:
-        "Please do not close your browser or refresh this page during the process.",
+      title: "Processing Your Request",
+      message: "Please wait while we process your request...",
+      warning: "Please do not close or refresh this page.",
+      loadingEventDetails: "Loading event details...",
+      loadingCategories: "Loading categories...",
+      loadingPrizes: "Loading prizes...",
+      loadingJury: "Loading jury panel...",
     },
     thankYou: {
       title: "Thank You!",
@@ -82,8 +160,137 @@ export const translations = {
         "Don't forget to take a screenshot of this page as proof of your registration.",
       close: "Close",
     },
+    home: {
+      title: "Discovering Tomorrow's Virtuosos",
+      mainHeading: "Where Musical Excellence\nTakes Center Stage",
+      subtitle: "Celebrating the Virtuosity of Tomorrow's Musicians",
+      latestEvent: "Latest Event: {title}",
+      exploreEvents: "Explore All Events",
+      loading: "Loading content...",
+    },
+    events: {
+      title: "Our Events",
+      subtitle: "Discover upcoming and past events ",
+      upcomingEvents: "Upcoming Events",
+      pastEvents: "Past Events",
+      loading: "Loading events...",
+    },
+    eventCard: {
+      viewDetails: "View Details",
+      comingSoon: "Coming Soon",
+      viewResults: "View Results",
+      eventTypes: {
+        festival: "Festival",
+        competition: "Competition",
+        masterclass: "Masterclass",
+      },
+    },
+    eventDetails: {
+      backToEvents: "Back to all events",
+      errorLoading: "Error Loading Event",
+      notFound: "Event Not Found",
+      errorMessage:
+        "There was an error loading this event. Please try again later.",
+      notFoundMessage:
+        "The event you're looking for doesn't exist or has been removed.",
+      viewAllEvents: "View All Events",
+      eventDate: "Event Date",
+      venue: "Venue",
+      registrationDeadline: "Registration Deadline",
+      registerNow: "Register Now",
+      importantInfo: "Important Information",
+      reviewTerms:
+        "Please review our terms and conditions before proceeding with registration.",
+      viewTerms: "View Terms & Conditions",
+      categories: "Categories",
+      prizes: "Prizes",
+      juryPanel: "Jury Panel",
+      downloadRepertoire: "Download Repertoire PDF",
+      categoryRepertoire: "Category Repertoire",
+      ageRequirement: "Age Requirement",
+      registrationFee: "Registration Fee",
+      repertoire: "Repertoire",
+      duration: "Duration",
+      overallPrizes: "Overall Prizes",
+      prizes: "Prizes",
+    },
   },
   id: {
+    navigation: {
+      events: "ACARA",
+      about: "TENTANG",
+      contact: "KONTAK",
+    },
+    about: {
+      title: "Tentang Kami",
+      subtitle: "Memberdayakan Keunggulan Musik",
+      description:
+        "Musica Lumina adalah platform kompetisi musik internasional terkemuka yang berdedikasi untuk menemukan dan membina bakat musik.\n\nDidirikan oleh tim musisi dan pendidik yang bersemangat, kami percaya dalam menciptakan kesempatan bagi musisi muda untuk menampilkan kesenian mereka, terhubung dengan sesama musisi, dan menerima pengarahan dari juri yang diakui dunia.\n\nKompetisi kami mencakup berbagai disiplin musik dan kategori usia, menyediakan platform bagi musisi di berbagai tahap perjalanan mereka untuk berkembang.",
+      coreValues: {
+        title: "Nilai-Nilai Utama Kami",
+        excellence: {
+          title: "Keunggulan",
+          description:
+            "Kami menjunjung tinggi standar tertinggi dalam pendidikan dan pertunjukan musik, memupuk lingkungan di mana bakat dapat berkembang.",
+        },
+        innovation: {
+          title: "Inovasi",
+          description:
+            "Kami menerapkan pendekatan modern dalam pendidikan dan kompetisi musik, memanfaatkan teknologi untuk meningkatkan pengalaman belajar.",
+        },
+        passion: {
+          title: "Semangat",
+          description:
+            "Kami didorong oleh kecintaan kami terhadap musik dan komitmen kami untuk membina generasi musisi berikutnya.",
+        },
+      },
+    },
+    contact: {
+      title: "Hubungi Kami",
+      subtitle: "Terhubung dengan tim kami",
+      howCanWeHelp: "Bagaimana Kami Dapat Membantu?",
+      inquiryText:
+        "Punya pertanyaan tentang kompetisi atau program kami? Kami senang mendengar dari Anda.",
+      form: {
+        title: "Kirim Pesan Kepada Kami",
+        successMessage:
+          "Pesan berhasil dikirim! Kami akan segera menghubungi Anda.",
+        name: "Nama Anda",
+        namePlaceholder: "John Doe",
+        email: "Alamat Email",
+        emailPlaceholder: "john@example.com",
+        subject: "Subjek",
+        subjectPlaceholder: "Pertanyaan Kompetisi",
+        message: "Pesan",
+        messagePlaceholder: "Pesan Anda di sini...",
+        sending: "Mengirim...",
+        sendMessage: "Kirim Pesan",
+      },
+      info: {
+        title: "Informasi Kontak",
+        email: "Email",
+        phone: "WhatsApp",
+        location: "Lokasi",
+        officeHours: {
+          title: "Jam Kerja",
+          weekdays: "Senin - Jumat",
+          weekdayHours: "9:00 - 18:00",
+          saturday: "Sabtu",
+          saturdayHours: "9:00 - 13:00",
+          sunday: "Minggu",
+          closed: "Tutup",
+        },
+      },
+    },
+    footer: {
+      quickLinks: "Tautan Cepat",
+      home: "Beranda",
+      events: "Acara",
+      about: "Tentang",
+      contact: "Kontak",
+      followUs: "Ikuti Kami",
+      copyright: "Hak Cipta © {year} MusicaLumina. Seluruh hak dilindungi.",
+    },
     registration: {
       title: "Pendaftaran Acara",
       registrantData: "Data Pendaftar",
@@ -100,14 +307,14 @@ export const translations = {
       selectCategory: "Pilih kategori",
       subCategory: "Sub Kategori",
       selectSubCategory: "Pilih sub kategori",
-      songSelection: "Pilihan Lagu",
-      selectSong: "Pilih lagu",
-      songTitle: "Judul Lagu",
-      songDuration: "Durasi Lagu",
+      songSelection: "Pilihan Partitur",
+      selectSong: "Pilih partitur",
+      songTitle: "Judul Partitur",
+      songDuration: "Durasi Partitur",
       songDurationPlaceholder: "contoh: 3:30",
       documents: "Dokumen",
       birthCertificate: "Akta Kelahiran/Paspor",
-      songPdf: "PDF Lagu",
+      songPdf: "PDF Partitur",
       paymentInfo: "Informasi Pembayaran",
       bankTransferDetails: "Transfer Bank ke:",
       bankName: "Nama Bank",
@@ -131,30 +338,32 @@ export const translations = {
       minName: "Masukkan nama lengkap peserta",
       selectCategory: "Pilih kategori",
       selectSubCategory: "Pilih sub kategori",
-      enterSongTitle: "Masukkan judul lagu",
+      enterSongTitle: "Masukkan judul partitur",
       enterBankName: "Masukkan nama bank",
       enterAccountNumber: "Masukkan nomor rekening",
       enterAccountName: "Masukkan nama pemilik rekening",
       acceptTerms: "Anda harus menyetujui syarat dan ketentuan",
       uploadBirthCert: "Unggah akta kelahiran atau paspor Anda",
-      uploadSongPdf: "Unggah PDF lagu Anda",
+      uploadSongPdf: "Unggah PDF partitur Anda",
       uploadPayment: "Unggah bukti pembayaran Anda",
       fileSizeLimit: "Ukuran file harus kurang dari 5MB",
       onlyNumbers: "Mohon masukkan angka saja",
       maxAccountLength: "Nomor rekening tidak boleh melebihi 25 digit",
       maxNameLength: "Nama tidak boleh melebihi 100 karakter",
-      maxSongTitleLength: "Judul lagu tidak boleh melebihi 150 karakter",
-      maxDurationLength: "Durasi lagu tidak boleh melebihi 10 karakter",
+      maxSongTitleLength: "Judul partitur tidak boleh melebihi 150 karakter",
+      maxDurationLength: "Durasi tidak boleh melebihi 10 karakter",
       maxBankNameLength: "Nama bank tidak boleh melebihi 100 karakter",
       maxAccountNameLength:
         "Nama pemilik rekening tidak boleh melebihi 100 karakter",
     },
     loading: {
-      title: "Memproses Pendaftaran",
-      message:
-        "Mohon tunggu sebentar, kami sedang memproses pendaftaran Anda...",
-      warning:
-        "Jangan tutup browser atau refresh halaman ini selama proses berlangsung.",
+      title: "Memproses Permintaan Anda",
+      message: "Mohon tunggu sementara kami memproses permintaan Anda...",
+      warning: "Mohon jangan tutup atau muat ulang halaman ini.",
+      loadingEventDetails: "Memuat detail acara...",
+      loadingCategories: "Memuat kategori...",
+      loadingPrizes: "Memuat hadiah...",
+      loadingJury: "Memuat dewan juri...",
     },
     thankYou: {
       title: "Terima Kasih!",
@@ -165,6 +374,58 @@ export const translations = {
       screenshotReminder:
         "Jangan lupa untuk mengambil screenshot halaman ini sebagai bukti pendaftaran Anda.",
       close: "Tutup",
+    },
+    home: {
+      title: "Discovering Tomorrow's Virtuosos",
+      mainHeading: "Where Musical Excellence\nTakes Center Stage",
+      subtitle: "Celebrating the Virtuosity of Tomorrow's Musicians",
+      latestEvent: "Acara Terbaru: {title}",
+      exploreEvents: "Jelajahi Semua Acara",
+      loading: "Loading content...",
+    },
+    events: {
+      title: "Acara Kami",
+      subtitle: "Temukan acara mendatang dan kegiatan sebelumnya",
+      upcomingEvents: "Acara Mendatang",
+      pastEvents: "Acara Sebelumnya",
+      loading: "Memuat acara...",
+    },
+    eventCard: {
+      viewDetails: "Lihat Detail",
+      comingSoon: "Segera Hadir",
+      viewResults: "Lihat Hasil",
+      eventTypes: {
+        festival: "Festival",
+        competition: "Kompetisi",
+        masterclass: "Masterclass",
+      },
+    },
+    eventDetails: {
+      backToEvents: "Kembali ke semua acara",
+      errorLoading: "Error Memuat Acara",
+      notFound: "Acara Tidak Ditemukan",
+      errorMessage:
+        "Terjadi kesalahan saat memuat acara ini. Silakan coba lagi nanti.",
+      notFoundMessage: "Acara yang Anda cari tidak ada atau telah dihapus.",
+      viewAllEvents: "Lihat Semua Acara",
+      eventDate: "Tanggal Acara",
+      venue: "Tempat",
+      registrationDeadline: "Batas Pendaftaran",
+      registerNow: "Daftar Sekarang",
+      importantInfo: "Informasi Penting",
+      reviewTerms:
+        "Silakan tinjau syarat dan ketentuan kami sebelum melanjutkan pendaftaran.",
+      viewTerms: "Lihat Syarat & Ketentuan",
+      categories: "Kategori",
+      prizes: "Hadiah",
+      juryPanel: "Dewan Juri",
+      downloadRepertoire: "Unduh PDF Partitur",
+      categoryRepertoire: "Partitur Kategori",
+      ageRequirement: "Persyaratan Usia",
+      registrationFee: "Biaya Pendaftaran",
+      repertoire: "Partitur",
+      duration: "Durasi",
+      overallPrizes: "Hadiah Keseluruhan",
     },
   },
 };

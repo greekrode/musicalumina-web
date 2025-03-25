@@ -13,13 +13,14 @@ import {
 import TermsModal from "../components/TermsModal";
 import RegistrationModal from "../components/RegistrationModal";
 import { useEvent } from "../hooks/useEvent";
-import { formatDate } from "../utils/date";
+import { formatDateWithLocale, translateDuration } from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import type { Database } from "../lib/database.types";
 import type { EventType } from "../lib/database.types";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { useRepertoirePdf } from "../hooks/useRepertoirePdf";
+import { useLanguage } from "../lib/LanguageContext";
 
 type EventCategory = Database["public"]["Tables"]["event_categories"]["Row"] & {
   event_subcategories: (Database["public"]["Tables"]["event_subcategories"]["Row"] & {
@@ -65,14 +66,13 @@ type CategoryCardProps = {
 };
 
 const CategoryCard = ({ category }: CategoryCardProps) => {
+  const { t, language } = useLanguage();
   const { pdfUrl } = useRepertoirePdf(category.id);
-  
+
   return (
     <div className="bg-[#F7E7CE]/30 p-6 rounded-lg">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-playfair text-black">
-          {category.name}
-        </h2>
+        <h2 className="text-xl font-playfair text-black">{category.name}</h2>
         {pdfUrl && (
           <a
             href={pdfUrl}
@@ -81,7 +81,7 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
             className="inline-flex items-center px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 transition-colors"
           >
             <FileDown className="h-4 w-4 mr-2" />
-            Download Repertoire PDF
+            {t("eventDetails.downloadRepertoire")}
           </a>
         )}
       </div>
@@ -93,7 +93,7 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
         category.repertoire.length > 0 && (
           <div className="mb-6">
             <p className="text-sm font-medium text-black mb-2">
-              Category Repertoire:
+              {t("eventDetails.categoryRepertoire")}:
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, colIndex) => (
@@ -125,7 +125,7 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-black">
-                  Age Requirement:
+                  {t("eventDetails.ageRequirement")}:
                 </p>
                 <p className="text-sm text-black/80">
                   {subCategory.age_requirement}
@@ -133,7 +133,7 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
               </div>
               <div>
                 <p className="text-sm font-medium text-black">
-                  Registration Fee:
+                  {t("eventDetails.registrationFee")}:
                 </p>
                 <p className="text-sm text-black/80">
                   IDR {subCategory.registration_fee.toLocaleString()}
@@ -144,7 +144,7 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                 subCategory.repertoire.length > 0 && (
                   <div>
                     <p className="text-sm font-medium text-black mb-2">
-                      Repertoire:
+                      {t("eventDetails.repertoire")}:
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {Array.from({ length: 3 }).map((_, colIndex) => (
@@ -166,9 +166,11 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                 )}
               {subCategory.performance_duration && (
                 <div>
-                  <p className="text-sm font-medium text-black">Duration:</p>
+                  <p className="text-sm font-medium text-black">
+                    {t("eventDetails.duration")}:
+                  </p>
                   <p className="text-sm text-black/80">
-                    {subCategory.performance_duration}
+                    {translateDuration(subCategory.performance_duration, language)}
                   </p>
                 </div>
               )}
@@ -193,6 +195,7 @@ type PrizesSectionProps = {
 };
 
 const PrizesSection = ({ categories }: PrizesSectionProps) => {
+  const { t } = useLanguage();
   // Collect all global prizes from the first category (they're the same for all)
   const globalPrizes = categories[0]?.global_prizes || [];
 
@@ -202,7 +205,7 @@ const PrizesSection = ({ categories }: PrizesSectionProps) => {
       {globalPrizes.length > 0 && (
         <div className="bg-[#F7E7CE]/20 p-6 rounded-lg">
           <h3 className="text-xl font-playfair text-black mb-4">
-            Overall Prizes
+            {t("eventDetails.overallPrizes")}
           </h3>
           <div className="grid md:grid-cols-2 gap-6">
             {globalPrizes.map((prize) => (
@@ -239,7 +242,7 @@ const PrizesSection = ({ categories }: PrizesSectionProps) => {
           category.prizes.length > 0 && (
             <div key={category.id} className="bg-[#F7E7CE]/20 p-6 rounded-lg">
               <h3 className="text-xl font-playfair text-black mb-4">
-                {category.name} Prizes
+                {category.name} {t("eventDetails.prizes")}
               </h3>
               <div className="grid md:grid-cols-2 gap-6">
                 {category.prizes.map((prize) => (
@@ -278,39 +281,41 @@ const PrizesSection = ({ categories }: PrizesSectionProps) => {
   );
 };
 
-const JuryPanel = ({ juryMembers }: JuryPanelProps) => (
-  <div className="grid md:grid-cols-2 gap-8">
-    {juryMembers.map((juror) => (
-      <div key={juror.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
-        <div className="flex flex-col items-center space-y-4">
-          <img
-            src={juror.avatar_url || ""}
-            alt={juror.name}
-            className="w-48 h-48 rounded-full object-cover shadow-lg"
-          />
-          <div className="text-center">
-            <h2 className="text-2xl font-playfair text-black mb-2">
-              {juror.name}
-            </h2>
-            <p className="text-lg font-medium text-marigold mb-4">
-              {juror.title}
-            </p>
-            {juror.description && (
-              <div className="text-sm text-black/80 mb-3 space-y-2 text-left">
-                {juror.description
-                  .replace(/\\n/g, "\n")
-                  .split("\n")
-                  .map((line, index) => (
-                    <p key={index}>{line}</p>
-                  ))}
-              </div>
-            )}
+const JuryPanel = ({ juryMembers }: JuryPanelProps) => {
+  return (
+    <div className="grid md:grid-cols-2 gap-8">
+      {juryMembers.map((juror) => (
+        <div key={juror.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
+          <div className="flex flex-col items-center space-y-4">
+            <img
+              src={juror.avatar_url || ""}
+              alt={juror.name}
+              className="w-48 h-48 rounded-full object-cover shadow-lg"
+            />
+            <div className="text-center">
+              <h2 className="text-2xl font-playfair text-black mb-2">
+                {juror.name}
+              </h2>
+              <p className="text-lg font-medium text-marigold mb-4">
+                {juror.title}
+              </p>
+              {juror.description && (
+                <div className="text-sm text-black/80 mb-3 space-y-2 text-left">
+                  {juror.description
+                    .replace(/\\n/g, "\n")
+                    .split("\n")
+                    .map((line, index) => (
+                      <p key={index}>{line}</p>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 function EventDetails() {
   const { id } = useParams<{ id: string }>();
@@ -322,21 +327,17 @@ function EventDetails() {
     loading: boolean;
     error: PostgrestError | null;
   };
+  const { t, language } = useLanguage();
 
   usePageTitle(event?.title || "");
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const section = document.getElementById("upcoming-events");
-    if (section && window.location.pathname === "/") {
-      section.scrollIntoView({ behavior: "smooth" });
-    } else {
-      navigate("/", { state: { scrollToSection: "upcoming-events" } });
-    }
+    navigate("/events");
   };
 
   const formatEventType = (type: EventType) => {
-    return type.charAt(0).toUpperCase() + type.slice(1);
+    return t(`eventCard.eventTypes.${type}`);
   };
 
   const getTypeColor = (type: EventType) => {
@@ -355,7 +356,7 @@ function EventDetails() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
-        <LoadingSpinner message="Loading event details..." />
+        <LoadingSpinner message={t("loading.loadingEventDetails")} />
       </div>
     );
   }
@@ -369,22 +370,24 @@ function EventDetails() {
             className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to all events
+            {t("eventDetails.backToEvents")}
           </button>
           <div className="text-center py-12">
             <h2 className="text-3xl font-playfair text-[#808080] mb-4">
-              {error ? "Error Loading Event" : "Event Not Found"}
+              {error
+                ? t("eventDetails.errorLoading")
+                : t("eventDetails.notFound")}
             </h2>
             <p className="text-lg text-black/60 mb-6">
               {error
-                ? "There was an error loading this event. Please try again later."
-                : "The event you're looking for doesn't exist or has been removed."}
+                ? t("eventDetails.errorMessage")
+                : t("eventDetails.notFoundMessage")}
             </p>
             <button
               onClick={() => navigate("/events")}
               className="inline-flex items-center px-6 py-3 bg-marigold text-white rounded-lg hover:bg-marigold/90 transition-colors"
             >
-              View All Events
+              {t("eventDetails.viewAllEvents")}
             </button>
           </div>
         </div>
@@ -406,7 +409,7 @@ function EventDetails() {
           className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to all events
+          {t("eventDetails.backToEvents")}
         </button>
 
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
@@ -420,20 +423,28 @@ function EventDetails() {
               {formatEventType(event.type)}
             </span>
           </div>
-          <p className="text-black/80 mb-8">{event.overview}</p>
+          <p className="text-black/80 mb-8">
+            {event.description?.[language] || event.description?.en}
+          </p>
 
           <div className="grid md:grid-cols-3 gap-6">
             <div className="flex items-start space-x-3">
               <Calendar className="h-5 w-5 text-marigold mt-1" />
               <div>
-                <h3 className="font-medium text-black">Event Date</h3>
-                <p className="text-black/80">{formatDate(event.start_date)}</p>
+                <h3 className="font-medium text-black">
+                  {t("eventDetails.eventDate")}
+                </h3>
+                <p className="text-black/80">
+                  {formatDateWithLocale(event.start_date, language)}
+                </p>
               </div>
             </div>
             <div className="flex items-start space-x-3">
               <MapPin className="h-5 w-5 text-marigold mt-1" />
               <div>
-                <h3 className="font-medium text-black">Venue</h3>
+                <h3 className="font-medium text-black">
+                  {t("eventDetails.venue")}
+                </h3>
                 <p className="text-black/80">{event.location}</p>
               </div>
             </div>
@@ -442,10 +453,10 @@ function EventDetails() {
                 <Calendar className="h-5 w-5 text-marigold mt-1" />
                 <div>
                   <h3 className="font-medium text-black">
-                    Registration Deadline
+                    {t("eventDetails.registrationDeadline")}
                   </h3>
                   <p className="text-black/80">
-                    {formatDate(event.registration_deadline)}
+                    {formatDateWithLocale(event.registration_deadline, language)}
                   </p>
                 </div>
               </div>
@@ -458,7 +469,7 @@ function EventDetails() {
                 onClick={() => setIsRegistrationModalOpen(true)}
                 className="bg-marigold text-white px-6 py-3 rounded-md hover:bg-marigold/90 transition-colors w-full md:w-auto"
               >
-                Register Now
+                {t("eventDetails.registerNow")}
               </button>
             </div>
           )}
@@ -468,28 +479,29 @@ function EventDetails() {
           <div className="flex items-center space-x-3 mb-6">
             <BookOpen className="h-6 w-6 text-marigold" />
             <h2 className="text-2xl font-playfair text-black">
-              Important Information
+              {t("eventDetails.importantInfo")}
             </h2>
           </div>
-          <p className="text-black/80 mb-4">
-            Please review our terms and conditions before proceeding with
-            registration.
-          </p>
+          <p className="text-black/80 mb-4">{t("eventDetails.reviewTerms")}</p>
           <button
             onClick={() => setIsTermsModalOpen(true)}
             className="bg-marigold text-[#FFFFF0] px-6 py-2 rounded-md hover:bg-marigold/90 transition-colors inline-flex items-center"
           >
-            View Terms & Conditions
+            {t("eventDetails.viewTerms")}
           </button>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <div className="flex items-center space-x-3 mb-6">
             <Trophy className="h-6 w-6 text-marigold" />
-            <h2 className="text-2xl font-playfair text-black">Categories</h2>
+            <h2 className="text-2xl font-playfair text-black">
+              {t("eventDetails.categories")}
+            </h2>
           </div>
           <Suspense
-            fallback={<LoadingSpinner message="Loading categories..." />}
+            fallback={
+              <LoadingSpinner message={t("loading.loadingCategories")} />
+            }
           >
             <EventCategories categories={event.event_categories} />
           </Suspense>
@@ -499,9 +511,13 @@ function EventDetails() {
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <div className="flex items-center space-x-3 mb-6">
               <Award className="h-6 w-6 text-marigold" />
-              <h2 className="text-2xl font-playfair text-black">Prizes</h2>
+              <h2 className="text-2xl font-playfair text-black">
+                {t("eventDetails.prizes")}
+              </h2>
             </div>
-            <Suspense fallback={<LoadingSpinner message="Loading prizes..." />}>
+            <Suspense
+              fallback={<LoadingSpinner message={t("loading.loadingPrizes")} />}
+            >
               <PrizesSection categories={event.event_categories} />
             </Suspense>
           </div>
@@ -510,10 +526,12 @@ function EventDetails() {
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="flex items-center space-x-3 mb-6">
             <Users className="h-6 w-6 text-marigold" />
-            <h2 className="text-2xl font-playfair text-black">Jury Panel</h2>
+            <h2 className="text-2xl font-playfair text-black">
+              {t("eventDetails.juryPanel")}
+            </h2>
           </div>
           <Suspense
-            fallback={<LoadingSpinner message="Loading jury panel..." />}
+            fallback={<LoadingSpinner message={t("loading.loadingJury")} />}
           >
             <JuryPanel juryMembers={event.event_jury} />
           </Suspense>
@@ -534,7 +552,7 @@ function EventDetails() {
       <TermsModal
         isOpen={isTermsModalOpen}
         onClose={() => setIsTermsModalOpen(false)}
-        terms={event?.terms_and_conditions as string | undefined}
+        terms={event?.terms_and_conditions?.[language] || event?.terms_and_conditions?.en}
       />
     </div>
   );

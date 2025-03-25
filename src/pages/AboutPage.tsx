@@ -1,17 +1,19 @@
 import { Award, Heart, Music } from "lucide-react";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { useImagePreloader } from "../hooks/useImagePreloader";
 import heroBg from "../assets/about-hero-bg.jpg";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { useImagePreloader } from "../hooks/useImagePreloader";
-import { usePageTitle } from "../hooks/usePageTitle";
+import { useLanguage } from "../lib/LanguageContext";
 
 function AboutPage() {
-  usePageTitle("About");
+  const { t } = useLanguage();
+  usePageTitle(t("about.title"));
   const isLoading = useImagePreloader(heroBg);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
-        <LoadingSpinner message="Loading about page..." />
+        <LoadingSpinner message={t("loading.message")} />
       </div>
     );
   }
@@ -23,7 +25,7 @@ function AboutPage() {
         <div className="absolute inset-0">
           <img
             src={heroBg}
-            alt="Piano keys"
+            alt="Piano performance"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black/70"></div>
@@ -31,73 +33,66 @@ function AboutPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="text-center w-full">
             <h1 className="text-4xl md:text-5xl font-playfair text-[#FFFFF0] mb-4">
-              About Us
+              {t("about.title")}
             </h1>
-            <p className="text-xl text-[#F7E7CE]">
-              Discover our story and mission
-            </p>
+            <p className="text-xl text-[#F7E7CE]">{t("about.subtitle")}</p>
           </div>
         </div>
       </section>
 
-      <div className="py-20 bg-[#FFFFF0]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* About Content */}
-          <div className="text-center mb-16">
-            <p className="text-lg text-[#808080]/80 max-w-2xl mx-auto">
-              Founded in March 2024, by a group of passionate musicians and
-              educators.
-              <br />
-              <br />
-              Musica Lumina is not just a brand; it is a celestial symphony, a
-              harmonious fusion of melody and radiance. Rooted in the timeless
-              essence of Latin, Musica signifies the divine art of music, while
-              Lumina embodies the ethereal glow of illumination.
-              <br />
-              <br />
-              Together, they create a luminous journey where every note blooms
-              like delicate flowers under a moonlit sky, weaving an invisible
-              thread that binds hearts, cultures, and generations. Musica Lumina
-              invites you to a world where music transcends boundaries, stirring
-              emotions and kindling inspiration, guiding us through the darkness
-              with its radiant glow.
-            </p>
+      {/* About Content */}
+      <section className="py-20 bg-[#FFFFF0]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="prose prose-lg text-[#808080] mx-auto">
+            {t("about.description").split("\n").map((paragraph, index) => (
+              <p key={index}>{paragraph}</p>
+            ))}
           </div>
+        </div>
+      </section>
 
-          {/* Core Values */}
-          <div className="grid grid-cols-3 gap-8 mb-12">
-            <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+      {/* Core Values */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-playfair text-[#808080] text-center mb-16">
+            {t("about.coreValues.title")}
+          </h2>
+          <div className="grid md:grid-cols-3 gap-12">
+            {/* Excellence */}
+            <div className="bg-[#FFFFF0] p-6 rounded-lg shadow-lg text-center">
               <Music className="h-8 w-8 text-[#CFB53B] mx-auto mb-4" />
               <h3 className="text-xl font-playfair text-[#808080] mb-2">
-                Excellence
+                {t("about.coreValues.excellence.title")}
               </h3>
-              <p className="text-[#808080]/80">
-                Setting the highest standards in musical education and
-                competition
+              <p className="text-charcoal/50">
+                {t("about.coreValues.excellence.description")}
               </p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+
+            {/* Innovation */}
+            <div className="bg-[#FFFFF0] p-6 rounded-lg shadow-lg text-center">
               <Award className="h-8 w-8 text-[#CFB53B] mx-auto mb-4" />
               <h3 className="text-xl font-playfair text-[#808080] mb-2">
-                Innovation
+                {t("about.coreValues.innovation.title")}
               </h3>
-              <p className="text-[#808080]/80">
-                Pioneering fresh approaches to musical development and
-                performance
+              <p className="text-charcoal/50">
+                {t("about.coreValues.innovation.description")}
               </p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+
+            {/* Passion */}
+            <div className="bg-[#FFFFF0] p-6 rounded-lg shadow-lg text-center">
               <Heart className="h-8 w-8 text-[#CFB53B] mx-auto mb-4" />
               <h3 className="text-xl font-playfair text-[#808080] mb-2">
-                Passion
+                {t("about.coreValues.passion.title")}
               </h3>
-              <p className="text-[#808080]/80">
-                Nurturing the love of music in every student and participant
+              <p className="text-charcoal/50">
+                {t("about.coreValues.passion.description")}
               </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
