@@ -212,7 +212,6 @@ export const translations = {
       repertoire: "Repertoire",
       duration: "Duration",
       overallPrizes: "Overall Prizes",
-      prizes: "Prizes",
     },
   },
   id: {

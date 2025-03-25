@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Language, translations } from './translations';
 
 interface LanguageContextType {
@@ -9,8 +9,30 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const LANGUAGE_STORAGE_KEY = 'musicalumina_language';
+
+function getInitialLanguage(): Language {
+  // First check localStorage
+  const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language;
+  if (savedLanguage) return savedLanguage;
+
+  // Then check browser language
+  const browserLang = navigator.language.toLowerCase();
+  if (browserLang.startsWith('id') || browserLang.startsWith('in')) {
+    return 'id';
+  }
+
+  // Default to English
+  return 'en';
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(getInitialLanguage);
+
+  // Update localStorage whenever language changes
+  useEffect(() => {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  }, [language]);
 
   const t = (key: string) => {
     const keys = key.split('.');
