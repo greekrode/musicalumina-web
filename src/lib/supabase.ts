@@ -108,6 +108,7 @@ export async function getEventById(id: string) {
           name,
           description,
           repertoire,
+          order_index,
           event_subcategories (
             id,
             name,
@@ -136,12 +137,18 @@ export async function getEventById(id: string) {
       throw eventError;
     }
 
-    // Sort subcategories by order_index
+    // Sort categories and subcategories by order_index
     if (event.event_categories) {
+      // First sort categories by order_index
+      event.event_categories = event.event_categories.sort(
+        (a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index
+      );
+
+      // Then sort subcategories within each category
       event.event_categories = event.event_categories.map((category) => ({
         ...category,
         event_subcategories: category.event_subcategories.sort(
-          (a, b) => a.order_index - b.order_index
+          (a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index
         ),
       }));
     }

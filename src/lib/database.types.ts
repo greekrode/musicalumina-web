@@ -198,6 +198,7 @@ export interface Database {
           description: string | null;
           created_at: string;
           repertoire: Json | null;
+          order_index: number;
         };
         Insert: {
           id?: string;
@@ -206,6 +207,7 @@ export interface Database {
           description?: string | null;
           created_at?: string;
           repertoire?: Json | null;
+          order_index: number;
         };
         Update: {
           id?: string;
@@ -214,6 +216,7 @@ export interface Database {
           description?: string | null;
           created_at?: string;
           repertoire?: Json | null;
+          order_index?: number;
         };
       };
       event_subcategories: {
