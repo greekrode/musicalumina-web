@@ -1,0 +1,8 @@
+[build]
+command = ""
+
+[deploy]
+allowed_http_hosts = []
+# Run every 2 hours to keep sitemap fresh
+intervals = ["0 */2 * * *"]
+max_retries = 3 

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Prevent crawling of API routes and internal paths
+Disallow: /api/
+Disallow: /_next/
+Disallow: /supabase/
+Disallow: /auth/
+
+# Point to dynamic sitemap
+Sitemap: https://www.musicalumina.com/api/sitemap.xml 
