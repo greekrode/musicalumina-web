@@ -467,9 +467,16 @@ function EventDetails() {
             <div className="mt-8">
               <button
                 onClick={() => setIsRegistrationModalOpen(true)}
-                className="bg-marigold text-white px-6 py-3 rounded-md hover:bg-marigold/90 transition-colors w-full md:w-auto"
+                disabled={!!event.registration_deadline && new Date() >= new Date(event.registration_deadline)}
+                className={`${
+                  !!event.registration_deadline && new Date() >= new Date(event.registration_deadline)
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-marigold hover:bg-marigold/90"
+                } text-white px-6 py-3 rounded-md transition-colors w-full md:w-auto`}
               >
-                {t("eventDetails.registerNow")}
+                {!!event.registration_deadline && new Date() >= new Date(event.registration_deadline)
+                  ? t("eventDetails.registrationClosed")
+                  : t("eventDetails.registerNow")}
               </button>
             </div>
           )}
