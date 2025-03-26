@@ -35,10 +35,16 @@ export function useRepertoirePdf(categoryId: string) {
           return;
         }
 
+        // Calculate the seconds different from today until 10 august 2025
+        const targetDate = new Date('2025-08-10');
+        const currentDate = new Date();
+        const timeDifference = targetDate.getTime() - currentDate.getTime();
+        const secondsDifference = Math.floor(timeDifference / 1000);
+
         // Get signed URL for the PDF file
         const { data: signedUrlData, error: signedUrlError } = await supabase.storage
           .from("categories-repertoires")
-          .createSignedUrl(`${categoryId}/${pdfFile.name}`, 3600); // 1 hour expiry
+          .createSignedUrl(`${categoryId}/${pdfFile.name}`, secondsDifference);
 
         if (signedUrlError) throw signedUrlError;
         if (mounted) setPdfUrl(signedUrlData?.signedUrl || null);
