@@ -80,14 +80,14 @@ export function translateAgeRequirement(ageRequirement: string, language: string
   const aboveMatch = ageRequirement.match(/^(\d+)\s+years\s+old\s+&\s+above$/i);
   if (aboveMatch) {
     const [, age] = aboveMatch;
-    return `${age} tahun ke atas`;
+    return `di atas ${age} tahun`;
   }
 
   // Handle "[digit] years old & below" case
   const belowMatch = ageRequirement.match(/^(\d+)\s+years\s+old\s+&\s+below$/i);
   if (belowMatch) {
     const [, age] = belowMatch;
-    return `${age} tahun ke bawah`;
+    return `di bawah ${age} tahun`;
   }
 
   // If no pattern matches, return original
