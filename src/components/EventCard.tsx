@@ -95,7 +95,9 @@ function EventCard({
           <Link
             to={
               status === "completed"
-                ? `/past-event/${id}`
+                ? type === "masterclass"
+                  ? `/past-masterclass/${id}`
+                  : `/past-event/${id}`
                 : type === "masterclass"
                 ? `/masterclass/${id}`
                 : `/event/${id}`
