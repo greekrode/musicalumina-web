@@ -6,6 +6,7 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  Music,
 } from "lucide-react";
 import { useEvent } from "../hooks/useEvent";
 import { formatDateWithLocale } from "../lib/utils";
@@ -23,8 +24,15 @@ type EventJuror = Omit<
   credentials: string | null;
 };
 
+type MasterclassParticipant = {
+  id: string;
+  name: string;
+  repertoire: string[];
+};
+
 type PastEvent = Database["public"]["Tables"]["events"]["Row"] & {
   event_jury: EventJuror[];
+  masterclass_participants?: MasterclassParticipant[];
 };
 
 function preloadImage(src: string): Promise<void> {
@@ -259,7 +267,7 @@ function useEventPhotos(eventId: string) {
   return { photos, loading, error };
 }
 
-function PastMasterclassDetails() {
+const PastMasterclassDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -273,6 +281,8 @@ function PastMasterclassDetails() {
     error: Error | null;
   };
   const { photos, loading: photosLoading } = useEventPhotos(id || "");
+  const [participants, setParticipants] = useState<MasterclassParticipant[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(true);
 
   usePageTitle(event?.title ? `Past Masterclass | ${event.title}` : undefined);
 
@@ -280,6 +290,34 @@ function PastMasterclassDetails() {
     e.preventDefault();
     navigate("/events");
   };
+
+  // Fetch masterclass participants
+  useEffect(() => {
+    async function fetchParticipants() {
+      if (!event?.id) return;
+
+      try {
+        setParticipantsLoading(true);
+        const { data, error } = await supabase
+          .from("masterclass_participants")
+          .select("*")
+          .eq("event_id", event.id)
+          .order("name");
+
+        if (error) throw error;
+
+        if (data) {
+          setParticipants(data);
+        }
+      } catch (err) {
+        console.error("Error fetching masterclass participants:", err);
+      } finally {
+        setParticipantsLoading(false);
+      }
+    }
+
+    fetchParticipants();
+  }, [event?.id]);
 
   if (eventLoading) {
     return <LoadingSpinner message={t("loading.loadingEventDetails")} />;
@@ -362,7 +400,7 @@ function PastMasterclassDetails() {
         </div>
 
         {instructor && (
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <div className="flex items-center space-x-3 mb-6">
               <Users className="h-6 w-6 text-marigold" />
               <h2 className="text-2xl font-serif text-black">
@@ -398,9 +436,45 @@ function PastMasterclassDetails() {
             </div>
           </div>
         )}
+
+        {participants.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Music className="h-6 w-6 text-marigold" />
+              <h2 className="text-2xl font-serif text-black">
+                {t("masterclass.participants")}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {participants.map((participant) => (
+                <div
+                  key={participant.id}
+                  className="bg-[#F7E7CE]/30 p-6 rounded-lg"
+                >
+                  <h3 className="text-xl font-playfair text-black mb-4">
+                    {participant.name}
+                  </h3>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-marigold">
+                      {t("masterclass.repertoire")}
+                    </h4>
+                    <ul className="list-disc list-inside text-sm text-black/80">
+                      {participant.repertoire.map((piece, index) => (
+                        <li key={index} className="mb-1">
+                          {piece}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-}
+};
 
+export { PastMasterclassDetails };
 export default PastMasterclassDetails; 

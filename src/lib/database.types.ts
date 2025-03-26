@@ -292,6 +292,32 @@ export interface Database {
           created_at?: string;
         };
       };
+      masterclass_participants: {
+        Row: {
+          id: string;
+          event_id: string;
+          name: string;
+          repertoire: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          name: string;
+          repertoire: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          name?: string;
+          repertoire?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }

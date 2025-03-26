@@ -332,3 +332,87 @@ export async function sendContactMessage(data: {
     };
   }
 }
+
+export async function getMasterclassParticipants(eventId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("masterclass_participants")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("name");
+
+    if (error) throw error;
+
+    return {
+      participants: data || [],
+    };
+  } catch (error) {
+    console.error("Error fetching masterclass participants:", error);
+    throw error;
+  }
+}
+
+export async function addMasterclassParticipant(participant: {
+  event_id: string;
+  name: string;
+  repertoire: string[];
+}) {
+  try {
+    const { data, error } = await supabase
+      .from("masterclass_participants")
+      .insert([participant])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      participant: data,
+    };
+  } catch (error) {
+    console.error("Error adding masterclass participant:", error);
+    throw error;
+  }
+}
+
+export async function updateMasterclassParticipant(
+  id: string,
+  updates: {
+    name?: string;
+    repertoire?: string[];
+  }
+) {
+  try {
+    const { data, error } = await supabase
+      .from("masterclass_participants")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      participant: data,
+    };
+  } catch (error) {
+    console.error("Error updating masterclass participant:", error);
+    throw error;
+  }
+}
+
+export async function deleteMasterclassParticipant(id: string) {
+  try {
+    const { error } = await supabase
+      .from("masterclass_participants")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting masterclass participant:", error);
+    throw error;
+  }
+}

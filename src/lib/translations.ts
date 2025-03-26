@@ -216,9 +216,11 @@ export const translations = {
     masterclass: {
       instructor: "Instructor",
       registrationFee: "Registration Fee",
+      participants: "Participants",
+      repertoire: "Repertoire",
       registration: {
         title: "Masterclass Registration",
-        description: "Please fill in your details to register for this masterclass. Make sure all information is accurate.",
+        description: "Please fill in the required information to register for this masterclass."
       },
     },
     common: {
@@ -440,9 +442,11 @@ export const translations = {
     masterclass: {
       instructor: "Instruktur",
       registrationFee: "Biaya Pendaftaran",
+      participants: "Peserta",
+      repertoire: "Partitur",
       registration: {
         title: "Pendaftaran Masterclass",
-        description: "Silakan isi detail Anda untuk mendaftar masterclass ini. Pastikan semua informasi akurat.",
+        description: "Silakan isi informasi yang diperlukan untuk mendaftar masterclass ini."
       },
     },
     common: {
