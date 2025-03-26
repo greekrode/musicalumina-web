@@ -30,6 +30,7 @@ export interface Database {
           terms_and_conditions: { en: string; id: string } | null;
           created_at: string;
           updated_at: string;
+          registration_fee: number | null;
         };
         Insert: {
           id?: string;
@@ -45,6 +46,7 @@ export interface Database {
           terms_and_conditions?: { en: string; id: string } | null;
           created_at?: string;
           updated_at?: string;
+          registration_fee?: number | null;
         };
         Update: {
           id?: string;
@@ -60,6 +62,7 @@ export interface Database {
           terms_and_conditions?: { en: string; id: string } | null;
           created_at?: string;
           updated_at?: string;
+          registration_fee?: number | null;
         };
       };
       songs: {

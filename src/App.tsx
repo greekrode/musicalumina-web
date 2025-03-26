@@ -12,6 +12,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const EventsPage = lazy(() => import('./pages/EventsPage'));
 const EventDetails = lazy(() => import('./pages/EventDetails'));
 const PastEventDetails = lazy(() => import('./pages/PastEventDetails'));
+const MasterclassDetails = lazy(() => import('./pages/MasterclassDetails'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 
@@ -73,6 +74,16 @@ function AnimatedRoutes() {
             <Suspense fallback={<LoadingSpinner fullScreen message="Loading past event details..." />}>
               <PageTransition>
                 <PastEventDetails />
+              </PageTransition>
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/masterclass/:id" 
+          element={
+            <Suspense fallback={<LoadingSpinner fullScreen message="Loading masterclass details..." />}>
+              <PageTransition>
+                <MasterclassDetails />
               </PageTransition>
             </Suspense>
           } 

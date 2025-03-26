@@ -93,7 +93,13 @@ function EventCard({
         </div>
         <div className="mt-auto">
           <Link
-            to={status === "completed" ? `/past-event/${id}` : `/event/${id}`}
+            to={
+              status === "completed"
+                ? `/past-event/${id}`
+                : type === "masterclass"
+                ? `/masterclass/${id}`
+                : `/event/${id}`
+            }
             className={`block w-full text-[#FFFFF0] px-4 py-2 rounded-md transition-colors text-center ${buttonConfig.className}`}
             onClick={(e) => buttonConfig.disabled && e.preventDefault()}
           >

@@ -213,6 +213,17 @@ export const translations = {
       duration: "Duration",
       overallPrizes: "Overall Prizes",
     },
+    masterclass: {
+      instructor: "Instructor",
+      registrationFee: "Registration Fee",
+      registration: {
+        title: "Masterclass Registration",
+        description: "Please fill in your details to register for this masterclass. Make sure all information is accurate.",
+      },
+    },
+    common: {
+      tbd: "TBA",
+    },
   },
   id: {
     navigation: {
@@ -425,6 +436,17 @@ export const translations = {
       repertoire: "Partitur",
       duration: "Durasi",
       overallPrizes: "Hadiah Keseluruhan",
+    },
+    masterclass: {
+      instructor: "Instruktur",
+      registrationFee: "Biaya Pendaftaran",
+      registration: {
+        title: "Pendaftaran Masterclass",
+        description: "Silakan isi detail Anda untuk mendaftar masterclass ini. Pastikan semua informasi akurat.",
+      },
+    },
+    common: {
+      tbd: "Akan Diumumkan",
     },
   },
 };

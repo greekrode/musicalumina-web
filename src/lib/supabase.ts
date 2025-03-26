@@ -183,11 +183,13 @@ export async function getEventById(id: string) {
       }, {});
 
       // Add prizes to their respective categories
-      event.event_categories = event.event_categories.map((category) => ({
-        ...category,
-        prizes: prizesByCategory[category.id] || [],
-        global_prizes: prizesByCategory.global || [],
-      }));
+      if (event.event_categories) {
+        event.event_categories = event.event_categories.map((category) => ({
+          ...category,
+          prizes: prizesByCategory[category.id] || [],
+          global_prizes: prizesByCategory.global || [],
+        }));
+      }
     }
 
     // For completed events, fetch winners

@@ -13,7 +13,7 @@ import {
 import TermsModal from "../components/TermsModal";
 import RegistrationModal from "../components/RegistrationModal";
 import { useEvent } from "../hooks/useEvent";
-import { formatDateWithLocale, translateDuration } from "../lib/utils";
+import { formatDateWithLocale, translateDuration, translateAgeRequirement } from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import type { Database } from "../lib/database.types";
 import type { EventType } from "../lib/database.types";
@@ -128,7 +128,7 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                   {t("eventDetails.ageRequirement")}:
                 </p>
                 <p className="text-sm text-black/80">
-                  {subCategory.age_requirement}
+                  {translateAgeRequirement(subCategory.age_requirement, language)}
                 </p>
               </div>
               <div>
