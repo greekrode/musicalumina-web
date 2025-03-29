@@ -261,6 +261,12 @@ function RegistrationModal({
         data.registrant_name = data.participant_name;
       }
 
+      // Get category and subcategory names
+      const category = categories.find((cat) => cat.id === data.category_id);
+      const subCategory = category?.event_subcategories.find(
+        (sub) => sub.id === data.subcategory_id
+      );
+
       // Submit registration data
       const { data: registration, error: registrationError } = await supabase
         .from("registrations")
@@ -310,11 +316,56 @@ function RegistrationModal({
         subcategoryId: data.subcategory_id
       });
 
-      // Get category and subcategory names
-      const category = categories.find((cat) => cat.id === data.category_id);
-      const subCategory = category?.event_subcategories.find(
-        (sub) => sub.id === data.subcategory_id
-      );
+      // Get event details for Lark integration
+      const { data: eventData, error: eventError } = await supabase
+        .from("events")
+        .select("lark_base, lark_table")
+        .eq("id", eventId)
+        .single();
+
+      if (eventError) {
+        console.error("Error fetching event data for Lark:", eventError);
+      } else if (eventData.lark_base && eventData.lark_table) {
+        // Send data to Lark form
+        try {
+          const { error: larkError } = await supabase.functions.invoke("send-to-lark", {
+            body: {
+              data: {
+                event: {
+                  id: eventId,
+                  lark_base: eventData.lark_base,
+                  lark_table: eventData.lark_table,
+                },
+                registration: {
+                  ref_code: refNumber,
+                  registrant_status: data.registrant_status,
+                  registrant_name: data.registrant_name,
+                  registrant_email: data.registrant_email,
+                  registrant_whatsapp: data.registrant_whatsapp,
+                  participant_name: data.participant_name,
+                  category_name: category?.name || "",
+                  subcategory_name: subCategory?.name || "",
+                  song_title: data.song_title,
+                  song_duration: data.song_duration || "",
+                  birth_certificate_url: birthCertUrl,
+                  song_pdf_url: songPdfUrl,
+                  bank_name: data.bank_name,
+                  bank_account_name: data.bank_account_name,
+                  bank_account_number: data.bank_account_number,
+                  payment_receipt_url: paymentReceiptUrl,
+                  created_at: registration.created_at,
+                },
+              },
+            },
+          });
+
+          if (larkError) {
+            console.error("Error sending data to Lark:", larkError);
+          }
+        } catch (error) {
+          console.error("Error sending data to Lark:", error);
+        }
+      }
 
       // Send confirmation email
       try {
