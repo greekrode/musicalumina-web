@@ -466,7 +466,10 @@ function EventDetails() {
           {event.status === "ongoing" && (
             <div className="mt-8">
               <button
-                onClick={() => setIsRegistrationModalOpen(true)}
+                onClick={() => {
+                  (window as any).umami?.track('register_now_click', { type: 'competition', eventId: id });
+                  setIsRegistrationModalOpen(true);
+                }}
                 disabled={!!event.registration_deadline && new Date() >= new Date(event.registration_deadline)}
                 className={`${
                   !!event.registration_deadline && new Date() >= new Date(event.registration_deadline)

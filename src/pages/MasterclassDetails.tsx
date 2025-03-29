@@ -171,7 +171,10 @@ function MasterclassDetails() {
           {event.status === "ongoing" && (
             <div className="mt-8">
               <button
-                onClick={() => setIsRegistrationModalOpen(true)}
+                onClick={() => {
+                  (window as any).umami?.track('register_now_click', { type: 'masterclass', eventId: id });
+                  setIsRegistrationModalOpen(true);
+                }}
                 className="bg-marigold text-white px-6 py-3 rounded-md hover:bg-marigold/90 transition-colors w-full md:w-auto"
               >
                 {t("eventDetails.registerNow")}

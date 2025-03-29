@@ -302,6 +302,14 @@ function RegistrationModal({
         subcategoryId: data.subcategory_id,
       });
 
+      // Track with Umami
+      (window as any).umami?.track('registration_submitted', { 
+        eventId,
+        registrantStatus: data.registrant_status,
+        categoryId: data.category_id,
+        subcategoryId: data.subcategory_id
+      });
+
       // Get category and subcategory names
       const category = categories.find((cat) => cat.id === data.category_id);
       const subCategory = category?.event_subcategories.find(

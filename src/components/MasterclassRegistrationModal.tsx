@@ -65,6 +65,13 @@ function MasterclassRegistrationModal({
       });
 
       if (error) throw error;
+      
+      // Track successful registration
+      (window as any).umami?.track('registration_submitted', { 
+        eventId,
+        registrantStatus: registrationStatus 
+      });
+      
       handleClose();
     } catch (error) {
       console.error("Error submitting registration:", error);
