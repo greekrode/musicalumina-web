@@ -338,7 +338,7 @@ function RegistrationModal({
                 },
                 registration: {
                   ref_code: refNumber,
-                  registrant_status: data.registrant_status,
+                  registrant_status: data.registrant_status.charAt(0).toUpperCase() + data.registrant_status.slice(1),
                   registrant_name: data.registrant_name,
                   registrant_email: data.registrant_email,
                   registrant_whatsapp: data.registrant_whatsapp,
