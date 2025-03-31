@@ -1,4 +1,5 @@
 const enTemplate = `
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -19,6 +20,8 @@ const enTemplate = `
         Please review your registration details below. If you notice any discrepancies or need assistance, our team is
         ready to help via <a href="https://wa.me/6282161505577" target="_blank"
             style="color: #1a73e8; text-decoration: none; font-weight: 500;">WhatsApp</a>.
+        <br/>
+        <b>DO NOT REPLY TO THIS EMAIL.</b>
     </p>
 
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
@@ -101,6 +104,8 @@ const idTemplate = `<!DOCTYPE html>
         Silakan periksa detail pendaftaran Anda di bawah ini. Jika Anda menemukan ketidaksesuaian atau membutuhkan bantuan,
         tim kami siap membantu melalui <a href="https://wa.me/6282161505577" target="_blank"
             style="color: #1a73e8; text-decoration: none; font-weight: 500;">WhatsApp</a>.
+        <br/>
+        <b>MOHON UNTUK TIDAK MEMBALAS EMAIL INI.</b>
     </p>
 
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">

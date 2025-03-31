@@ -405,6 +405,34 @@ function RegistrationModal({
         console.error("Error sending confirmation email:", error);
       }
 
+      // Send WhatsApp message
+      try {
+        const { error: whatsappError } = await supabase.functions.invoke('send-whatsapp-message', {
+          body: {
+            data: {
+              registrant_status: data.registrant_status,
+              registrant_name: data.registrant_name || data.participant_name,
+              registrant_email: data.registrant_email,
+              registrant_whatsapp: data.registrant_whatsapp,
+              participant_name: data.participant_name,
+              song_title: data.song_title,
+              song_duration: data.song_duration || '',
+              category: category?.name || '',
+              sub_category: subCategory?.name || '',
+              registration_ref_code: refNumber,
+              event_name: eventName,
+              language
+            }
+          }
+        });
+
+        if (whatsappError) {
+          console.error("Error sending WhatsApp message:", whatsappError);
+        }
+      } catch (error) {
+        console.error("Error sending WhatsApp message:", error);
+      }
+
       setRegistrationRef(refNumber);
       setRegisteredName(data.participant_name);
       setShowThankYou(true);
