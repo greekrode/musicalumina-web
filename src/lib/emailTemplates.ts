@@ -1,12 +1,13 @@
-const enTemplate = `<!DOCTYPE html>
+const enTemplate = `
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Registration Confirmation - Musica Lumina</title>
+    <title>Registration Confirmation - {event_name}</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
-        <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">Welcome to Musica Lumina!</h1>
+        <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">Welcome to {event_name}!</h1>
         <p style="color: #666; font-size: 18px; margin: 0;">Thank you for joining our musical journey</p>
     </div>
 
@@ -77,17 +78,18 @@ const enTemplate = `<!DOCTYPE html>
         <p style="font-size: 18px; color: #E2A225; margin: 5px 0;">Musica Lumina Team</p>
     </div>
 </body>
-</html>`;
+</html>
+`;
 
 const idTemplate = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Konfirmasi Pendaftaran - Musica Lumina</title>
+    <title>Konfirmasi Pendaftaran - {event_name}</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
-        <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">Selamat Datang di Musica Lumina!</h1>
+        <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">Selamat Datang di {event_name}!</h1>
         <p style="color: #666; font-size: 18px; margin: 0;">Terima kasih telah bergabung dalam perjalanan musik kami</p>
     </div>
 
