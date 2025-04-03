@@ -12,6 +12,8 @@ import "react-phone-input-2/lib/style.css";
 import { useLanguage } from "../lib/LanguageContext";
 import { track } from "@vercel/analytics";
 import { loadEmailTemplate } from "../lib/emailTemplates";
+import { WhatsAppService } from "../lib/whatsapp.ts";
+import { LarkService } from "../lib/lark.ts";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -326,42 +328,34 @@ function RegistrationModal({
       if (eventError) {
         console.error("Error fetching event data for Lark:", eventError);
       } else if (eventData.lark_base && eventData.lark_table) {
-        // Send data to Lark form
+        // Send data to Lark
         try {
-          const { error: larkError } = await supabase.functions.invoke("send-to-lark", {
-            body: {
-              data: {
-                event: {
-                  id: eventId,
-                  lark_base: eventData.lark_base,
-                  lark_table: eventData.lark_table,
-                },
-                registration: {
-                  ref_code: refNumber,
-                  registrant_status: data.registrant_status.charAt(0).toUpperCase() + data.registrant_status.slice(1),
-                  registrant_name: data.registrant_name,
-                  registrant_email: data.registrant_email,
-                  registrant_whatsapp: data.registrant_whatsapp,
-                  participant_name: data.participant_name,
-                  category_name: category?.name || "",
-                  subcategory_name: subCategory?.name || "",
-                  song_title: data.song_title,
-                  song_duration: data.song_duration || "",
-                  birth_certificate_url: birthCertUrl,
-                  song_pdf_url: songPdfUrl,
-                  bank_name: data.bank_name,
-                  bank_account_name: data.bank_account_name,
-                  bank_account_number: data.bank_account_number,
-                  payment_receipt_url: paymentReceiptUrl,
-                  created_at: registration.created_at,
-                },
-              },
+          await LarkService.sendRegistrationData({
+            event: {
+              id: eventId,
+              lark_base: eventData.lark_base,
+              lark_table: eventData.lark_table,
+            },
+            registration: {
+              ref_code: refNumber,
+              registrant_status: data.registrant_status.charAt(0).toUpperCase() + data.registrant_status.slice(1),
+              registrant_name: data.registrant_name || data.participant_name,
+              registrant_email: data.registrant_email,
+              registrant_whatsapp: data.registrant_whatsapp,
+              participant_name: data.participant_name,
+              category_name: category?.name || "",
+              subcategory_name: subCategory?.name || "",
+              song_title: data.song_title,
+              song_duration: data.song_duration || "",
+              birth_certificate_url: "",
+              song_pdf_url: "",
+              bank_name: data.bank_name,
+              bank_account_name: data.bank_account_name,
+              bank_account_number: data.bank_account_number,
+              payment_receipt_url: "",
+              created_at: registration.created_at,
             },
           });
-
-          if (larkError) {
-            console.error("Error sending data to Lark:", larkError);
-          }
         } catch (error) {
           console.error("Error sending data to Lark:", error);
         }
@@ -369,7 +363,6 @@ function RegistrationModal({
 
       // Send confirmation email
       try {
-        console.log('Current language:', language);
         const templateData = {
           registrant_status: data.registrant_status,
           registrant_name: data.registrant_name || data.participant_name,
@@ -385,8 +378,7 @@ function RegistrationModal({
         };
         
         const templateHtml = loadEmailTemplate(language, templateData);
-        console.log('Template loaded successfully');
-        
+
         const { error: emailError } = await supabase.functions.invoke('send-registration-email', {
           body: {
             data: {
@@ -407,28 +399,20 @@ function RegistrationModal({
 
       // Send WhatsApp message
       try {
-        const { error: whatsappError } = await supabase.functions.invoke('send-whatsapp-message', {
-          body: {
-            data: {
-              registrant_status: data.registrant_status,
-              registrant_name: data.registrant_name || data.participant_name,
-              registrant_email: data.registrant_email,
-              registrant_whatsapp: data.registrant_whatsapp,
-              participant_name: data.participant_name,
-              song_title: data.song_title,
-              song_duration: data.song_duration || '',
-              category: category?.name || '',
-              sub_category: subCategory?.name || '',
-              registration_ref_code: refNumber,
-              event_name: eventName,
-              language
-            }
-          }
+        await WhatsAppService.sendRegistrationMessage({
+          registrant_status: data.registrant_status,
+          registrant_name: data.registrant_name || data.participant_name,
+          registrant_email: data.registrant_email,
+          registrant_whatsapp: data.registrant_whatsapp,
+          participant_name: data.participant_name,
+          song_title: data.song_title,
+          song_duration: data.song_duration || '',
+          category: category?.name || '',
+          sub_category: subCategory?.name || '',
+          registration_ref_code: refNumber,
+          event_name: eventName,
+          language
         });
-
-        if (whatsappError) {
-          console.error("Error sending WhatsApp message:", whatsappError);
-        }
       } catch (error) {
         console.error("Error sending WhatsApp message:", error);
       }

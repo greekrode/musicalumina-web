@@ -1,3 +1,0 @@
-[functions.send-to-lark]
-verify_jwt = true
-max_retries = 3 
