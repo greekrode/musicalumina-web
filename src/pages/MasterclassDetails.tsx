@@ -175,7 +175,7 @@ function MasterclassDetails() {
                   (window as any).umami?.track('register_now_click', { type: 'masterclass', eventId: id });
                   setIsRegistrationModalOpen(true);
                 }}
-                className="bg-marigold text-white px-6 py-3 rounded-md hover:bg-marigold/90 transition-colors w-full md:w-auto"
+                className="bg-marigold text-white px-6 py-3 rounded-lg hover:bg-marigold/90 transition-colors w-full md:w-auto"
               >
                 {t("eventDetails.registerNow")}
               </button>
@@ -193,7 +193,7 @@ function MasterclassDetails() {
           <p className="text-black/80 mb-4">{t("eventDetails.reviewTerms")}</p>
           <button
             onClick={() => setIsTermsModalOpen(true)}
-            className="bg-marigold text-[#FFFFF0] px-6 py-2 rounded-md hover:bg-marigold/90 transition-colors inline-flex items-center"
+            className="bg-marigold text-[#FFFFF0] px-6 py-2 rounded-lg hover:bg-marigold/90 transition-colors inline-flex items-center"
           >
             {t("eventDetails.viewTerms")}
           </button>

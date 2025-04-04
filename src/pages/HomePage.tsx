@@ -52,7 +52,7 @@ function HomePage() {
               {event && (
                 <button
                   onClick={() => handleEventClick(event.id)}
-                  className="bg-marigold/60 text-[#FFFFF0] px-8 py-3 rounded-md hover:bg-marigold/50 transition-colors flex items-center justify-center md:justify-start w-full md:w-auto mb-4"
+                  className="bg-marigold/60 text-[#FFFFF0] px-8 py-3 rounded-lg hover:bg-marigold/50 transition-colors flex items-center justify-center md:justify-start w-full md:w-auto mb-4"
                 >
                   <span className="flex-1 md:flex-none">
                     {t("home.latestEvent").replace("{title}", event.title)}
@@ -62,7 +62,7 @@ function HomePage() {
               )}
               <button
                 onClick={handleExploreClick}
-                className="bg-marigold text-[#FFFFF0] px-8 py-3 rounded-md hover:bg-marigold/90 transition-colors w-full md:w-auto"
+                className="bg-marigold text-[#FFFFF0] px-8 py-3 rounded-lg hover:bg-marigold/90 transition-colors w-full md:w-auto"
               >
                 {t("home.exploreEvents")}
               </button>

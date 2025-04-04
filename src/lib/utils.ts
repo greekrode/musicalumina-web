@@ -1,3 +1,6 @@
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 export function formatDateWithLocale(
   dateString: string,
   language: string
@@ -92,4 +95,8 @@ export function translateAgeRequirement(ageRequirement: string, language: string
 
   // If no pattern matches, return original
   return ageRequirement;
+}
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }

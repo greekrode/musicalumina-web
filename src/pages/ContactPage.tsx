@@ -136,7 +136,7 @@ function ContactPage() {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
+                    className="w-full px-4 py-2 rounded-md border border-marigold/20 focus:outline-none focus:ring-2 focus:ring-marigold/50"
                     placeholder={t("contact.form.namePlaceholder")}
                   />
                 </div>
@@ -157,7 +157,7 @@ function ContactPage() {
                         email: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
+                    className="w-full px-4 py-2 rounded-md border border-marigold/20 focus:outline-none focus:ring-2 focus:ring-marigold/50"
                     placeholder={t("contact.form.emailPlaceholder")}
                   />
                 </div>
@@ -178,7 +178,7 @@ function ContactPage() {
                         subject: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
+                    className="w-full px-4 py-2 rounded-md border border-marigold/20 focus:outline-none focus:ring-2 focus:ring-marigold/50"
                     placeholder={t("contact.form.subjectPlaceholder")}
                   />
                 </div>
@@ -199,17 +199,17 @@ function ContactPage() {
                         message: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 rounded-md border border-[#CFB53B]/20 focus:outline-none focus:ring-2 focus:ring-[#CFB53B]/50"
+                    className="w-full px-4 py-2 rounded-md border border-marigold/20 focus:outline-none focus:ring-2 focus:ring-marigold/50"
                     placeholder={t("contact.form.messagePlaceholder")}
                   ></textarea>
                 </div>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full bg-[#CFB53B] text-white px-6 py-3 rounded-md transition-colors ${
+                  className={`w-full bg-marigold/80 text-white px-6 py-3 rounded-md transition-colors ${
                     isSubmitting
                       ? "opacity-70 cursor-not-allowed"
-                      : "hover:bg-[#CFB53B]/90"
+                      : "hover:bg-marigold"
                   }`}
                 >
                   {isSubmitting
@@ -226,21 +226,21 @@ function ContactPage() {
                 </h2>
                 <div className="space-y-4">
                   <div className="flex items-start space-x-4">
-                    <Mail className="h-6 w-6 text-[#CFB53B] mt-1" />
+                    <Mail className="h-6 w-6 text-marigold mt-1" />
                     <div>
                       <h3 className="font-medium text-[#808080]">
                         {t("contact.info.email")}
                       </h3>
                       <a
                         href="mailto:contact@musicalumina.com"
-                        className="text-[#808080]/80 hover:text-[#CFB53B] transition-colors"
+                        className="text-[#808080]/80 hover:text-marigold transition-colors"
                       >
                         contact@musicalumina.com
                       </a>
                     </div>
                   </div>
                   <div className="flex items-start space-x-4">
-                    <Phone className="h-6 w-6 text-[#CFB53B] mt-1" />
+                    <Phone className="h-6 w-6 text-marigold mt-1" />
                     <div>
                       <h3 className="font-medium text-[#808080]">
                         {t("contact.info.phone")}
@@ -249,14 +249,14 @@ function ContactPage() {
                         href="https://wa.me/6282161505577"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#808080]/80 hover:text-[#CFB53B] transition-colors"
+                        className="text-[#808080]/80 hover:text-marigold transition-colors"
                       >
                         +62 821 6150 5577
                       </a>
                     </div>
                   </div>
                   <div className="flex items-start space-x-4">
-                    <MapPin className="h-6 w-6 text-[#CFB53B] mt-1" />
+                    <MapPin className="h-6 w-6 text-marigold mt-1" />
                     <div>
                       <h3 className="font-medium text-[#808080]">
                         {t("contact.info.location")}

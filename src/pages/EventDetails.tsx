@@ -475,7 +475,7 @@ function EventDetails() {
                   !!event.registration_deadline && new Date() >= new Date(event.registration_deadline)
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-marigold hover:bg-marigold/90"
-                } text-white px-6 py-3 rounded-md transition-colors w-full md:w-auto`}
+                } text-white px-6 py-3 rounded-lg transition-colors w-full md:w-auto`}
               >
                 {!!event.registration_deadline && new Date() >= new Date(event.registration_deadline)
                   ? t("eventDetails.registrationClosed")
@@ -495,7 +495,7 @@ function EventDetails() {
           <p className="text-black/80 mb-4">{t("eventDetails.reviewTerms")}</p>
           <button
             onClick={() => setIsTermsModalOpen(true)}
-            className="bg-marigold text-[#FFFFF0] px-6 py-2 rounded-md hover:bg-marigold/90 transition-colors inline-flex items-center"
+            className="bg-marigold text-[#FFFFF0] px-6 py-2 rounded-lg hover:bg-marigold/90 transition-colors inline-flex items-center"
           >
             {t("eventDetails.viewTerms")}
           </button>

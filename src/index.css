@@ -36,11 +36,11 @@
   }
 
   .btn-primary {
-    @apply bg-marigold text-offWhite px-6 py-2 rounded-md hover:bg-marigold/90 transition-colors;
+    @apply bg-marigold text-offWhite px-6 py-2 rounded-lg hover:bg-marigold/90 transition-colors;
   }
 
   .btn-secondary {
-    @apply bg-burgundy text-offWhite px-6 py-2 rounded-md hover:bg-burgundy/90 transition-colors;
+    @apply bg-burgundy text-offWhite px-6 py-2 rounded-lg hover:bg-burgundy/90 transition-colors;
   }
 
   .card {
