@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { useClerk, SignOutButton } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
@@ -12,19 +12,12 @@ const navigation = [
 
 export function Sidebar() {
   const location = useLocation();
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
+  const { signOut } = useClerk();
 
   return (
     <div className="flex h-full grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r">
       <div className="flex h-16 shrink-0 items-center">
-        <img
-          className="h-8 w-auto"
-          src="/logo.png"
-          alt="Musicalumina"
-        />
+        <img className="h-8 w-auto" src="/logo.png" alt="Musicalumina" />
       </div>
       <nav className="flex flex-1 flex-col">
         <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -48,16 +41,17 @@ export function Sidebar() {
             </ul>
           </li>
           <li className="mt-auto">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 hover:text-primary hover:bg-gray-50"
-              onClick={handleSignOut}
-            >
-              Sign Out
-            </Button>
+            <SignOutButton redirectUrl="/admin">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-gray-700 hover:text-primary hover:bg-gray-50"
+              >
+                Sign Out
+              </Button>
+            </SignOutButton>
           </li>
         </ul>
       </nav>
     </div>
   );
-} 
+}

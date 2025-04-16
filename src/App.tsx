@@ -1,16 +1,16 @@
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminDashboard } from "@/pages/admin/Dashboard";
 import { AdminEvents } from "@/pages/admin/Events";
 import { AdminLogin } from "@/pages/admin/Login";
 import { AdminMasterclass } from "@/pages/admin/Masterclass";
+import { ClerkProvider } from "@clerk/clerk-react";
 import { AnimatePresence } from "framer-motion";
 import { lazy, Suspense } from "react";
 import {
   Route,
   BrowserRouter as Router,
   Routes,
-  useLocation,
+  useLocation
 } from "react-router-dom";
 import Footer from "./components/Footer";
 import LoadingSpinner from "./components/LoadingSpinner";
@@ -18,6 +18,10 @@ import Navigation from "./components/Navigation";
 import PageTransition from "./components/PageTransition";
 import { LanguageProvider } from "./lib/LanguageContext";
 import AdminRegistrations from "./pages/admin/Registrations";
+
+if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  throw new Error("Missing Clerk publishable key");
+}
 
 // Lazy load pages
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -207,7 +211,9 @@ function AppContent() {
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
-    <AuthProvider>
+    <ClerkProvider 
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+    >
       <LanguageProvider>
         <div className="min-h-screen flex flex-col bg-offWhite">
           {!isAdminRoute && <Navigation />}
@@ -217,7 +223,7 @@ function AppContent() {
           {!isAdminRoute && <FooterWrapper />}
         </div>
       </LanguageProvider>
-    </AuthProvider>
+    </ClerkProvider>
   );
 }
 
