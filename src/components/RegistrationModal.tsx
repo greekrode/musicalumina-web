@@ -330,6 +330,16 @@ function RegistrationModal({
       } else if (eventData.lark_base && eventData.lark_table) {
         // Send data to Lark
         try {
+          // Add logging to check URL values
+          console.log('URLs being sent to Lark:', {
+            birth_certificate_url: birthCertUrl,
+            song_pdf_url: songPdfUrl,
+            payment_receipt_url: paymentReceiptUrl
+          });
+
+          // Add a small delay to ensure URLs are propagated
+          await new Promise(resolve => setTimeout(resolve, 500));
+
           await LarkService.sendRegistrationData({
             event: {
               id: eventId,
@@ -357,7 +367,13 @@ function RegistrationModal({
             },
           });
         } catch (error) {
-          console.error("Error sending data to Lark:", error);
+          console.error("Error sending data to Lark:", error, {
+            urls: {
+              birth_certificate_url: birthCertUrl,
+              song_pdf_url: songPdfUrl,
+              payment_receipt_url: paymentReceiptUrl
+            }
+          });
         }
       }
 
