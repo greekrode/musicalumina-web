@@ -1,4 +1,4 @@
-import * as jose from 'jose';
+import * as jose from "jose";
 
 interface LarkRegistrationData {
   event: {
@@ -8,21 +8,22 @@ interface LarkRegistrationData {
   };
   registration: {
     ref_code: string;
-    registrant_status: string;
+    registrant_status?: string | null;
     registrant_name: string;
     registrant_email: string;
     registrant_whatsapp: string;
     participant_name: string;
-    category_name: string;
-    subcategory_name: string;
-    song_title: string;
-    song_duration: string;
-    birth_certificate_url: string;
-    song_pdf_url: string | null;
+    participant_age?: number | null;
+    category_name?: string | null;
+    subcategory_name?: string | null;
+    song_title?: string | null;
+    song_duration?: string | null;
+    birth_certificate_url?: string | null;
+    song_pdf_url?: string | null;
     bank_name: string;
     bank_account_name: string;
     bank_account_number: string;
-    payment_receipt_url: string;
+    payment_receipt_url?: string | null;
     created_at: string;
   };
 }
@@ -37,15 +38,15 @@ export class LarkService {
       throw new Error("Lark JWT secret is not configured");
     }
 
-    const alg = 'HS256';
+    const alg = "HS256";
     const secretBytes = new TextEncoder().encode(secret);
 
     const jwt = await new jose.SignJWT({
-      iss: 'musical-lumina',
+      iss: "musical-lumina",
     })
       .setProtectedHeader({ alg })
       .setIssuedAt()
-      .setExpirationTime('1h')
+      .setExpirationTime("1h")
       .sign(secretBytes);
 
     return jwt;
@@ -61,38 +62,60 @@ export class LarkService {
       registration.registrant_whatsapp
     );
 
-    return {
-      fields: {
-        "Registration Reference Code": registration.ref_code,
-        Registrant: registration.registrant_status,
-        "Registrant Name": registration.registrant_name,
-        "Registrant Email": registration.registrant_email,
-        "Registrant Whatsapp": whatsappNumber,
-        "Participant's Name": registration.participant_name,
-        Category: registration.category_name,
-        "Sub Category": registration.subcategory_name,
-        "Song Title": registration.song_title,
-        "Song Duration": registration.song_duration,
-        "Birth Cert / Passport": {
-          link: registration.birth_certificate_url,
-          text: registration.participant_name,
-        },
-        "Song PDF": registration.song_pdf_url
-          ? {
-              link: registration.song_pdf_url,
-              text: registration.song_title,
-            }
-          : null,
-        "Bank Name": registration.bank_name,
-        "Bank Account Name": registration.bank_account_name,
-        "Bank Account Number": registration.bank_account_number,
-        "Payment Receipt": {
-          link: registration.payment_receipt_url,
-          text: `${registration.registrant_name} - ${new Date(
-            registration.created_at
-          ).toLocaleDateString()}`,
-        },
+    const fields: Record<string, unknown> = {
+      "Registration Reference Code": registration.ref_code,
+      "Registrant Name": registration.registrant_name,
+      "Registrant Email": registration.registrant_email,
+      "Registrant Whatsapp": whatsappNumber,
+      "Participant's Name": registration.participant_name,
+      "Bank Name": registration.bank_name,
+      "Bank Account Name": registration.bank_account_name,
+      "Bank Account Number": registration.bank_account_number,
+      "Payment Receipt": {
+        link: registration.payment_receipt_url,
+        text: `${registration.registrant_name} - ${new Date(
+          registration.created_at
+        ).toLocaleDateString()}`,
       },
+    };
+
+    if (registration.registrant_status) {
+      fields["Registrant"] = registration.registrant_status;
+    }
+
+    if (registration.birth_certificate_url) {
+      fields["Birth Cert / Passport"] = {
+        link: registration.birth_certificate_url,
+        text: registration.participant_name,
+      };
+    }
+
+    if (registration.song_pdf_url) {
+      fields["Song PDF"] = {
+        link: registration.song_pdf_url,
+        text: registration.song_title,
+      };
+    }
+
+    if (registration.song_duration) {
+      fields["Song Duration"] = registration.song_duration;
+    }
+
+    if (registration.song_title) {
+      fields["Song Title"] = registration.song_title;
+    }
+
+    if (registration.category_name) {
+      fields["Category"] = registration.category_name;
+      fields["Sub Category"] = registration.subcategory_name;
+    }
+
+    if (registration.participant_age) {
+      fields["Participant's Age"] = registration.participant_age;
+    }
+
+    return {
+      fields,
     };
   }
 

@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type EventType = "festival" | "competition" | "masterclass";
+export type EventType = "festival" | "competition" | "masterclass" | "group class";
 export type EventStatus = "upcoming" | "ongoing" | "completed";
 export type RegistrationStatus = "personal" | "parents" | "teacher";
 export type RegistrationState = "pending" | "approved" | "rejected";
@@ -104,17 +104,18 @@ export interface Database {
         Row: {
           id: string;
           event_id: string;
-          category_id: string;
-          subcategory_id: string;
-          registrant_status: RegistrationStatus;
+          category_id: string | null;
+          subcategory_id: string | null;
+          registrant_status: RegistrationStatus | null;
           registrant_name: string | null;
           registrant_whatsapp: string;
           registrant_email: string;
           participant_name: string;
+          participant_age: number | null;
           song_id: string | null;
           song_title: string | null;
           song_duration: string | null;
-          birth_certificate_url: string;
+          birth_certificate_url: string | null;
           song_pdf_url: string | null;
           bank_name: string;
           bank_account_number: string;
@@ -296,6 +297,32 @@ export interface Database {
           avatar_url?: string | null;
           credentials?: Json | null;
           created_at?: string;
+        };
+      };
+      event_registration_fees: {
+        Row: {
+          id: string;
+          event_id: string;
+          uom: string;
+          price: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          uom: string;
+          price: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          uom?: string;
+          price?: number;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       masterclass_participants: {

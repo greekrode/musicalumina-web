@@ -60,6 +60,8 @@ function EventCard({
         return "bg-blue-100/90 text-blue-800";
       case "masterclass":
         return "bg-green-100/90 text-green-800";
+      case "group class":
+        return "bg-red-100/90 text-red-800";
       default:
         return "bg-gray-100/90 text-gray-800";
     }
@@ -100,7 +102,9 @@ function EventCard({
                   : `/past-event/${id}`
                 : type === "masterclass"
                 ? `/masterclass/${id}`
-                : `/event/${id}`
+                : type === "group class"
+                  ? `/group-class/${id}`
+                  : `/event/${id}`
             }
             className={`block w-full text-[#FFFFF0] px-4 py-2 rounded-lg transition-colors text-center ${buttonConfig.className}`}
             onClick={(e) => buttonConfig.disabled && e.preventDefault()}

@@ -13,7 +13,11 @@ import {
 import TermsModal from "../components/TermsModal";
 import RegistrationModal from "../components/RegistrationModal";
 import { useEvent } from "../hooks/useEvent";
-import { formatDateWithLocale, translateDuration, translateAgeRequirement } from "../lib/utils";
+import {
+  formatDateWithLocale,
+  translateDuration,
+  translateAgeRequirement,
+} from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import type { Database } from "../lib/database.types";
 import type { EventType } from "../lib/database.types";
@@ -128,7 +132,10 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                   {t("eventDetails.ageRequirement")}:
                 </p>
                 <p className="text-sm text-black/80">
-                  {translateAgeRequirement(subCategory.age_requirement, language)}
+                  {translateAgeRequirement(
+                    subCategory.age_requirement,
+                    language
+                  )}
                 </p>
               </div>
               <div>
@@ -170,7 +177,10 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                     {t("eventDetails.duration")}:
                   </p>
                   <p className="text-sm text-black/80">
-                    {translateDuration(subCategory.performance_duration, language)}
+                    {translateDuration(
+                      subCategory.performance_duration,
+                      language
+                    )}
                   </p>
                 </div>
               )}
@@ -456,7 +466,10 @@ function EventDetails() {
                     {t("eventDetails.registrationDeadline")}
                   </h3>
                   <p className="text-black/80">
-                    {formatDateWithLocale(event.registration_deadline, language)}
+                    {formatDateWithLocale(
+                      event.registration_deadline,
+                      language
+                    )}
                   </p>
                 </div>
               </div>
@@ -467,17 +480,25 @@ function EventDetails() {
             <div className="mt-8">
               <button
                 onClick={() => {
-                  (window as any).umami?.track('register_now_click', { type: 'competition', eventId: id });
+                  (window as any).umami?.track("register_now_click", {
+                    type: "competition",
+                    eventId: id,
+                  });
                   setIsRegistrationModalOpen(true);
                 }}
-                disabled={!!event.registration_deadline && new Date() >= new Date(event.registration_deadline)}
+                disabled={
+                  !!event.registration_deadline &&
+                  new Date() >= new Date(event.registration_deadline)
+                }
                 className={`${
-                  !!event.registration_deadline && new Date() >= new Date(event.registration_deadline)
+                  !!event.registration_deadline &&
+                  new Date() >= new Date(event.registration_deadline)
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-marigold hover:bg-marigold/90"
                 } text-white px-6 py-3 rounded-lg transition-colors w-full md:w-auto`}
               >
-                {!!event.registration_deadline && new Date() >= new Date(event.registration_deadline)
+                {!!event.registration_deadline &&
+                new Date() >= new Date(event.registration_deadline)
                   ? t("eventDetails.registrationClosed")
                   : t("eventDetails.registerNow")}
               </button>
@@ -562,7 +583,10 @@ function EventDetails() {
       <TermsModal
         isOpen={isTermsModalOpen}
         onClose={() => setIsTermsModalOpen(false)}
-        terms={event?.terms_and_conditions?.[language] || event?.terms_and_conditions?.en}
+        terms={
+          event?.terms_and_conditions?.[language] ||
+          event?.terms_and_conditions?.en
+        }
       />
     </div>
   );

@@ -183,6 +183,7 @@ export const translations = {
         festival: "Festival",
         competition: "Competition",
         masterclass: "Masterclass",
+        "group class": "Group Class",
       },
     },
     eventDetails: {
@@ -225,6 +226,15 @@ export const translations = {
     },
     common: {
       tbd: "TBA",
+    },
+    groupClass: {
+      registrationFees: "Registration Fee",
+      registration: {
+        title: "Group Class Registration",
+        description: "Please fill in the required information to register for this group class.",
+        eventName: "Group Class Name",
+        participantAge: "Participant Age",
+      },
     },
   },
   id: {
@@ -410,6 +420,7 @@ export const translations = {
         festival: "Festival",
         competition: "Kompetisi",
         masterclass: "Masterclass",
+        "group class": "Group Class",
       },
     },
     eventDetails: {
@@ -451,6 +462,15 @@ export const translations = {
     },
     common: {
       tbd: "Akan Diumumkan",
+    },
+    groupClass: {
+      registrationFees: "Biaya Pendaftaran",
+      registration: {
+        title: "Pendaftaran Group Class",
+        description: "Silakan isi informasi yang diperlukan untuk mendaftar group class ini.",
+        eventName: "Nama Group Class",
+        participantAge: "Usia Peserta",
+      },
     },
   },
 };

@@ -1,15 +1,16 @@
 import * as jose from "jose";
 
 interface WhatsAppMessageData {
-  registrant_status: string;
+  registrant_status?: string;
   registrant_name: string;
-  registrant_email: string;
+  registrant_email?: string;
   registrant_whatsapp: string;
   participant_name: string;
-  song_title: string;
-  song_duration: string;
-  category: string;
-  sub_category: string;
+  participant_age?: number;
+  song_title?: string;
+  song_duration?: string;
+  category?: string;
+  sub_category?: string;
   registration_ref_code: string;
   event_name: string;
   language: string;
@@ -39,7 +40,7 @@ export class WhatsAppService {
     return jwt;
   }
 
-  private static formatMessage(data: WhatsAppMessageData): string {
+  private static formatCompetitionMessage(data: WhatsAppMessageData): string {
     const registrantType =
       {
         personal: data.language === "id" ? "Personal" : "Personal",
@@ -79,16 +80,74 @@ export class WhatsAppService {
           `Musical Lumina Team`;
   }
 
+  private static formatGroupClassMessage(data: WhatsAppMessageData): string {
+    return data.language === "id"
+      ? `*Pendaftaran ${data.event_name} Berhasil!* 🎉\n\n` +
+          `Halo *${data.registrant_name}*,\n\n` +
+          `Terima kasih telah mendaftar untuk ${data.event_name}. Berikut adalah detail pendaftaran Anda:\n\n` +
+          `*Nomor Referensi:* ${data.registration_ref_code}\n\n` +
+          `*Nama Peserta:* ${data.participant_name}\n\n` +
+          `*Umur Peserta:* ${data.participant_age}\n\n` +
+          `\nKami akan segera memproses pendaftaran Anda. Silakan simpan nomor referensi di atas untuk keperluan di masa mendatang.\n\n` +
+          `Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.\n\n` +
+          `Salam musik,\n` +
+          `Tim Musical Lumina`
+      : `*${data.event_name} Registration Successful!* 🎉\n\n` +
+          `Hello *${data.registrant_name}*,\n\n` +
+          `Thank you for registering for ${data.event_name}. Here are your registration details:\n\n` +
+          `*Reference Number:* ${data.registration_ref_code}\n\n` +
+          `*Participant Name:* ${data.participant_name}\n\n` +
+          `*Age:* ${data.participant_age}\n\n` +
+          `\nWe will process your registration shortly. Please keep the reference number for future correspondence.\n\n` +
+          `If you have any questions, please don't hesitate to contact us.\n\n` +
+          `Musical regards,\n` +
+          `Musical Lumina Team`;
+  }
+
   private static formatPhoneNumber(phone: string): string {
     // Remove any non-digit characters and ensure it starts with country code
     return phone.replace(/^\+/, "");
   }
 
-  public static async sendRegistrationMessage(
+  public static async sendCompetitionRegistrationMessage(
     data: WhatsAppMessageData
   ): Promise<void> {
     try {
-      const message = this.formatMessage(data);
+      const message = this.formatCompetitionMessage(data);
+      const phone = this.formatPhoneNumber(data.registrant_whatsapp);
+      const token = await this.generateAuthToken();
+
+      const response = await fetch(this.WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          phone,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to send WhatsApp message: ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("WhatsApp message sent successfully:", result);
+    } catch (error) {
+      console.error("Error sending WhatsApp message:", error);
+      throw error;
+    }
+  }
+
+  public static async sendGroupClassRegistrationMessage(
+    data: WhatsAppMessageData
+  ): Promise<void> {
+    try {
+      const message = this.formatGroupClassMessage(data);
       const phone = this.formatPhoneNumber(data.registrant_whatsapp);
       const token = await this.generateAuthToken();
 

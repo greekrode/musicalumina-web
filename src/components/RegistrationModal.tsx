@@ -311,11 +311,11 @@ function RegistrationModal({
       });
 
       // Track with Umami
-      (window as any).umami?.track('registration_submitted', { 
+      (window as any).umami?.track("registration_submitted", {
         eventId,
         registrantStatus: data.registrant_status,
         categoryId: data.category_id,
-        subcategoryId: data.subcategory_id
+        subcategoryId: data.subcategory_id,
       });
 
       // Get event details for Lark integration
@@ -330,15 +330,8 @@ function RegistrationModal({
       } else if (eventData.lark_base && eventData.lark_table) {
         // Send data to Lark
         try {
-          // Add logging to check URL values
-          console.log('URLs being sent to Lark:', {
-            birth_certificate_url: birthCertUrl,
-            song_pdf_url: songPdfUrl,
-            payment_receipt_url: paymentReceiptUrl
-          });
-
           // Add a small delay to ensure URLs are propagated
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
 
           await LarkService.sendRegistrationData({
             event: {
@@ -348,7 +341,9 @@ function RegistrationModal({
             },
             registration: {
               ref_code: refNumber,
-              registrant_status: data.registrant_status.charAt(0).toUpperCase() + data.registrant_status.slice(1),
+              registrant_status:
+                data.registrant_status.charAt(0).toUpperCase() +
+                data.registrant_status.slice(1),
               registrant_name: data.registrant_name || data.participant_name,
               registrant_email: data.registrant_email,
               registrant_whatsapp: data.registrant_whatsapp,
@@ -367,13 +362,7 @@ function RegistrationModal({
             },
           });
         } catch (error) {
-          console.error("Error sending data to Lark:", error, {
-            urls: {
-              birth_certificate_url: birthCertUrl,
-              song_pdf_url: songPdfUrl,
-              payment_receipt_url: paymentReceiptUrl
-            }
-          });
+          console.error("Error sending data to Lark:", error);
         }
       }
 
@@ -386,25 +375,28 @@ function RegistrationModal({
           registrant_whatsapp: data.registrant_whatsapp,
           participant_name: data.participant_name,
           song_title: data.song_title,
-          song_duration: data.song_duration || '',
-          category: category?.name || '',
-          sub_category: subCategory?.name || '',
+          song_duration: data.song_duration || "",
+          category: category?.name || "",
+          sub_category: subCategory?.name || "",
           registration_ref_code: refNumber,
-          event_name: eventName
+          event_name: eventName,
         };
-        
+
         const templateHtml = loadEmailTemplate(language, templateData);
 
-        const { error: emailError } = await supabase.functions.invoke('send-registration-email', {
-          body: {
-            data: {
-              ...templateData,
-              registrationId: registration.id,
-              language,
-              template_html: templateHtml
-            }
+        const { error: emailError } = await supabase.functions.invoke(
+          "send-registration-email",
+          {
+            body: {
+              data: {
+                ...templateData,
+                registrationId: registration.id,
+                language,
+                template_html: templateHtml,
+              },
+            },
           }
-        });
+        );
 
         if (emailError) {
           console.error("Error sending confirmation email:", emailError);
@@ -415,19 +407,19 @@ function RegistrationModal({
 
       // Send WhatsApp message
       try {
-        await WhatsAppService.sendRegistrationMessage({
+        await WhatsAppService.sendCompetitionRegistrationMessage({
           registrant_status: data.registrant_status,
           registrant_name: data.registrant_name || data.participant_name,
           registrant_email: data.registrant_email,
           registrant_whatsapp: data.registrant_whatsapp,
           participant_name: data.participant_name,
           song_title: data.song_title,
-          song_duration: data.song_duration || '',
-          category: category?.name || '',
-          sub_category: subCategory?.name || '',
+          song_duration: data.song_duration || "",
+          category: category?.name || "",
+          sub_category: subCategory?.name || "",
           registration_ref_code: refNumber,
           event_name: eventName,
-          language
+          language,
         });
       } catch (error) {
         console.error("Error sending WhatsApp message:", error);

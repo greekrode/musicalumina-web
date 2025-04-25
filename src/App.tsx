@@ -18,6 +18,7 @@ import Navigation from "./components/Navigation";
 import PageTransition from "./components/PageTransition";
 import { LanguageProvider } from "./lib/LanguageContext";
 import AdminRegistrations from "./pages/admin/Registrations";
+import GroupClassDetails from "./pages/GroupClassDetails";
 
 if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
   throw new Error("Missing Clerk publishable key");
@@ -136,6 +137,23 @@ function AnimatedRoutes() {
             >
               <PageTransition>
                 <PastMasterclassDetails />
+              </PageTransition>
+            </Suspense>
+          }
+        />
+        <Route
+          path="/group-class/:id"
+          element={
+            <Suspense
+              fallback={
+                <LoadingSpinner
+                  fullScreen
+                  message="Loading group class details..."
+                />
+              }
+            >
+              <PageTransition>
+                <GroupClassDetails />
               </PageTransition>
             </Suspense>
           }

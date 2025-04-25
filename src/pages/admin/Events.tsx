@@ -3,12 +3,16 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
+import { AddEventModal } from "@/components/admin/AddEventModal";
+import { EditEventModal } from "@/components/admin/EditEventModal";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
 export function AdminEvents() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -31,12 +35,18 @@ export function AdminEvents() {
     }
   };
 
+  const handleEdit = (event: Event) => {
+    setEditingEvent(event);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
-          <Button variant="elegant">Add Event</Button>
+          <Button variant="elegant" onClick={() => setIsAddModalOpen(true)}>
+            Add Event
+          </Button>
         </div>
 
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow">
@@ -71,7 +81,7 @@ export function AdminEvents() {
                       {event.title}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {event.type}
+                      {event.type.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
                       <span
@@ -93,7 +103,11 @@ export function AdminEvents() {
                       {event.location}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
-                      <Button variant="ghost" className="mr-2">
+                      <Button 
+                        variant="ghost" 
+                        className="mr-2"
+                        onClick={() => handleEdit(event)}
+                      >
                         Edit
                       </Button>
                       <Button variant="ghost" className="text-red-600 hover:text-red-800">
@@ -107,6 +121,19 @@ export function AdminEvents() {
           </table>
         </div>
       </div>
+
+      <AddEventModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onEventAdded={fetchEvents}
+      />
+
+      <EditEventModal
+        isOpen={!!editingEvent}
+        onClose={() => setEditingEvent(null)}
+        onEventUpdated={fetchEvents}
+        event={editingEvent}
+      />
     </AdminLayout>
   );
 } 
