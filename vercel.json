@@ -16,6 +16,17 @@
       ],
       "destination": "https://www.musicalumina.com/event/793b10ef-dbf2-431b-813f-0b979d638944",
       "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "poco.musicalumina.com"
+        }
+      ],
+      "destination": "https://www.musicalumina.com/group-class/04e16f52-2d81-4f2e-9bcf-dfb77f56d28c",
+      "permanent": true
     }
   ]
-} 
+}
