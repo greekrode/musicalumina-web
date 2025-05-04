@@ -10,14 +10,15 @@ function HomePage() {
   const { t } = useLanguage();
   usePageTitle(t("home.title"));
   const navigate = useNavigate();
-  const { event, loading } = useLatestEvent();
+  const { events, loading } = useLatestEvent();
 
   const handleExploreClick = () => {
     navigate("/events");
   };
 
-  const handleEventClick = (eventId: string) => {
-    navigate(`/event/${eventId}`);
+  const handleEventClick = (eventId: string, eventType: string) => {
+    const formattedEventType = eventType.replace(/\s+/g, "-");
+    navigate(`/${formattedEventType}/${eventId}`);
   };
 
   if (loading) {
@@ -45,20 +46,23 @@ function HomePage() {
             <h1 className="text-4xl md:text-6xl font-playfair text-[#FFFFF0] mb-4 whitespace-pre-line">
               {t("home.mainHeading")}
             </h1>
-            <p className="text-xl text-[#F7E7CE] mb-8">
-              {t("home.subtitle")}
-            </p>
+            <p className="text-xl text-[#F7E7CE] mb-8">{t("home.subtitle")}</p>
             <div className="space-y-4">
-              {event && (
-                <button
-                  onClick={() => handleEventClick(event.id)}
-                  className="bg-marigold/60 text-[#FFFFF0] px-8 py-3 rounded-lg hover:bg-marigold/50 transition-colors flex items-center justify-center md:justify-start w-full md:w-auto mb-4"
-                >
-                  <span className="flex-1 md:flex-none">
-                    {t("home.latestEvent").replace("{title}", event.title)}
-                  </span>
-                  <ArrowRight className="h-5 w-5 ml-2" />
-                </button>
+              {events.length > 0 && (
+                <div className="space-y-4">
+                  {events.map((event) => (
+                    <button
+                      key={event.id}
+                      onClick={() => handleEventClick(event.id, event.type)}
+                      className="bg-marigold/60 text-[#FFFFF0] px-8 py-3 rounded-lg hover:bg-marigold/50 transition-colors flex items-center justify-center md:justify-start w-full md:w-auto"
+                    >
+                      <span className="flex-1 md:flex-none">
+                        {t("home.latestEvent").replace("{title}", event.title)}
+                      </span>
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </button>
+                  ))}
+                </div>
               )}
               <button
                 onClick={handleExploreClick}

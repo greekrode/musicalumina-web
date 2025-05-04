@@ -1,31 +1,36 @@
 import { useState, useEffect } from "react";
 import { getLatestUpcomingEvent } from "../lib/supabase";
 
-type LatestEvent = {
+type Event = {
   id: string;
   title: string;
   start_date: string;
-} | null;
+  type: string;
+};
 
 export const useLatestEvent = () => {
-  const [event, setEvent] = useState<LatestEvent>(null);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const fetchLatestEvent = async () => {
+    const fetchLatestEvents = async () => {
       try {
         const data = await getLatestUpcomingEvent();
-        setEvent(data);
+        setEvents(data || []);
       } catch (err) {
-        setError(err instanceof Error ? err : new Error("Failed to fetch latest event"));
+        setError(
+          err instanceof Error
+            ? err
+            : new Error("Failed to fetch latest events")
+        );
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLatestEvent();
+    fetchLatestEvents();
   }, []);
 
-  return { event, loading, error };
-}; 
+  return { events, loading, error };
+};

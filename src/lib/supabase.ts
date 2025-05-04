@@ -141,16 +141,20 @@ export async function getEventById(id: string) {
     if (event.event_categories) {
       // First sort categories by order_index
       event.event_categories = event.event_categories.sort(
-        (a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index
+        (a: { order_index: number }, b: { order_index: number }) =>
+          a.order_index - b.order_index
       );
 
       // Then sort subcategories within each category
-      event.event_categories = event.event_categories.map((category) => ({
-        ...category,
-        event_subcategories: category.event_subcategories.sort(
-          (a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index
-        ),
-      }));
+      event.event_categories = event.event_categories.map(
+        (category: { event_subcategories: { order_index: number }[] }) => ({
+          ...category,
+          event_subcategories: category.event_subcategories.sort(
+            (a: { order_index: number }, b: { order_index: number }) =>
+              a.order_index - b.order_index
+          ),
+        })
+      );
     }
 
     // For upcoming and ongoing events, fetch prizes
@@ -184,11 +188,13 @@ export async function getEventById(id: string) {
 
       // Add prizes to their respective categories
       if (event.event_categories) {
-        event.event_categories = event.event_categories.map((category) => ({
-          ...category,
-          prizes: prizesByCategory[category.id] || [],
-          global_prizes: prizesByCategory.global || [],
-        }));
+        event.event_categories = event.event_categories.map(
+          (category: { id: string; event_subcategories: { order_index: number }[] }) => ({
+            ...category,
+            prizes: prizesByCategory[category.id] || [],
+            global_prizes: prizesByCategory.global || [],
+          })
+        );
       }
     }
 
@@ -274,16 +280,16 @@ export const getLatestUpcomingEvent = async () => {
       `
       id,
       title,
-      start_date
+      start_date,
+      type
     `
     )
     .eq("status", "ongoing")
     .order("start_date", { ascending: true })
-    .limit(1)
-    .single();
+    .limit(3);
 
   if (error) {
-    console.error("Error fetching latest event:", error);
+    console.error("Error fetching latest events:", error);
     return null;
   }
 
