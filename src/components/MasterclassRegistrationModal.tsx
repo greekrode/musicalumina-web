@@ -65,12 +65,13 @@ function MasterclassRegistrationModal({
       });
 
       if (error) throw error;
-      
-      // Track successful registration
-      (window as any).umami?.track('registration_submitted', { 
-        eventId,
-      });
-      
+
+      if (!import.meta.env.DEV) {
+        window.umami?.track("masterclass_registration_submitted", {
+          eventId,
+        });
+      }
+
       handleClose();
     } catch (error) {
       console.error("Error submitting registration:", error);
@@ -78,11 +79,7 @@ function MasterclassRegistrationModal({
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={handleClose}
-      className="relative z-50"
-    >
+    <Dialog open={isOpen} onClose={handleClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
 
       <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -101,9 +98,7 @@ function MasterclassRegistrationModal({
 
           <div className="p-6">
             <div className="mb-6">
-              <h3 className="font-medium text-black mb-2">
-                {eventName}
-              </h3>
+              <h3 className="font-medium text-black mb-2">{eventName}</h3>
               <p className="text-sm text-black/60">
                 {t("masterclass.registration.description")}
               </p>
@@ -119,7 +114,9 @@ function MasterclassRegistrationModal({
                     <button
                       key={status}
                       type="button"
-                      onClick={() => setRegistrationStatus(status as RegistrationStatus)}
+                      onClick={() =>
+                        setRegistrationStatus(status as RegistrationStatus)
+                      }
                       className={`p-3 text-sm rounded-lg border ${
                         registrationStatus === status
                           ? "border-marigold bg-marigold/10 text-marigold"
@@ -144,7 +141,10 @@ function MasterclassRegistrationModal({
                           type="text"
                           value={formData.registrantName}
                           onChange={(e) =>
-                            setFormData({ ...formData, registrantName: e.target.value })
+                            setFormData({
+                              ...formData,
+                              registrantName: e.target.value,
+                            })
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
                           required
@@ -159,7 +159,10 @@ function MasterclassRegistrationModal({
                         type="tel"
                         value={formData.registrantWhatsapp}
                         onChange={(e) =>
-                          setFormData({ ...formData, registrantWhatsapp: e.target.value })
+                          setFormData({
+                            ...formData,
+                            registrantWhatsapp: e.target.value,
+                          })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
                         required
@@ -173,7 +176,10 @@ function MasterclassRegistrationModal({
                         type="email"
                         value={formData.registrantEmail}
                         onChange={(e) =>
-                          setFormData({ ...formData, registrantEmail: e.target.value })
+                          setFormData({
+                            ...formData,
+                            registrantEmail: e.target.value,
+                          })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
                         required
@@ -187,7 +193,10 @@ function MasterclassRegistrationModal({
                         type="text"
                         value={formData.participantName}
                         onChange={(e) =>
-                          setFormData({ ...formData, participantName: e.target.value })
+                          setFormData({
+                            ...formData,
+                            participantName: e.target.value,
+                          })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
                         required
@@ -237,7 +246,10 @@ function MasterclassRegistrationModal({
                         type="text"
                         value={formData.bankAccountNumber}
                         onChange={(e) =>
-                          setFormData({ ...formData, bankAccountNumber: e.target.value })
+                          setFormData({
+                            ...formData,
+                            bankAccountNumber: e.target.value,
+                          })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
                         required
@@ -251,7 +263,10 @@ function MasterclassRegistrationModal({
                         type="text"
                         value={formData.bankAccountName}
                         onChange={(e) =>
-                          setFormData({ ...formData, bankAccountName: e.target.value })
+                          setFormData({
+                            ...formData,
+                            bankAccountName: e.target.value,
+                          })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
                         required
@@ -284,4 +299,4 @@ function MasterclassRegistrationModal({
   );
 }
 
-export default MasterclassRegistrationModal; 
+export default MasterclassRegistrationModal;

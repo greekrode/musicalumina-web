@@ -232,10 +232,11 @@ export default function GroupClassRegistrationModal({
       const phone = data.registrant_whatsapp.replace(/\D/g, "");
       const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
-      // Track with Umami
-      (window as any).umami?.track("group_class_registration_submitted", {
-        eventId,
-      });
+      if (!import.meta.env.DEV) {
+        window.umami?.track("group_class_registration_submitted", {
+          eventId,
+        });
+      }
 
       const { data: eventData, error: eventError } = await supabase
         .from("events")

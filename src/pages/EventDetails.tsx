@@ -480,10 +480,12 @@ function EventDetails() {
             <div className="mt-8">
               <button
                 onClick={() => {
-                  (window as any).umami?.track("register_now_click", {
-                    type: "competition",
-                    eventId: id,
-                  });
+                  if (!import.meta.env.DEV) {
+                    window.umami?.track("register_now_click", {
+                      type: "competition",
+                      eventId: id,
+                    });
+                  }
                   setIsRegistrationModalOpen(true);
                 }}
                 disabled={

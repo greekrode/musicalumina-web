@@ -172,7 +172,12 @@ function MasterclassDetails() {
             <div className="mt-8">
               <button
                 onClick={() => {
-                  (window as any).umami?.track('register_now_click', { type: 'masterclass', eventId: id });
+                  if (!import.meta.env.DEV) {
+                    window.umami?.track("register_now_click", {
+                      type: "masterclass",
+                      eventId: id,
+                    });
+                  }
                   setIsRegistrationModalOpen(true);
                 }}
                 className="bg-marigold text-white px-6 py-3 rounded-lg hover:bg-marigold/90 transition-colors w-full md:w-auto"

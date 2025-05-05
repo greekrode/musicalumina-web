@@ -20,14 +20,6 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { useLanguage } from "../lib/LanguageContext";
 import { supabase } from "../lib/supabase";
 
-declare global {
-  interface Window {
-    umami?: {
-      track: (event: string, data?: Record<string, unknown>) => void;
-    };
-  }
-}
-
 type Event = Database["public"]["Tables"]["events"]["Row"] & {
   event_jury: EventJuror[];
   event_registration_fees?: RegistrationFee[];
@@ -221,10 +213,12 @@ function GroupClassDetails() {
             <div className="mt-8">
               <button
                 onClick={() => {
-                  window.umami?.track("register_now_click", {
-                    type: "group_class",
-                    eventId: id,
-                  });
+                  if (!import.meta.env.DEV) {
+                    window.umami?.track("register_now_click", {
+                      type: "group_class",
+                      eventId: id,
+                    });
+                  }
                   setIsRegistrationModalOpen(true);
                 }}
                 className="bg-marigold text-white px-6 py-3 rounded-lg hover:bg-marigold/90 transition-colors w-full md:w-auto"

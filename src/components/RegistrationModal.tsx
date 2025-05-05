@@ -302,12 +302,13 @@ function RegistrationModal({
       const phone = data.registrant_whatsapp.replace(/\D/g, "");
       const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
-      // Track with Umami
-      (window as any).umami?.track("event_registration_submitted", {
-        eventId,
-        categoryId: data.category_id,
-        subcategoryId: data.subcategory_id,
-      });
+      if (!import.meta.env.DEV) {
+        window.umami?.track("event_registration_submitted", {
+          eventId,
+          categoryId: data.category_id,
+          subcategoryId: data.subcategory_id,
+        });
+      }
 
       // Get event details for Lark integration
       const { data: eventData, error: eventError } = await supabase
