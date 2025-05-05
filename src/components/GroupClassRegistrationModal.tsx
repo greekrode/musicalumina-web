@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { track } from "@vercel/analytics";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import PhoneInput from "react-phone-input-2";
@@ -233,16 +232,9 @@ export default function GroupClassRegistrationModal({
       const phone = data.registrant_whatsapp.replace(/\D/g, "");
       const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
-      // Track registration
-      track("group_class_registration", {
-        eventId,
-        eventName,
-      });
-
       // Track with Umami
       (window as any).umami?.track("group_class_registration_submitted", {
         eventId,
-        registrantStatus: data.registrant_status,
       });
 
       const { data: eventData, error: eventError } = await supabase

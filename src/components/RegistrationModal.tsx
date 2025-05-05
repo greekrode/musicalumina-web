@@ -10,7 +10,6 @@ import { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useLanguage } from "../lib/LanguageContext";
-import { track } from "@vercel/analytics";
 import { loadEmailTemplate } from "../lib/emailTemplates";
 import { WhatsAppService } from "../lib/whatsapp.ts";
 import { LarkService } from "../lib/lark.ts";
@@ -303,17 +302,9 @@ function RegistrationModal({
       const phone = data.registrant_whatsapp.replace(/\D/g, "");
       const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
-      // Add analytics tracking
-      track("event_registration", {
-        eventId,
-        categoryId: data.category_id,
-        subcategoryId: data.subcategory_id,
-      });
-
       // Track with Umami
-      (window as any).umami?.track("registration_submitted", {
+      (window as any).umami?.track("event_registration_submitted", {
         eventId,
-        registrantStatus: data.registrant_status,
         categoryId: data.category_id,
         subcategoryId: data.subcategory_id,
       });
