@@ -1,7 +1,7 @@
 import { Mail, Phone, MapPin } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useImagePreloader } from "../hooks/useImagePreloader";
-import heroBg from "../assets/contact-hero-bg.jpg";
+import heroBg from "../assets/contact-hero-bg.webp";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useState } from "react";
 import { sendContactMessage } from "../lib/supabase";

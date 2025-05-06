@@ -1,7 +1,7 @@
 import EventList from "../components/EventList";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useImagePreloader } from "../hooks/useImagePreloader";
-import heroBg from "../assets/hero-bg.jpg";
+import heroBg from "../assets/hero-bg.webp";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useEvents } from "../hooks/useEvents";
 import { useLanguage } from "../lib/LanguageContext";

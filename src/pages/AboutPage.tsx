@@ -1,7 +1,7 @@
 import { Award, Heart, Music } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useImagePreloader } from "../hooks/useImagePreloader";
-import heroBg from "../assets/about-hero-bg.jpg";
+import heroBg from "../assets/about-hero-bg.webp";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useLanguage } from "../lib/LanguageContext";
 
