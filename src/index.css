@@ -1,35 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap&text=WhereMusicalExcnTkStg');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  @font-face {
-    font-family: 'Playfair Display';
-    font-display: swap;
-    font-weight: 400 700;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'Open Sans';
-    font-display: swap;
-    font-weight: 300 700;
-    font-style: normal;
-  }
-
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    font-family: 'Open Sans', sans-serif;
+    font-family: "Open Sans", sans-serif;
     @apply bg-offWhite text-charcoal;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Playfair Display", serif;
     @apply text-burgundy;
   }
 

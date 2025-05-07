@@ -17,7 +17,10 @@ function HomePage() {
   };
 
   const handleEventClick = (eventId: string, eventType: string) => {
-    const formattedEventType = eventType.replace(/\s+/g, "-");
+    const formattedEventType =
+      eventType === "competition" || eventType === "festival"
+        ? "event"
+        : eventType.replace(/\s+/g, "-");
     navigate(`/${formattedEventType}/${eventId}`);
   };
 
@@ -43,7 +46,7 @@ function HomePage() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="text-center md:text-left">
-            <h1 className="text-4xl md:text-6xl font-playfair text-[#FFFFF0] mb-4 whitespace-pre-line text-rendering-optimizeLegibility subpixel-antialiased">
+            <h1 className="text-4xl md:text-6xl font-playfair text-[#FFFFF0] mb-4 whitespace-pre-line text-rendering-optimizeLegibility font-display">
               {t("home.mainHeading")}
             </h1>
             <p className="text-xl text-[#F7E7CE] mb-8">{t("home.subtitle")}</p>

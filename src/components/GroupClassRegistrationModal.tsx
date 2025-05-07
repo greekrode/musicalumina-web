@@ -453,26 +453,28 @@ export default function GroupClassRegistrationModal({
             </div>
           </div>
 
-          {/* Document Uploads */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">
-              {t("registration.documents")}
-            </h3>
-          </div>
           {/* Payment Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">
               {t("registration.paymentInfo")}
             </h3>
+            <div className="bg-gray-200 p-4 rounded-md">
+              <p className="font-medium">
+                {t("registration.bankTransferDetails")}
+              </p>
+              <p>Bank Central Asia (BCA)</p>
+              <p>3720421151</p>
+              <p>RODERICK OR NICHOLAS</p>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 {t("registration.bankName")}
               </label>
-              <Input
+              <input
                 type="text"
                 {...register("bank_name")}
-                className="mt-1 block w-full"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               />
               {errors.bank_name && (
                 <p className="mt-1 text-sm text-red-600">
@@ -485,10 +487,10 @@ export default function GroupClassRegistrationModal({
               <label className="block text-sm font-medium text-gray-700">
                 {t("registration.accountNumber")}
               </label>
-              <Input
+              <input
                 type="text"
                 {...register("bank_account_number")}
-                className="mt-1 block w-full"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               />
               {errors.bank_account_number && (
                 <p className="mt-1 text-sm text-red-600">
@@ -501,10 +503,10 @@ export default function GroupClassRegistrationModal({
               <label className="block text-sm font-medium text-gray-700">
                 {t("registration.accountHolderName")}
               </label>
-              <Input
+              <input
                 type="text"
                 {...register("bank_account_name")}
-                className="mt-1 block w-full"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               />
               {errors.bank_account_name && (
                 <p className="mt-1 text-sm text-red-600">
