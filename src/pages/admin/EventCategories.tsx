@@ -109,8 +109,8 @@ export default function AdminEventCategories() {
   const handleSubmitCategory = async (
     data: {
       name: string;
-      description?: string;
-      repertoire: string[];
+      description: string | null;
+      repertoire: string[] | null;
       order_index: number;
     },
     isEdit: boolean
@@ -132,8 +132,7 @@ export default function AdminEventCategories() {
 
         if (error) {
           console.error("Category update error:", error);
-          alert("Update failed: " + error.message);
-          return;
+          throw new Error(error.message);
         }
 
         console.log("Updated category data:", updatedData);
@@ -146,16 +145,15 @@ export default function AdminEventCategories() {
 
         if (error) {
           console.error("Category insert error:", error);
-          alert("Insert failed: " + error.message);
-          return;
+          throw new Error(error.message);
         }
       }
 
       setCategoryModal({ open: false, eventId: null, initialData: null });
-      await fetchData(); // Wait for the data to be fetched before proceeding
+      await fetchData();
     } catch (error) {
       console.error("Error in handleSubmitCategory:", error);
-      alert("An unexpected error occurred");
+      throw error;
     }
   };
   const handleDeleteCategory = async (categoryId: string) => {
@@ -179,41 +177,53 @@ export default function AdminEventCategories() {
       name: string;
       age_requirement: string;
       registration_fee: number;
-      repertoire: string[];
-      performance_duration?: string;
-      requirements?: string;
+      repertoire: string[] | null;
+      performance_duration: string | null;
+      requirements: string | null;
       order_index: number;
     },
     isEdit: boolean
   ) => {
-    if (!subcategoryModal.categoryId) return;
-    if (isEdit && subcategoryModal.initialData) {
-      const { error } = await supabase
-        .from("event_subcategories")
-        .update({
-          name: data.name,
-          age_requirement: data.age_requirement,
-          registration_fee: data.registration_fee,
-          repertoire: data.repertoire,
-          performance_duration: data.performance_duration,
-          requirements: data.requirements,
-          order_index: data.order_index,
-        })
-        .eq("id", subcategoryModal.initialData.id);
-      if (error) {
-        alert("Update failed: " + error.message);
-        console.error("Subcategory update error:", error);
-        return;
+    try {
+      if (!subcategoryModal.categoryId) return;
+
+      if (isEdit && subcategoryModal.initialData) {
+        const { error } = await supabase
+          .from("event_subcategories")
+          .update({
+            name: data.name,
+            age_requirement: data.age_requirement,
+            registration_fee: data.registration_fee,
+            repertoire: data.repertoire,
+            performance_duration: data.performance_duration,
+            requirements: data.requirements,
+            order_index: data.order_index,
+          })
+          .eq("id", subcategoryModal.initialData.id);
+
+        if (error) {
+          console.error("Subcategory update error:", error);
+          throw new Error(error.message);
+        }
+      } else {
+        const { error } = await supabase.from("event_subcategories").insert({
+          ...data,
+          category_id: subcategoryModal.categoryId,
+          created_at: new Date().toISOString(),
+        });
+
+        if (error) {
+          console.error("Subcategory insert error:", error);
+          throw new Error(error.message);
+        }
       }
-    } else {
-      await supabase.from("event_subcategories").insert({
-        ...data,
-        category_id: subcategoryModal.categoryId,
-        created_at: new Date().toISOString(),
-      });
+
+      setSubcategoryModal({ open: false, categoryId: null, initialData: null });
+      await fetchData();
+    } catch (error) {
+      console.error("Error in handleSubmitSubcategory:", error);
+      throw error;
     }
-    setSubcategoryModal({ open: false, categoryId: null, initialData: null });
-    fetchData();
   };
   const handleDeleteSubcategory = async (subcategoryId: string) => {
     await supabase.from("event_subcategories").delete().eq("id", subcategoryId);
@@ -362,9 +372,19 @@ export default function AdminEventCategories() {
         onClose={() =>
           setCategoryModal({ open: false, eventId: null, initialData: null })
         }
+        initialData={
+          categoryModal.initialData
+            ? {
+                name: categoryModal.initialData.name,
+                description: categoryModal.initialData.description,
+                repertoire: Array.isArray(categoryModal.initialData.repertoire)
+                  ? (categoryModal.initialData.repertoire as string[])
+                  : null,
+                order_index: categoryModal.initialData.order_index,
+              }
+            : null
+        }
         onSubmit={handleSubmitCategory}
-        initialData={categoryModal.initialData}
-        eventId={categoryModal.eventId || ""}
       />
       {/* Subcategory Modal */}
       <SubcategoryModal
@@ -376,9 +396,24 @@ export default function AdminEventCategories() {
             initialData: null,
           })
         }
-        onSubmit={handleSubmitSubcategory}
-        initialData={subcategoryModal.initialData}
+        initialData={
+          subcategoryModal.initialData
+            ? {
+                name: subcategoryModal.initialData.name,
+                age_requirement: subcategoryModal.initialData.age_requirement,
+                registration_fee: subcategoryModal.initialData.registration_fee,
+                repertoire: Array.isArray(subcategoryModal.initialData.repertoire)
+                  ? (subcategoryModal.initialData.repertoire as string[])
+                  : null,
+                performance_duration:
+                  subcategoryModal.initialData.performance_duration,
+                requirements: subcategoryModal.initialData.requirements,
+                order_index: subcategoryModal.initialData.order_index,
+              }
+            : null
+        }
         categoryId={subcategoryModal.categoryId || ""}
+        onSubmit={handleSubmitSubcategory}
       />
       {/* Delete Confirmation */}
       {deleteConfirm?.open && (

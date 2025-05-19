@@ -102,21 +102,33 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
             <p className="text-sm font-medium text-black mb-2">
               {t("eventDetails.categoryRepertoire")}:
             </p>
-            <div className="space-y-1 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
-              {Array.from({ length: 3 }).map((_, colIndex) => (
-                <ul
-                  key={colIndex}
-                  className="list-disc list-inside text-sm text-black/80"
-                >
-                  {(category.repertoire as string[])
-                    .filter((_, i) => i % 3 === colIndex)
-                    .map((rep, i) => (
-                      <li key={i} className="text-sm mb-1 md:mb-1">
-                        {rep}
-                      </li>
-                    ))}
+            <div className={`space-y-1 ${category.repertoire.length > 3 ? 'md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4' : ''}`}>
+              {category.repertoire.length <= 3 ? (
+                <ul className="list-disc list-inside text-sm text-black/80">
+                  {(category.repertoire as string[]).map((rep, i) => (
+                    <li key={i} className="text-sm mb-1">
+                      {rep}
+                    </li>
+                  ))}
                 </ul>
-              ))}
+              ) : (
+                Array.from({ 
+                  length: Math.min(3, Math.ceil(category.repertoire.length / 3))
+                }).map((_, colIndex) => (
+                  <ul
+                    key={colIndex}
+                    className="list-disc list-inside text-sm text-black/80"
+                  >
+                    {(category.repertoire as string[])
+                      .filter((_, i) => i % 3 === colIndex)
+                      .map((rep, i) => (
+                        <li key={i} className="text-sm mb-1">
+                          {rep}
+                        </li>
+                      ))}
+                  </ul>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -163,22 +175,13 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                     <p className="text-sm font-medium text-black mb-2">
                       {t("eventDetails.repertoire")}:
                     </p>
-                    <div className="space-y-1 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
-                      {Array.from({ length: 3 }).map((_, colIndex) => (
-                        <ul
-                          key={colIndex}
-                          className="list-disc list-inside text-sm text-black/80"
-                        >
-                          {(subCategory.repertoire as string[])
-                            .filter((_, i) => i % 3 === colIndex)
-                            .map((rep, i) => (
-                              <li key={i} className="text-sm mb-1 md:mb-1">
-                                {rep}
-                              </li>
-                            ))}
-                        </ul>
+                    <ul className="list-disc text-sm text-black/80 pl-5 space-y-2">
+                      {(subCategory.repertoire as string[]).map((rep, i) => (
+                        <li key={i} className="text-sm leading-relaxed">
+                          <span className="pl-1">{rep}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
               {subCategory.performance_duration && (
