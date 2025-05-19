@@ -27,6 +27,17 @@
       ],
       "destination": "https://www.musicalumina.com/group-class/04e16f52-2d81-4f2e-9bcf-dfb77f56d28c",
       "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "btfe.musicalumina.com"
+        }
+      ],
+      "destination": "https://www.musicalumina.com/event/fe886ccd-8e0b-491f-b0e9-b4777514f53c",
+      "permanent": true
     }
   ]
 }
