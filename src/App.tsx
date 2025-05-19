@@ -3,6 +3,7 @@ import { AdminDashboard } from "@/pages/admin/Dashboard";
 import { AdminEvents } from "@/pages/admin/Events";
 import { AdminLogin } from "@/pages/admin/Login";
 import { AdminMasterclass } from "@/pages/admin/Masterclass";
+import { AdminJury } from "@/pages/admin/Jury";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { AnimatePresence } from "framer-motion";
 import { lazy, Suspense } from "react";
@@ -19,6 +20,8 @@ import PageTransition from "./components/PageTransition";
 import { LanguageProvider } from "./lib/LanguageContext";
 import AdminRegistrations from "./pages/admin/Registrations";
 import GroupClassDetails from "./pages/GroupClassDetails";
+import AdminEventCategories from "@/pages/admin/EventCategories";
+import { Toaster } from "@/components/ui/toaster";
 
 if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
   throw new Error("Missing Clerk publishable key");
@@ -204,6 +207,22 @@ function AnimatedRoutes() {
           }
         />
         <Route
+          path="/admin/event-categories"
+          element={
+            <ProtectedRoute>
+              <AdminEventCategories />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/jury"
+          element={
+            <ProtectedRoute>
+              <AdminJury />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/registrations"
           element={
             <ProtectedRoute>
@@ -239,6 +258,7 @@ function AppContent() {
             <AnimatedRoutes />
           </main>
           {!isAdminRoute && <FooterWrapper />}
+          <Toaster />
         </div>
       </LanguageProvider>
     </ClerkProvider>

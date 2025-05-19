@@ -1,4 +1,9 @@
-import { Dialog, Transition } from "@headlessui/react";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+} from "@headlessui/react";
 import { Fragment } from "react";
 import type { Database } from "../lib/database.types";
 
@@ -20,7 +25,7 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-10" onClose={onClose}>
-        <Transition.Child
+        <Transition
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -30,11 +35,11 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child>
+        </Transition>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
+            <Transition
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -43,7 +48,7 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex items-center space-x-4 mb-4">
                   {juror.avatar && (
                     <img
@@ -53,19 +58,24 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
                     />
                   )}
                   <div>
-                    <Dialog.Title
+                    <DialogTitle
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-900"
                     >
                       {juror.name}
-                    </Dialog.Title>
+                    </DialogTitle>
                     <p className="text-sm text-marigold">{juror.title}</p>
                   </div>
                 </div>
 
                 {juror.description && (
                   <div className="mt-2">
-                    <p className="text-sm text-gray-500">{juror.description}</p>
+                    <div
+                      className="text-sm text-gray-500"
+                      dangerouslySetInnerHTML={{
+                        __html: juror.description,
+                      }}
+                    />
                   </div>
                 )}
 
@@ -78,8 +88,8 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
                     Close
                   </button>
                 </div>
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </Transition>
           </div>
         </div>
       </Dialog>

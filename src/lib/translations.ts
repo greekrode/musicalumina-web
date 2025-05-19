@@ -213,6 +213,7 @@ export const translations = {
       repertoire: "Repertoire",
       duration: "Duration",
       overallPrizes: "Overall Prizes",
+      comingSoon: "Coming Soon",
     },
     masterclass: {
       instructor: "Instructor",
@@ -449,6 +450,7 @@ export const translations = {
       repertoire: "Partitur",
       duration: "Durasi",
       overallPrizes: "Hadiah Keseluruhan",
+      comingSoon: "Segera Hadir"
     },
     masterclass: {
       instructor: "Instruktur",

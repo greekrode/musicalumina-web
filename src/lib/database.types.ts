@@ -209,6 +209,7 @@ export interface Database {
           created_at: string;
           repertoire: Json | null;
           order_index: number;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -218,6 +219,7 @@ export interface Database {
           created_at?: string;
           repertoire?: Json | null;
           order_index: number;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -227,6 +229,7 @@ export interface Database {
           created_at?: string;
           repertoire?: Json | null;
           order_index?: number;
+          updated_at?: string;
         };
       };
       event_subcategories: {
@@ -241,6 +244,7 @@ export interface Database {
           requirements: string | null;
           created_at: string;
           order_index: number;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -253,6 +257,7 @@ export interface Database {
           requirements?: string | null;
           created_at?: string;
           order_index: number;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -265,6 +270,7 @@ export interface Database {
           requirements?: string | null;
           created_at?: string;
           order_index?: number;
+          updated_at?: string;
         };
       };
       event_jury: {

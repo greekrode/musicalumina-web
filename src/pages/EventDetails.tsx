@@ -54,7 +54,7 @@ type EventJuror = Omit<
   Database["public"]["Tables"]["event_jury"]["Row"],
   "credentials"
 > & {
-  credentials: string | null;
+  credentials: Record<string, string> | null;
 };
 
 type JuryPanelProps = {
@@ -90,7 +90,10 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
         )}
       </div>
       {category.description && (
-        <p className="text-black/80 mb-6">{category.description}</p>
+        <div
+          className="text-black/80 mb-6 text-sm"
+          dangerouslySetInnerHTML={{ __html: category.description }}
+        />
       )}
       {category.repertoire &&
         Array.isArray(category.repertoire) &&
@@ -123,10 +126,17 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
             key={subCategory.id}
             className="bg-white p-4 rounded-lg shadow-sm"
           >
-            <h4 className="text-lg font-playfair text-black mb-3">
+            <h3 className="text-xl font-playfair text-black mb-3">
               {subCategory.name}
-            </h4>
+            </h3>
             <div className="space-y-3">
+              <div
+                className="text-black/80 text-sm"
+                dangerouslySetInnerHTML={{
+                  __html: subCategory.requirements || "",
+                }}
+              />
+
               <div>
                 <p className="text-sm font-medium text-black">
                   {t("eventDetails.ageRequirement")}:
@@ -294,35 +304,48 @@ const PrizesSection = ({ categories }: PrizesSectionProps) => {
 const JuryPanel = ({ juryMembers }: JuryPanelProps) => {
   return (
     <div className="grid md:grid-cols-2 gap-8">
-      {juryMembers.map((juror) => (
-        <div key={juror.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
-          <div className="flex flex-col items-center space-y-4">
-            <img
-              src={juror.avatar_url || ""}
-              alt={juror.name}
-              className="w-48 h-48 rounded-full object-cover shadow-lg"
-            />
-            <div className="text-center">
-              <h2 className="text-2xl font-playfair text-black mb-2">
-                {juror.name}
-              </h2>
-              <p className="text-lg font-medium text-marigold mb-4">
-                {juror.title}
-              </p>
-              {juror.description && (
-                <div className="text-sm text-black/80 mb-3 space-y-2 text-left">
-                  {juror.description
-                    .replace(/\\n/g, "\n")
-                    .split("\n")
-                    .map((line, index) => (
-                      <p key={index}>{line}</p>
+      {[...juryMembers]
+        .sort((a, b) => {
+          const dateA = new Date(a.created_at);
+          const dateB = new Date(b.created_at);
+          return dateA.getTime() - dateB.getTime();
+        })
+        .map((juror) => (
+          <div key={juror.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
+            <div className="flex flex-col items-center space-y-4">
+              <img
+                src={juror.avatar_url || ""}
+                alt={juror.name}
+                className="w-48 h-48 rounded-full object-cover shadow-lg"
+              />
+              <div className="text-center">
+                <h2 className="text-2xl font-playfair text-black mb-2">
+                  {juror.name}
+                </h2>
+                <p className="text-lg font-medium text-marigold mb-2">
+                  {juror.title}
+                </p>
+                {juror.credentials && (
+                  <div className="text-sm text-black/60 mb-3 italic space-y-1">
+                    {Object.entries(juror.credentials).map(([key, value]) => (
+                      <p key={key} className="font-light">
+                        {key}: {value}
+                      </p>
                     ))}
-                </div>
-              )}
+                  </div>
+                )}
+                {juror.description && (
+                  <div
+                    className="text-sm text-black/80 mb-3 space-y-2 text-left"
+                    dangerouslySetInnerHTML={{
+                      __html: juror.description,
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
     </div>
   );
 };
@@ -489,18 +512,21 @@ function EventDetails() {
                   setIsRegistrationModalOpen(true);
                 }}
                 disabled={
-                  !!event.registration_deadline &&
-                  new Date() >= new Date(event.registration_deadline)
+                  !event.registration_deadline ||
+                  (!!event.registration_deadline &&
+                    new Date() >= new Date(event.registration_deadline))
                 }
                 className={`${
-                  !!event.registration_deadline &&
-                  new Date() >= new Date(event.registration_deadline)
+                  !event.registration_deadline ||
+                  (!!event.registration_deadline &&
+                    new Date() >= new Date(event.registration_deadline))
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-marigold hover:bg-marigold/90"
                 } text-white px-6 py-3 rounded-lg transition-colors w-full md:w-auto`}
               >
-                {!!event.registration_deadline &&
-                new Date() >= new Date(event.registration_deadline)
+                {!event.registration_deadline
+                  ? t("eventDetails.comingSoon")
+                  : new Date() >= new Date(event.registration_deadline)
                   ? t("eventDetails.registrationClosed")
                   : t("eventDetails.registerNow")}
               </button>

@@ -8,7 +8,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing Supabase environment variables");
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Create Supabase client with custom headers for admin role
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  global: {
+    headers: {
+      // This will be used by RLS policies to determine admin access
+      "x-admin-role": "admin",
+    },
+  },
+});
 
 export async function getEvents({
   page = 1,
@@ -126,11 +134,13 @@ export async function getEventById(id: string) {
           title,
           description,
           avatar_url,
-          credentials
+          credentials,
+          created_at
         )
       `
       )
       .eq("id", id)
+      .order('created_at', { foreignTable: 'event_jury' })
       .single();
 
     if (eventError) {
@@ -189,7 +199,10 @@ export async function getEventById(id: string) {
       // Add prizes to their respective categories
       if (event.event_categories) {
         event.event_categories = event.event_categories.map(
-          (category: { id: string; event_subcategories: { order_index: number }[] }) => ({
+          (category: {
+            id: string;
+            event_subcategories: { order_index: number }[];
+          }) => ({
             ...category,
             prizes: prizesByCategory[category.id] || [],
             global_prizes: prizesByCategory.global || [],

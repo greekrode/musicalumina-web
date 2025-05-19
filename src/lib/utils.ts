@@ -63,7 +63,10 @@ export function translateDuration(duration: string, language: string): string {
   return duration;
 }
 
-export function translateAgeRequirement(ageRequirement: string, language: string): string {
+export function translateAgeRequirement(
+  ageRequirement: string,
+  language: string
+): string {
   if (!ageRequirement) return ageRequirement;
   if (language === "en") return ageRequirement;
 

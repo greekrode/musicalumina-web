@@ -1,18 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useClerk, SignOutButton } from "@clerk/clerk-react";
+import { SignOutButton } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Overview", href: "/admin/dashboard" },
   { name: "Events", href: "/admin/events" },
+  { name: "Event Categories", href: "/admin/event-categories" },
+  { name: "Event Jury", href: "/admin/jury" },
   { name: "Registrations", href: "/admin/registrations" },
   { name: "Masterclass", href: "/admin/masterclass" },
 ];
 
 export function Sidebar() {
   const location = useLocation();
-  const { signOut } = useClerk();
 
   return (
     <div className="flex h-full grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r">
