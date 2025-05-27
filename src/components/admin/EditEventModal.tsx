@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import type { Database } from "@/lib/database.types";
+import { Editor } from "@tinymce/tinymce-react";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
@@ -226,9 +227,45 @@ export function EditEventModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               English Description (Optional)
             </label>
-            <textarea
-              {...register("description.en")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+              value={event?.description?.en || ''}
+              onEditorChange={(content: string) => {
+                register("description.en").onChange({
+                  target: { value: content }
+                });
+              }}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
+                ],
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+              }}
             />
           </div>
 
@@ -236,9 +273,45 @@ export function EditEventModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Indonesian Description (Optional)
             </label>
-            <textarea
-              {...register("description.id")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+              value={event?.description?.id || ''}
+              onEditorChange={(content: string) => {
+                register("description.id").onChange({
+                  target: { value: content }
+                });
+              }}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
+                ],
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+              }}
             />
           </div>
 
@@ -246,9 +319,45 @@ export function EditEventModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               English Terms & Conditions (Optional)
             </label>
-            <textarea
-              {...register("terms_and_conditions.en")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+              value={event?.terms_and_conditions?.en || ''}
+              onEditorChange={(content: string) => {
+                register("terms_and_conditions.en").onChange({
+                  target: { value: content }
+                });
+              }}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
+                ],
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+              }}
             />
           </div>
 
@@ -256,9 +365,45 @@ export function EditEventModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Indonesian Terms & Conditions (Optional)
             </label>
-            <textarea
-              {...register("terms_and_conditions.id")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+              value={event?.terms_and_conditions?.id || ''}
+              onEditorChange={(content: string) => {
+                register("terms_and_conditions.id").onChange({
+                  target: { value: content }
+                });
+              }}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
+                ],
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+              }}
             />
           </div>
 
