@@ -237,7 +237,7 @@ export function CategoryModal({
             value={form.description}
             onEditorChange={handleEditorChange}
             init={{
-              height: 300,
+              height: 500,
               menubar: false,
               plugins: [
                 "advlist",

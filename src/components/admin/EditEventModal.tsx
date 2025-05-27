@@ -53,6 +53,8 @@ export function EditEventModal({
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -67,6 +69,10 @@ export function EditEventModal({
       status: "upcoming",
     },
   });
+
+  // Watch form values for the editors
+  const description = watch("description");
+  const termsAndConditions = watch("terms_and_conditions");
 
   // Update form when event changes
   useEffect(() => {
@@ -229,14 +235,15 @@ export function EditEventModal({
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={event?.description?.en || ''}
+              value={description?.en || ''}
               onEditorChange={(content: string) => {
-                register("description.en").onChange({
-                  target: { value: content }
+                setValue("description", {
+                  en: content,
+                  id: description?.id || null
                 });
               }}
               init={{
-                height: 300,
+                height: 500,
                 menubar: false,
                 plugins: [
                   "advlist",
@@ -275,14 +282,15 @@ export function EditEventModal({
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={event?.description?.id || ''}
+              value={description?.id || ''}
               onEditorChange={(content: string) => {
-                register("description.id").onChange({
-                  target: { value: content }
+                setValue("description", {
+                  en: description?.en || null,
+                  id: content
                 });
               }}
               init={{
-                height: 300,
+                height: 500,
                 menubar: false,
                 plugins: [
                   "advlist",
@@ -321,14 +329,15 @@ export function EditEventModal({
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={event?.terms_and_conditions?.en || ''}
+              value={termsAndConditions?.en || ''}
               onEditorChange={(content: string) => {
-                register("terms_and_conditions.en").onChange({
-                  target: { value: content }
+                setValue("terms_and_conditions", {
+                  en: content,
+                  id: termsAndConditions?.id || null
                 });
               }}
               init={{
-                height: 300,
+                height: 500,
                 menubar: false,
                 plugins: [
                   "advlist",
@@ -367,14 +376,15 @@ export function EditEventModal({
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={event?.terms_and_conditions?.id || ''}
+              value={termsAndConditions?.id || ''}
               onEditorChange={(content: string) => {
-                register("terms_and_conditions.id").onChange({
-                  target: { value: content }
+                setValue("terms_and_conditions", {
+                  en: termsAndConditions?.en || null,
+                  id: content
                 });
               }}
               init={{
-                height: 300,
+                height: 500,
                 menubar: false,
                 plugins: [
                   "advlist",

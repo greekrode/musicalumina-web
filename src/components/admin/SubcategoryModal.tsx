@@ -321,7 +321,7 @@ export function SubcategoryModal({
           </label>
           <Input
             name="performance_duration"
-            value={form.performance_duration}
+            value={form.performance_duration || ""}
             onChange={handleChange}
           />
         </div>
@@ -332,7 +332,7 @@ export function SubcategoryModal({
             value={form.requirements}
             onEditorChange={handleEditorChange}
             init={{
-              height: 300,
+              height: 500,
               menubar: false,
               plugins: [
                 "advlist",
