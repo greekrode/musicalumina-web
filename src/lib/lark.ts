@@ -20,6 +20,7 @@ interface LarkRegistrationData {
     song_duration?: string | null;
     birth_certificate_url?: string | null;
     song_pdf_url?: string | null;
+    video_url?: string | null;
     bank_name: string;
     bank_account_name: string;
     bank_account_number: string;
@@ -94,6 +95,13 @@ export class LarkService {
       fields["Song PDF"] = {
         link: registration.song_pdf_url,
         text: registration.song_title,
+      };
+    }
+
+    if (registration.video_url) {
+      fields["Video URL"] = {
+        link: registration.video_url,
+        text: `${registration.participant_name} - ${registration.song_title}`,
       };
     }
 

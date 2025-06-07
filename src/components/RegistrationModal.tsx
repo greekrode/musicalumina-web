@@ -27,7 +27,7 @@ interface FileStates {
   payment_receipt: FileState;
 }
 
-function createRegistrationSchema(t: (key: string) => string) {
+function createRegistrationSchema(t: (key: string) => string, isOnlineEvent: boolean) {
   return z.object({
     registrant_status: z.enum(["personal", "parents", "teacher"]),
     registrant_name: z
@@ -50,6 +50,19 @@ function createRegistrationSchema(t: (key: string) => string) {
       .min(1, t("validation.enterSongTitle"))
       .max(150, t("validation.maxSongTitleLength")),
     song_duration: z.string().max(10, t("validation.maxDurationLength")),
+    video_url: isOnlineEvent
+      ? z
+          .string()
+          .min(1, t("validation.enterVideoUrl"))
+          .refine((val) => {
+            try {
+              new URL(val);
+              return true;
+            } catch {
+              return false;
+            }
+          }, t("validation.invalidUrl"))
+      : z.string().optional(),
     bank_name: z
       .string()
       .min(1, t("validation.enterBankName"))
@@ -88,6 +101,7 @@ interface RegistrationModalProps {
   onClose: () => void;
   eventId: string;
   eventName: string;
+  eventVenue: string;
   categories: Category[];
   onOpenTerms: () => void;
 }
@@ -97,6 +111,7 @@ function RegistrationModal({
   onClose,
   eventId,
   eventName,
+  eventVenue,
   categories = [],
   onOpenTerms,
 }: RegistrationModalProps) {
@@ -112,7 +127,8 @@ function RegistrationModal({
     payment_receipt: { file: null },
   });
 
-  const registrationSchema = createRegistrationSchema(t);
+  const isOnlineEvent = eventVenue.toLowerCase() === "online";
+  const registrationSchema = createRegistrationSchema(t, isOnlineEvent);
 
   const {
     register,
@@ -128,6 +144,7 @@ function RegistrationModal({
       registrant_status: "personal",
       registrant_whatsapp: "",
       song_duration: "",
+      video_url: "",
     },
   });
 
@@ -284,6 +301,7 @@ function RegistrationModal({
           song_duration: data.song_duration,
           birth_certificate_url: birthCertUrl,
           song_pdf_url: songPdfUrl || null,
+          video_url: data.video_url || null,
           bank_name: data.bank_name,
           bank_account_number: data.bank_account_number,
           bank_account_name: data.bank_account_name,
@@ -346,6 +364,7 @@ function RegistrationModal({
               song_duration: data.song_duration || "",
               birth_certificate_url: birthCertUrl,
               song_pdf_url: songPdfUrl || null,
+              video_url: data.video_url || null,
               bank_name: data.bank_name,
               bank_account_name: data.bank_account_name,
               bank_account_number: data.bank_account_number,
@@ -733,6 +752,28 @@ function RegistrationModal({
                 error={files.song_pdf.error}
                 onFileChange={handleFileChange("song_pdf")}
               />
+            )}
+
+            {isOnlineEvent && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  {t("registration.videoUrl")}
+                </label>
+                <input
+                  type="url"
+                  {...register("video_url")}
+                  placeholder={t("registration.videoUrlPlaceholder")}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                />
+                {errors.video_url && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.video_url.message}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  {t("registration.videoUrlHelp")}
+                </p>
+              </div>
             )}
           </div>
 

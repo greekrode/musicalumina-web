@@ -117,6 +117,7 @@ export interface Database {
           song_duration: string | null;
           birth_certificate_url: string | null;
           song_pdf_url: string | null;
+          video_url: string | null;
           bank_name: string;
           bank_account_number: string;
           bank_account_name: string;
@@ -140,6 +141,7 @@ export interface Database {
           song_duration?: string | null;
           birth_certificate_url: string;
           song_pdf_url?: string | null;
+          video_url?: string | null;
           bank_name: string;
           bank_account_number: string;
           bank_account_name: string;
@@ -162,6 +164,7 @@ export interface Database {
           song_duration?: string | null;
           birth_certificate_url?: string;
           song_pdf_url?: string | null;
+          video_url?: string | null;
           bank_name?: string;
           bank_account_number?: string;
           bank_account_name?: string;
@@ -239,6 +242,9 @@ export interface Database {
           name: string;
           age_requirement: string;
           registration_fee: number;
+          final_registration_fee: number | null;
+          foreign_registration_fee: Json | null;
+          foreign_final_registration_fee: Json | null;
           repertoire: Json;
           performance_duration: string | null;
           requirements: string | null;
@@ -252,6 +258,9 @@ export interface Database {
           name: string;
           age_requirement: string;
           registration_fee: number;
+          final_registration_fee?: number | null;
+          foreign_registration_fee?: Json | null;
+          foreign_final_registration_fee?: Json | null;
           repertoire?: Json;
           performance_duration?: string | null;
           requirements?: string | null;
@@ -265,6 +274,9 @@ export interface Database {
           name?: string;
           age_requirement?: string;
           registration_fee?: number;
+          final_registration_fee?: number | null;
+          foreign_registration_fee?: Json | null;
+          foreign_final_registration_fee?: Json | null;
           repertoire?: Json;
           performance_duration?: string | null;
           requirements?: string | null;

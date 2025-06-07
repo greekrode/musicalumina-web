@@ -67,7 +67,20 @@ export default function AdminEventCategories() {
           `
           *,
           event_subcategories (
-            *
+            id,
+            category_id,
+            name,
+            age_requirement,
+            registration_fee,
+            final_registration_fee,
+            foreign_registration_fee,
+            foreign_final_registration_fee,
+            repertoire,
+            performance_duration,
+            requirements,
+            order_index,
+            created_at,
+            updated_at
           )
         `
         )
@@ -177,6 +190,9 @@ export default function AdminEventCategories() {
       name: string;
       age_requirement: string;
       registration_fee: number;
+      final_registration_fee: number | null;
+      foreign_registration_fee: Array<{ country: string; fee: string }> | null;
+      foreign_final_registration_fee: Array<{ country: string; fee: string }> | null;
       repertoire: string[] | null;
       performance_duration: string | null;
       requirements: string | null;
@@ -194,6 +210,9 @@ export default function AdminEventCategories() {
             name: data.name,
             age_requirement: data.age_requirement,
             registration_fee: data.registration_fee,
+            final_registration_fee: data.final_registration_fee,
+            foreign_registration_fee: data.foreign_registration_fee,
+            foreign_final_registration_fee: data.foreign_final_registration_fee,
             repertoire: data.repertoire,
             performance_duration: data.performance_duration,
             requirements: data.requirements,
@@ -402,6 +421,13 @@ export default function AdminEventCategories() {
                 name: subcategoryModal.initialData.name,
                 age_requirement: subcategoryModal.initialData.age_requirement,
                 registration_fee: subcategoryModal.initialData.registration_fee,
+                final_registration_fee: subcategoryModal.initialData.final_registration_fee,
+                foreign_registration_fee: Array.isArray(subcategoryModal.initialData.foreign_registration_fee)
+                  ? (subcategoryModal.initialData.foreign_registration_fee as Array<{country: string; fee: string}>)
+                  : null,
+                foreign_final_registration_fee: Array.isArray(subcategoryModal.initialData.foreign_final_registration_fee)
+                  ? (subcategoryModal.initialData.foreign_final_registration_fee as Array<{country: string; fee: string}>)
+                  : null,
                 repertoire: Array.isArray(subcategoryModal.initialData.repertoire)
                   ? (subcategoryModal.initialData.repertoire as string[])
                   : null,

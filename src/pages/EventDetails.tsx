@@ -29,6 +29,8 @@ import { useLanguage } from "../lib/LanguageContext";
 type EventCategory = Database["public"]["Tables"]["event_categories"]["Row"] & {
   event_subcategories: (Database["public"]["Tables"]["event_subcategories"]["Row"] & {
     repertoire?: string[];
+    foreign_registration_fee?: Array<{ country: string; fee: string }>;
+    foreign_final_registration_fee?: Array<{ country: string; fee: string }>;
   })[];
   repertoire?: string[];
   prizes: Array<{
@@ -164,9 +166,90 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
                 <p className="text-sm font-medium text-black">
                   {t("eventDetails.registrationFee")}:
                 </p>
-                <p className="text-sm text-black/80">
-                  IDR {subCategory.registration_fee.toLocaleString()}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-black/80">
+                    IDR {subCategory.registration_fee.toLocaleString()}
+                  </p>
+                  
+                  {subCategory.final_registration_fee && (
+                    <div>
+                      <p className="text-sm font-medium text-black">
+                    {t("eventDetails.finalRegistrationFee")}:
+                      </p>
+                      <p className="text-sm text-black/80">
+                        IDR {subCategory.final_registration_fee.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {((subCategory.foreign_registration_fee &&
+                    Array.isArray(subCategory.foreign_registration_fee) &&
+                    subCategory.foreign_registration_fee.length > 0) ||
+                    (subCategory.foreign_final_registration_fee &&
+                    Array.isArray(subCategory.foreign_final_registration_fee) &&
+                    subCategory.foreign_final_registration_fee.length > 0)) && (
+                      <div>
+                        <p className="text-sm font-medium text-black mb-2">
+                          {t("eventDetails.foreignRegistrationFees")}:
+                        </p>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200">
+                                <th className="text-left py-2 px-3 font-medium text-black">{t("eventDetails.country")}</th>
+                                {subCategory.foreign_registration_fee &&
+                                  Array.isArray(subCategory.foreign_registration_fee) &&
+                                  subCategory.foreign_registration_fee.length > 0 && (
+                                    <th className="text-left py-2 px-3 font-medium text-black">{t("eventDetails.registrationFee")}</th>
+                                  )}
+                                {subCategory.foreign_final_registration_fee &&
+                                  Array.isArray(subCategory.foreign_final_registration_fee) &&
+                                  subCategory.foreign_final_registration_fee.length > 0 && (
+                                    <th className="text-left py-2 px-3 font-medium text-black">{t("eventDetails.finalRegistrationFee")}</th>
+                                  )}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {/* Create a combined list of all countries */}
+                              {(() => {
+                                const allCountries = new Set();
+                                const regFees = subCategory.foreign_registration_fee as Array<{country: string; fee: string}> || [];
+                                const finalFees = subCategory.foreign_final_registration_fee as Array<{country: string; fee: string}> || [];
+                                
+                                regFees.forEach(fee => allCountries.add(fee.country));
+                                finalFees.forEach(fee => allCountries.add(fee.country));
+                                
+                                return Array.from(allCountries).map((country) => {
+                                  const regFee = regFees.find(f => f.country === country);
+                                  const finalFee = finalFees.find(f => f.country === country);
+                                  
+                                  return (
+                                    <tr key={country as string} className="border-b border-gray-100">
+                                      <td className="py-2 px-3 text-black/80">{country as string}</td>
+                                      {subCategory.foreign_registration_fee &&
+                                        Array.isArray(subCategory.foreign_registration_fee) &&
+                                        subCategory.foreign_registration_fee.length > 0 && (
+                                          <td className="py-2 px-3 text-black/80">
+                                            {regFee ? regFee.fee : '-'}
+                                          </td>
+                                        )}
+                                      {subCategory.foreign_final_registration_fee &&
+                                        Array.isArray(subCategory.foreign_final_registration_fee) &&
+                                        subCategory.foreign_final_registration_fee.length > 0 && (
+                                          <td className="py-2 px-3 text-black/80">
+                                            {finalFee ? finalFee.fee : '-'}
+                                          </td>
+                                        )}
+                                    </tr>
+                                  );
+                                });
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                </div>
               </div>
               {subCategory.repertoire &&
                 Array.isArray(subCategory.repertoire) &&
@@ -459,9 +542,7 @@ function EventDetails() {
               {formatEventType(event.type)}
             </span>
           </div>
-          <p className="text-black/80 mb-8">
-            {event.description?.[language] || event.description?.en}
-          </p>
+          <p className="text-black/80 mb-8" dangerouslySetInnerHTML={{ __html: event.description?.[language] || event.description?.en || '' }} />
 
           <div className="grid md:grid-cols-3 gap-6">
             <div className="flex items-start space-x-3">
@@ -605,6 +686,7 @@ function EventDetails() {
         onClose={() => setIsRegistrationModalOpen(false)}
         eventId={event.id}
         eventName={event.title}
+        eventVenue={event.location}
         categories={event.event_categories}
         onOpenTerms={() => {
           setIsTermsModalOpen(true);
