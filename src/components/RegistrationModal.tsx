@@ -50,19 +50,18 @@ function createRegistrationSchema(t: (key: string) => string, isOnlineEvent: boo
       .min(1, t("validation.enterSongTitle"))
       .max(150, t("validation.maxSongTitleLength")),
     song_duration: z.string().max(10, t("validation.maxDurationLength")),
-    video_url: isOnlineEvent
-      ? z
-          .string()
-          .min(1, t("validation.enterVideoUrl"))
-          .refine((val) => {
-            try {
-              new URL(val);
-              return true;
-            } catch {
-              return false;
-            }
-          }, t("validation.invalidUrl"))
-      : z.string().optional(),
+    video_url: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (!val || val === "") return true; // Allow empty/undefined
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      }, t("validation.invalidUrl")),
     bank_name: z
       .string()
       .min(1, t("validation.enterBankName"))
