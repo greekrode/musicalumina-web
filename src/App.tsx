@@ -38,6 +38,7 @@ const PastMasterclassDetails = lazy(
 );
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
+const VideoSubmissionPage = lazy(() => import("./pages/VideoSubmissionPage"));
 
 function FooterWrapper() {
   const location = useLocation();
@@ -185,6 +186,20 @@ function AnimatedRoutes() {
             >
               <PageTransition>
                 <AboutPage />
+              </PageTransition>
+            </Suspense>
+          }
+        />
+        <Route
+          path="/video-submission"
+          element={
+            <Suspense
+              fallback={
+                <LoadingSpinner fullScreen message="Loading video submission..." />
+              }
+            >
+              <PageTransition>
+                <VideoSubmissionPage />
               </PageTransition>
             </Suspense>
           }

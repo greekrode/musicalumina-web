@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Youtube } from "lucide-react";
+import { Facebook, Instagram, Mail, Phone, Youtube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/ML-LogoColor.png";
 import { useLanguage } from "../lib/LanguageContext";
@@ -67,7 +67,7 @@ function Footer() {
           </div>
           <div>
             <h3 className="text-2xl font-playfair mb-4 text-offWhite/80">
-              {t("footer.followUs")}
+              {t("footer.contactUs")}
             </h3>
             <div className="flex space-x-6">
               <a
@@ -76,6 +76,20 @@ function Footer() {
                 aria-label="Instagram"
               >
                 <Instagram className="h-6 w-6" />
+              </a>
+              <a
+                href="https://wa.me/6282161505577"
+                className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
+                aria-label="WhatsApp"
+              >
+                <Phone className="h-6 w-6" />
+              </a>
+              <a
+                href="mailto:contact@musicalumina.com"
+                className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
+                aria-label="Email"
+              >
+                <Mail className="h-6 w-6" />
               </a>
             </div>
           </div>
