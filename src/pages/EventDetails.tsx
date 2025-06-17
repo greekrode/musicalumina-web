@@ -50,6 +50,7 @@ type EventCategory = Database["public"]["Tables"]["event_categories"]["Row"] & {
 type Event = Database["public"]["Tables"]["events"]["Row"] & {
   event_categories: EventCategory[];
   event_jury: EventJuror[];
+  registration_count?: number;
 };
 
 type EventJuror = Omit<
@@ -596,20 +597,32 @@ function EventDetails() {
                   setIsRegistrationModalOpen(true);
                 }}
                 disabled={
-                  !event.registration_deadline ||
-                  (!!event.registration_deadline &&
-                    new Date() >= new Date(event.registration_deadline))
+                  Boolean(
+                    !event.registration_deadline ||
+                    (!!event.registration_deadline &&
+                      new Date() >= new Date(event.registration_deadline)) ||
+                    (event.max_quota && 
+                      event.registration_count !== undefined && 
+                      event.registration_count >= event.max_quota)
+                  )
                 }
                 className={`${
                   !event.registration_deadline ||
                   (!!event.registration_deadline &&
-                    new Date() >= new Date(event.registration_deadline))
+                    new Date() >= new Date(event.registration_deadline)) ||
+                  (event.max_quota && 
+                    event.registration_count !== undefined && 
+                    event.registration_count >= event.max_quota)
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-marigold hover:bg-marigold/90"
                 } text-white px-6 py-3 rounded-lg transition-colors w-full md:w-auto`}
               >
                 {!event.registration_deadline
                   ? t("eventDetails.comingSoon")
+                  : (event.max_quota && 
+                      event.registration_count !== undefined && 
+                      event.registration_count >= event.max_quota)
+                  ? t("eventDetails.quotaFull")
                   : new Date() >= new Date(event.registration_deadline)
                   ? t("eventDetails.registrationClosed")
                   : t("eventDetails.registerNow")}
@@ -688,6 +701,8 @@ function EventDetails() {
         eventName={event.title}
         eventVenue={event.location}
         categories={event.event_categories}
+        maxQuota={event.max_quota || undefined}
+        registrationCount={event.registration_count || 0}
         onOpenTerms={() => {
           setIsTermsModalOpen(true);
         }}

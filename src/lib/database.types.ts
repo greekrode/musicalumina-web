@@ -9,7 +9,7 @@ export type Json =
 export type EventType = "festival" | "competition" | "masterclass" | "group class";
 export type EventStatus = "upcoming" | "ongoing" | "completed";
 export type RegistrationStatus = "personal" | "parents" | "teacher";
-export type RegistrationState = "pending" | "approved" | "rejected";
+export type RegistrationState = "pending" | "verified";
 
 export interface Database {
   public: {
@@ -33,6 +33,7 @@ export interface Database {
           registration_fee: number | null;
           lark_base: string | null;
           lark_table: string | null;
+          max_quota: number | null;
         };
         Insert: {
           id?: string;
@@ -51,6 +52,7 @@ export interface Database {
           registration_fee?: number | null;
           lark_base?: string | null;
           lark_table?: string | null;
+          max_quota?: number | null;
         };
         Update: {
           id?: string;
@@ -69,6 +71,7 @@ export interface Database {
           registration_fee?: number | null;
           lark_base?: string | null;
           lark_table?: string | null;
+          max_quota?: number | null;
         };
       };
       songs: {

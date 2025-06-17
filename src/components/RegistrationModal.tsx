@@ -106,6 +106,8 @@ interface RegistrationModalProps {
   eventVenue: string;
   categories: Category[];
   onOpenTerms: () => void;
+  maxQuota?: number;
+  registrationCount?: number;
 }
 
 function RegistrationModal({
@@ -116,6 +118,8 @@ function RegistrationModal({
   eventVenue,
   categories = [],
   onOpenTerms,
+  maxQuota,
+  registrationCount = 0,
 }: RegistrationModalProps) {
   const { t, language } = useLanguage();
   const [showThankYou, setShowThankYou] = useState(false);
@@ -245,6 +249,17 @@ function RegistrationModal({
     try {
       setIsSubmitting(true);
       setShowLoadingModal(true);
+
+      // Check quota before submitting
+      if (maxQuota && registrationCount >= maxQuota) {
+        setError("root", {
+          type: "manual",
+          message: t("registration.quotaExceeded"),
+        });
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
 
       // Validate files first
       if (!validateFiles()) {

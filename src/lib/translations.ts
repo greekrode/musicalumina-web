@@ -206,7 +206,11 @@ export const translations = {
       eventDate: "Event Date",
       venue: "Venue",
       registrationDeadline: "Registration Deadline",
+      registrationQuota: "Registration Quota",
+      participants: "participants",
       registerNow: "Register Now",
+      registrationClosed: "Registration Closed",
+      quotaFull: "Quota Full",
       importantInfo: "Important Information",
       reviewTerms:
         "Please review our terms and conditions before proceeding with registration.",
@@ -391,6 +395,7 @@ export const translations = {
       personal: "Pribadi",
       parents: "Orang Tua",
       teacher: "Guru",
+      quotaExceeded: "Kuota pendaftaran telah tercapai. Pendaftaran sekarang ditutup.",
     },
     validation: {
       required: "Wajib diisi",
@@ -477,7 +482,11 @@ export const translations = {
       eventDate: "Tanggal Acara",
       venue: "Tempat",
       registrationDeadline: "Batas Pendaftaran",
+      registrationQuota: "Kuota Pendaftaran",
+      participants: "peserta",
       registerNow: "Daftar Sekarang",
+      registrationClosed: "Pendaftaran Ditutup",
+      quotaFull: "Kuota Penuh",
       importantInfo: "Informasi Penting",
       reviewTerms:
         "Silakan tinjau syarat dan ketentuan kami sebelum melanjutkan pendaftaran.",

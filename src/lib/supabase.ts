@@ -153,28 +153,45 @@ export async function getEventById(id: string) {
       throw eventError;
     }
 
-    // Sort categories and subcategories by order_index
-    if (event.event_categories) {
-      // First sort categories by order_index
-      event.event_categories = event.event_categories.sort(
-        (a: { order_index: number }, b: { order_index: number }) =>
-          a.order_index - b.order_index
-      );
+    // Get registration count for this event
+    const { count: registrationCount, error: countError } = await supabase
+      .from("registrations")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", id)
+      .in("status", ["pending", "verified"]);
 
-      // Then sort subcategories within each category
-      event.event_categories = event.event_categories.map(
-        (category: { event_subcategories: { order_index: number }[] }) => ({
-          ...category,
-          event_subcategories: category.event_subcategories.sort(
-            (a: { order_index: number }, b: { order_index: number }) =>
-              a.order_index - b.order_index
-          ),
-        })
-      );
+    if (countError) {
+      console.error("Error fetching registration count:", countError);
     }
 
+    // Add registration count to event object
+    const eventWithCount = {
+      ...event,
+      registration_count: registrationCount || 0,
+    };
+
+          // Sort categories and subcategories by order_index
+      if (eventWithCount.event_categories) {
+        // First sort categories by order_index
+        eventWithCount.event_categories = eventWithCount.event_categories.sort(
+          (a: { order_index: number }, b: { order_index: number }) =>
+            a.order_index - b.order_index
+        );
+
+        // Then sort subcategories within each category
+        eventWithCount.event_categories = eventWithCount.event_categories.map(
+          (category: { event_subcategories: { order_index: number }[] }) => ({
+            ...category,
+            event_subcategories: category.event_subcategories.sort(
+              (a: { order_index: number }, b: { order_index: number }) =>
+                a.order_index - b.order_index
+            ),
+          })
+        );
+      }
+
     // For upcoming and ongoing events, fetch prizes
-    if (event.status === "upcoming" || event.status === "ongoing") {
+    if (eventWithCount.status === "upcoming" || eventWithCount.status === "ongoing") {
       // Fetch all prizes for this event
       const { data: prizes, error: prizesError } = await supabase
         .from("event_prizes")
@@ -203,8 +220,8 @@ export async function getEventById(id: string) {
       }, {});
 
       // Add prizes to their respective categories
-      if (event.event_categories) {
-        event.event_categories = event.event_categories.map(
+      if (eventWithCount.event_categories) {
+        eventWithCount.event_categories = eventWithCount.event_categories.map(
           (category: {
             id: string;
             event_subcategories: { order_index: number }[];
@@ -218,7 +235,7 @@ export async function getEventById(id: string) {
     }
 
     // For completed events, fetch winners
-    if (event.status === "completed") {
+    if (eventWithCount.status === "completed") {
       const { data: winners, error: winnersError } = await supabase
         .from("event_winners")
         .select(
@@ -282,10 +299,10 @@ export async function getEventById(id: string) {
         groupedWinners[category] = sortedSubcategories;
       });
 
-      return { ...event, winners: groupedWinners };
+      return { ...eventWithCount, winners: groupedWinners };
     }
 
-    return event;
+    return eventWithCount;
   } catch (error) {
     console.error("Error fetching event:", error);
     throw error;
