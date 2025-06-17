@@ -27,7 +27,10 @@ interface FileStates {
   payment_receipt: FileState;
 }
 
-function createRegistrationSchema(t: (key: string) => string, isOnlineEvent: boolean) {
+function createRegistrationSchema(
+  t: (key: string) => string,
+  isOnlineEvent: boolean
+) {
   return z.object({
     registrant_status: z.enum(["personal", "parents", "teacher"]),
     registrant_name: z
@@ -782,12 +785,19 @@ function RegistrationModal({
               {t("registration.paymentInfo")}
             </h3>
             <div className="bg-gray-200 p-4 rounded-md">
-              <p className="font-medium">
+              <p className="text-center font-bold text-lg mb-4">
                 {t("registration.bankTransferDetails")}
               </p>
               <p>Bank Central Asia (BCA)</p>
               <p>3720421151</p>
               <p>RODERICK OR NICHOLAS</p>
+            </div>
+
+            <div className="bg-gray-200 p-4 rounded-md">
+              <p className="text-center font-bold text-lg mb-4">
+                {t("registration.qris")}
+              </p>
+              <img src="/Musica-Lumina_QR.jpeg" alt="QRIS" className="w-full" />
             </div>
 
             <div>
