@@ -29,6 +29,7 @@ const eventSchema = z.object({
   venue_details: z.string().nullable(),
   poster_image: z.string().nullable(),
   status: z.enum(["upcoming", "ongoing", "completed"] as const),
+  max_quota: z.number().nullable(),
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -67,6 +68,7 @@ export function EditEventModal({
       venue_details: null,
       poster_image: null,
       status: "upcoming",
+      max_quota: null,
     },
   });
 
@@ -95,6 +97,7 @@ export function EditEventModal({
         venue_details: event.venue_details || null,
         poster_image: event.poster_image || null,
         status: event.status,
+        max_quota: event.max_quota,
       });
     }
   }, [event, reset]);
@@ -176,57 +179,59 @@ export function EditEventModal({
       title="Edit Event"
       maxWidth="2xl"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              {...register("status")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="upcoming">Upcoming</option>
-              <option value="ongoing">Ongoing</option>
-              <option value="completed">Completed</option>
-            </select>
-            {errors.status && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.status.message}
-              </p>
-            )}
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                {...register("status")}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="upcoming">Upcoming</option>
+                <option value="ongoing">Ongoing</option>
+                <option value="completed">Completed</option>
+              </select>
+              {errors.status && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.status.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title
-            </label>
-            <Input {...register("title")} />
-            {errors.title && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.title.message}
-              </p>
-            )}
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title
+              </label>
+              <Input {...register("title")} />
+              {errors.title && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.title.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type
-            </label>
-            <select
-              {...register("type")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="festival">Festival</option>
-              <option value="competition">Competition</option>
-              <option value="masterclass">Masterclass</option>
-              <option value="group class">Group Class</option>
-            </select>
-            {errors.type && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.type.message}
-              </p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type
+              </label>
+              <select
+                {...register("type")}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="festival">Festival</option>
+                <option value="competition">Competition</option>
+                <option value="masterclass">Masterclass</option>
+                <option value="group class">Group Class</option>
+              </select>
+              {errors.type && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.type.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -417,42 +422,63 @@ export function EditEventModal({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date
-            </label>
-            <Input type="date" {...register("start_date")} />
-            {errors.start_date && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.start_date.message}
-              </p>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date
+              </label>
+              <Input type="date" {...register("start_date")} />
+              {errors.start_date && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.start_date.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Date (Optional)
+              </label>
+              <Input type="date" {...register("end_date")} />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Registration Deadline (Optional)
+              </label>
+              <Input type="date" {...register("registration_deadline")} />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date (Optional)
-            </label>
-            <Input type="date" {...register("end_date")} />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <Input {...register("location")} />
+              {errors.location && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.location.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Registration Deadline (Optional)
-            </label>
-            <Input type="date" {...register("registration_deadline")} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
-            <Input {...register("location")} />
-            {errors.location && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.location.message}
-              </p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max Registration Quota (Optional)
+              </label>
+              <Input
+                type="number"
+                min="1"
+                {...register("max_quota", { valueAsNumber: true })}
+                placeholder="Leave empty for unlimited"
+              />
+              {errors.max_quota && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.max_quota.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -483,11 +509,20 @@ export function EditEventModal({
           </div>
         </div>
 
-        <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={handleClose}>
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleClose}
+            className="w-full sm:w-auto order-2 sm:order-1"
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full sm:w-auto order-1 sm:order-2"
+          >
             {isSubmitting ? "Saving..." : "Save Changes"}
           </Button>
         </div>

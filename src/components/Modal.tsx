@@ -28,7 +28,7 @@ function Modal({ isOpen, onClose, title, maxWidth = 'md', children, headerConten
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className="flex min-h-full items-center justify-center p-2 sm:p-4 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -38,28 +38,28 @@ function Modal({ isOpen, onClose, title, maxWidth = 'md', children, headerConten
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full max-w-${maxWidth} transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all`}>
-                <div className="flex flex-col">
-                  <div className="flex items-center justify-between bg-marigold/10 px-6 py-4">
+              <Dialog.Panel className={`w-full max-w-${maxWidth} mx-2 sm:mx-4 transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all max-h-[90vh] flex flex-col`}>
+                <div className="flex flex-col flex-1">
+                  <div className="flex items-center justify-between bg-marigold/10 px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0">
                     <Dialog.Title
                       as="h3"
-                      className="text-2xl font-semibold leading-6 text-gray-900"
+                      className="text-lg sm:text-2xl font-semibold leading-6 text-gray-900 pr-2"
                     >
                       {title}
                     </Dialog.Title>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
                       {headerContent}
                       <button
                         type="button"
-                        className="rounded-md text-gray-500 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2"
+                        className="rounded-md text-gray-500 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2 p-1"
                         onClick={onClose}
                       >
                         <span className="sr-only">Close</span>
-                        <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                        <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                     {children}
                   </div>
                 </div>

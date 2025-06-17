@@ -24,6 +24,7 @@ const eventSchema = z.object({
   location: z.string().min(1, "Location is required"),
   venue_details: z.string().nullable(),
   poster_image: z.string().nullable(),
+  max_quota: z.number().nullable(),
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -57,6 +58,7 @@ export function AddEventModal({
       registration_deadline: null,
       venue_details: null,
       poster_image: null,
+      max_quota: null,
     },
   });
 
@@ -120,38 +122,40 @@ export function AddEventModal({
       title="Add New Event"
       maxWidth="2xl"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title
-            </label>
-            <Input {...register("title")} />
-            {errors.title && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.title.message}
-              </p>
-            )}
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title
+              </label>
+              <Input {...register("title")} />
+              {errors.title && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.title.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type
-            </label>
-            <select
-              {...register("type")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="festival">Festival</option>
-              <option value="competition">Competition</option>
-              <option value="masterclass">Masterclass</option>
-              <option value="group class">Group Class</option>
-            </select>
-            {errors.type && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.type.message}
-              </p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type
+              </label>
+              <select
+                {...register("type")}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="festival">Festival</option>
+                <option value="competition">Competition</option>
+                <option value="masterclass">Masterclass</option>
+                <option value="group class">Group Class</option>
+              </select>
+              {errors.type && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.type.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -160,7 +164,7 @@ export function AddEventModal({
             </label>
             <textarea
               {...register("description.en")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
             />
             {errors.description?.en && (
               <p className="mt-1 text-sm text-red-600">
@@ -175,7 +179,7 @@ export function AddEventModal({
             </label>
             <textarea
               {...register("description.id")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
             />
             {errors.description?.id && (
               <p className="mt-1 text-sm text-red-600">
@@ -190,7 +194,7 @@ export function AddEventModal({
             </label>
             <textarea
               {...register("terms_and_conditions.en")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
             />
             {errors.terms_and_conditions?.en && (
               <p className="mt-1 text-sm text-red-600">
@@ -205,7 +209,7 @@ export function AddEventModal({
             </label>
             <textarea
               {...register("terms_and_conditions.id")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
             />
             {errors.terms_and_conditions?.id && (
               <p className="mt-1 text-sm text-red-600">
@@ -214,42 +218,63 @@ export function AddEventModal({
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date
-            </label>
-            <Input type="date" {...register("start_date")} />
-            {errors.start_date && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.start_date.message}
-              </p>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date
+              </label>
+              <Input type="date" {...register("start_date")} />
+              {errors.start_date && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.start_date.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Date (Optional)
+              </label>
+              <Input type="date" {...register("end_date")} />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Registration Deadline (Optional)
+              </label>
+              <Input type="date" {...register("registration_deadline")} />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date (Optional)
-            </label>
-            <Input type="date" {...register("end_date")} />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <Input {...register("location")} />
+              {errors.location && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.location.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Registration Deadline (Optional)
-            </label>
-            <Input type="date" {...register("registration_deadline")} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
-            <Input {...register("location")} />
-            {errors.location && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.location.message}
-              </p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max Registration Quota (Optional)
+              </label>
+              <Input
+                type="number"
+                min="1"
+                {...register("max_quota", { valueAsNumber: true })}
+                placeholder="Leave empty for unlimited"
+              />
+              {errors.max_quota && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.max_quota.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -275,11 +300,20 @@ export function AddEventModal({
           </div>
         </div>
 
-        <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={handleClose}>
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleClose}
+            className="w-full sm:w-auto order-2 sm:order-1"
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full sm:w-auto order-1 sm:order-2"
+          >
             {isSubmitting ? "Adding..." : "Add Event"}
           </Button>
         </div>
