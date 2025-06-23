@@ -1,9 +1,68 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Dialog } from "@headlessui/react";
-import { X } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import { z } from "zod";
 import { useLanguage } from "../lib/LanguageContext";
-import type { RegistrationStatus } from "../lib/database.types";
+import { LarkService } from "../lib/lark";
 import { supabase } from "../lib/supabase";
+import { WhatsAppService } from "../lib/whatsapp";
+import LoadingModal from "./LoadingModal";
+import Modal from "./Modal";
+import ThankYouModal from "./ThankYouModal";
+
+function createMasterclassSchema(t: (key: string) => string) {
+  return z.object({
+    registrant_status: z.enum(["personal", "parents", "teacher"]),
+    registrant_name: z
+      .string()
+      .optional()
+      .transform((val) => val || "")
+      .pipe(z.string().max(100, t("validation.maxNameLength"))),
+    registrant_whatsapp: z
+      .string()
+      .regex(/^\+[1-9]\d{1,14}$/, t("validation.invalidPhone")),
+    registrant_email: z.string().email(t("validation.invalidEmail")),
+    participant_name: z
+      .string()
+      .min(3, t("validation.minName"))
+      .max(100, t("validation.maxNameLength")),
+    participant_age: z
+      .string()
+      .min(1, t("validation.enterAge"))
+      .refine((val) => {
+        const age = parseInt(val);
+        return !isNaN(age) && age >= 1 && age <= 100;
+      }, t("validation.invalidAge")),
+    number_of_slots: z
+      .string()
+      .min(1, t("validation.selectSlots"))
+      .refine((val) => {
+        const slots = parseInt(val);
+        return !isNaN(slots) && slots >= 1 && slots <= 5;
+      }, t("validation.invalidSlots")),
+    bank_name: z
+      .string()
+      .min(1, t("validation.enterBankName"))
+      .max(100, t("validation.maxBankNameLength")),
+    bank_account_number: z
+      .string()
+      .regex(/^\d+$/, t("validation.onlyNumbers"))
+      .min(1, t("validation.enterAccountNumber"))
+      .max(25, t("validation.maxAccountLength")),
+    bank_account_name: z
+      .string()
+      .min(1, t("validation.enterAccountName"))
+      .max(100, t("validation.maxAccountNameLength")),
+    terms_accepted: z.literal(true, {
+      errorMap: () => ({ message: t("validation.acceptTerms") }),
+    }),
+  });
+}
+
+type MasterclassForm = z.infer<ReturnType<typeof createMasterclassSchema>>;
 
 interface MasterclassRegistrationModalProps {
   isOpen: boolean;
@@ -20,282 +79,537 @@ function MasterclassRegistrationModal({
   eventName,
   onOpenTerms,
 }: MasterclassRegistrationModalProps) {
-  const { t } = useLanguage();
-  const [registrationStatus, setRegistrationStatus] =
-    useState<RegistrationStatus>("personal");
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    registrantName: "",
-    registrantWhatsapp: "",
-    registrantEmail: "",
-    participantName: "",
-    bankName: "",
-    bankAccountNumber: "",
-    bankAccountName: "",
+  const { t, language } = useLanguage();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [registrationRef, setRegistrationRef] = useState("");
+  const [registeredName, setRegisteredName] = useState("");
+  const [repertoireList, setRepertoireList] = useState<string[]>([""]);
+
+  const masterclassSchema = createMasterclassSchema(t);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    control,
+    formState: { errors },
+  } = useForm<MasterclassForm>({
+    resolver: zodResolver(masterclassSchema),
+    defaultValues: {
+      registrant_status: "personal",
+      registrant_whatsapp: "",
+      number_of_slots: "1",
+    },
   });
 
+  const registrantStatus = watch("registrant_status");
+
   const handleClose = () => {
-    setStep(1);
-    setFormData({
-      registrantName: "",
-      registrantWhatsapp: "",
-      registrantEmail: "",
-      participantName: "",
-      bankName: "",
-      bankAccountNumber: "",
-      bankAccountName: "",
-    });
+    setRepertoireList([""]);
+    setShowThankYou(false);
+    reset();
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const addRepertoire = () => {
+    setRepertoireList([...repertoireList, ""]);
+  };
+
+  const removeRepertoire = (index: number) => {
+    if (repertoireList.length > 1) {
+      const newList = repertoireList.filter((_, i) => i !== index);
+      setRepertoireList(newList);
+    }
+  };
+
+  const updateRepertoire = (index: number, value: string) => {
+    const newList = [...repertoireList];
+    newList[index] = value;
+    setRepertoireList(newList);
+  };
+
+  const onSubmit = async (data: MasterclassForm) => {
     try {
-      const { error } = await supabase.from("registrations").insert({
-        event_id: eventId,
-        registrant_status: registrationStatus,
-        registrant_name: formData.registrantName,
-        registrant_whatsapp: formData.registrantWhatsapp,
-        registrant_email: formData.registrantEmail,
-        participant_name: formData.participantName,
-        bank_name: formData.bankName,
-        bank_account_number: formData.bankAccountNumber,
-        bank_account_name: formData.bankAccountName,
-        status: "pending",
-      });
+      setIsSubmitting(true);
+      setShowLoadingModal(true);
+
+      // Filter out empty repertoire entries
+      const filteredRepertoire = repertoireList.filter(
+        (title) => title.trim() !== ""
+      );
+
+      if (filteredRepertoire.length === 0) {
+        alert(t("masterclass.registration.addAtLeastOneRepertoire"));
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
+
+      // Create registration
+      const { data: registration, error } = await supabase
+        .from("registrations")
+        .insert({
+          event_id: eventId,
+          registrant_status: data.registrant_status,
+          registrant_name:
+            data.registrant_status === "personal"
+              ? data.participant_name
+              : data.registrant_name,
+          registrant_whatsapp: data.registrant_whatsapp,
+          registrant_email: data.registrant_email,
+          participant_name: data.participant_name,
+          participant_age: parseInt(data.participant_age),
+          number_of_slots: parseInt(data.number_of_slots),
+          bank_name: data.bank_name,
+          bank_account_number: data.bank_account_number,
+          bank_account_name: data.bank_account_name,
+          payment_receipt_url: "", // Will be handled separately if needed
+          status: "pending",
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // Save repertoire to masterclass_participants
+      const { error: participantError } = await supabase
+        .from("masterclass_participants")
+        .insert({
+          event_id: eventId,
+          name: data.participant_name,
+          repertoire: filteredRepertoire,
+        });
+
+      if (participantError) {
+        console.error("Error saving participant data:", participantError);
+      }
+
+      // Generate reference number
+      const uuid = registration.id;
+      const phone = data.registrant_whatsapp.replace(/\D/g, "");
+      const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
+
+      // Track event
       if (!import.meta.env.DEV) {
         window.umami?.track("masterclass_registration_submitted", {
           eventId,
         });
       }
 
-      handleClose();
+      // Send to Lark if configured
+      const { data: eventData } = await supabase
+        .from("events")
+        .select("lark_base, lark_table")
+        .eq("id", eventId)
+        .single();
+
+      if (eventData?.lark_base && eventData?.lark_table) {
+        try {
+          await LarkService.sendRegistrationData({
+            event: {
+              id: eventId,
+              lark_base: eventData.lark_base,
+              lark_table: eventData.lark_table,
+            },
+            registration: {
+              ref_code: refNumber,
+              registrant_status:
+                data.registrant_status.charAt(0).toUpperCase() +
+                data.registrant_status.slice(1),
+              registrant_name:
+                data.registrant_status === "personal"
+                  ? data.participant_name
+                  : data.registrant_name,
+              registrant_email: data.registrant_email,
+              registrant_whatsapp: data.registrant_whatsapp,
+              participant_name: data.participant_name,
+              participant_age: parseInt(data.participant_age),
+              number_of_slots: parseInt(data.number_of_slots),
+              repertoire: filteredRepertoire.join("; "),
+              bank_name: data.bank_name,
+              bank_account_name: data.bank_account_name,
+              bank_account_number: data.bank_account_number,
+              created_at: registration.created_at,
+            },
+          });
+        } catch (error) {
+          console.error("Error sending data to Lark:", error);
+        }
+      }
+
+      // Send WhatsApp message
+      try {
+        await WhatsAppService.sendMasterclassRegistrationMessage({
+          registrant_status: data.registrant_status,
+          registrant_name:
+            data.registrant_status === "personal"
+              ? data.participant_name
+              : data.registrant_name,
+          registrant_email: data.registrant_email,
+          registrant_whatsapp: data.registrant_whatsapp,
+          participant_name: data.participant_name,
+          participant_age: parseInt(data.participant_age),
+          number_of_slots: parseInt(data.number_of_slots),
+          repertoire: filteredRepertoire,
+          registration_ref_code: refNumber,
+          event_name: eventName,
+          language,
+        });
+      } catch (error) {
+        console.error("Error sending WhatsApp message:", error);
+      }
+
+      setRegistrationRef(refNumber);
+      setRegisteredName(data.participant_name);
+      setShowThankYou(true);
+      reset();
+      setRepertoireList([""]);
     } catch (error) {
       console.error("Error submitting registration:", error);
+      alert(t("registration.errorSubmitting"));
+    } finally {
+      setIsSubmitting(false);
+      setShowLoadingModal(false);
     }
   };
 
+  if (showThankYou) {
+    return (
+      <ThankYouModal
+        isOpen={true}
+        onClose={handleClose}
+        participantName={registeredName}
+        referenceNumber={registrationRef}
+      />
+    );
+  }
+
   return (
-    <Dialog open={isOpen} onClose={handleClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+    <>
+      <LoadingModal isOpen={showLoadingModal} />
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={t("masterclass.registration.title")}
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {/* Registrant's Data */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              {t("registration.registrantData")}
+            </h3>
 
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-2xl w-full rounded-xl bg-white">
-          <div className="flex items-center justify-between border-b border-gray-200 p-4">
-            <Dialog.Title className="text-xl font-playfair text-black">
-              {t("masterclass.registration.title")}
-            </Dialog.Title>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="p-6">
-            <div className="mb-6">
-              <h3 className="font-medium text-black mb-2">{eventName}</h3>
-              <p className="text-sm text-black/60">
-                {t("masterclass.registration.description")}
-              </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.registrantStatus")}
+              </label>
+              <select
+                {...register("registrant_status")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              >
+                <option value="personal">{t("registration.personal")}</option>
+                <option value="parents">{t("registration.parents")}</option>
+                <option value="teacher">{t("registration.teacher")}</option>
+              </select>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {registrantStatus !== "personal" && (
               <div>
-                <label className="block text-sm font-medium text-black mb-2">
-                  {t("registration.registrationType")}
+                <label className="block text-sm font-medium text-gray-700">
+                  {t("registration.registrantName")}
                 </label>
-                <div className="grid grid-cols-3 gap-4">
-                  {["personal", "parents", "teacher"].map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() =>
-                        setRegistrationStatus(status as RegistrationStatus)
-                      }
-                      className={`p-3 text-sm rounded-lg border ${
-                        registrationStatus === status
-                          ? "border-marigold bg-marigold/10 text-marigold"
-                          : "border-gray-200 text-gray-700 hover:border-marigold/50"
-                      }`}
-                    >
-                      {t(`registration.types.${status}`)}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="text"
+                  {...register("registrant_name")}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                />
+                {errors.registrant_name && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.registrant_name.message}
+                  </p>
+                )}
               </div>
+            )}
 
-              {step === 1 ? (
-                <>
-                  <div className="space-y-4">
-                    {registrationStatus !== "personal" && (
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-2">
-                          {t("registration.registrantName")}
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.registrantName}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              registrantName: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
-                          required
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-2">
-                        {t("registration.whatsapp")}
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.registrantWhatsapp}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            registrantWhatsapp: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-2">
-                        {t("registration.email")}
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.registrantEmail}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            registrantEmail: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-2">
-                        {t("registration.participantName")}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.participantName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            participantName: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
-                        required
-                      />
-                    </div>
-                  </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.whatsappNumber")}
+              </label>
+              <div className="mt-1">
+                <Controller
+                  name="registrant_whatsapp"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
+                      country="id"
+                      preferredCountries={["id", "sg", "my"]}
+                      enableSearch
+                      searchPlaceholder="Search country..."
+                      inputClass="!w-full !py-2 !text-base !rounded-md !border-gray-300 focus:!border-marigold focus:!ring focus:!ring-marigold focus:!ring-opacity-50"
+                      buttonClass="!border-gray-300 !rounded-l-md hover:!bg-gray-50"
+                      dropdownClass="!text-base"
+                      value={value}
+                      onChange={(phone) => {
+                        onChange(`+${phone}`);
+                      }}
+                      placeholder={t("registration.whatsappPlaceholder")}
+                    />
+                  )}
+                />
+                {errors.registrant_whatsapp && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.registrant_whatsapp.message}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  {t("registration.whatsappHelp")}
+                </p>
+              </div>
+            </div>
 
-                  <div className="flex items-center justify-between pt-4">
-                    <button
-                      type="button"
-                      onClick={onOpenTerms}
-                      className="text-sm text-marigold hover:text-marigold/90"
-                    >
-                      {t("registration.viewTerms")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStep(2)}
-                      className="px-6 py-2 bg-marigold text-white rounded-lg hover:bg-marigold/90"
-                    >
-                      {t("registration.next")}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-2">
-                        {t("registration.bankName")}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.bankName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, bankName: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-2">
-                        {t("registration.accountNumber")}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.bankAccountNumber}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            bankAccountNumber: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-2">
-                        {t("registration.accountName")}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.bankAccountName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            bankAccountName: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-marigold"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="text-sm text-marigold hover:text-marigold/90"
-                    >
-                      {t("registration.back")}
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-marigold text-white rounded-lg hover:bg-marigold/90"
-                    >
-                      {t("registration.submit")}
-                    </button>
-                  </div>
-                </>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.email")}
+              </label>
+              <input
+                type="email"
+                {...register("registrant_email")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.registrant_email && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.registrant_email.message}
+                </p>
               )}
-            </form>
+            </div>
           </div>
-        </Dialog.Panel>
-      </div>
-    </Dialog>
+
+          {/* Participant's Data */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              {t("registration.participantData")}
+            </h3>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.fullName")}
+              </label>
+              <input
+                type="text"
+                {...register("participant_name")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.participant_name && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.participant_name.message}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  {t("registration.participantAge")}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  {...register("participant_age")}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                />
+                {errors.participant_age && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.participant_age.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  {t("masterclass.registration.numberOfSlots")}
+                </label>
+                <select
+                  {...register("number_of_slots")}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                >
+                  {[1, 2, 3].map((num) => (
+                    <option key={num} value={num}>
+                      {num}
+                    </option>
+                  ))}
+                </select>
+                {errors.number_of_slots && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.number_of_slots.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("masterclass.registration.repertoire")}
+              </label>
+              {repertoireList.map((repertoire, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={repertoire}
+                    onChange={(e) => updateRepertoire(index, e.target.value)}
+                    placeholder={t(
+                      "masterclass.registration.repertoirePlaceholder"
+                    )}
+                    className="flex-1 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                    required
+                  />
+                  {repertoireList.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeRepertoire(index)}
+                      className="mt-1 p-2 text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addRepertoire}
+                className="flex items-center gap-2 text-sm text-marigold hover:text-marigold/90"
+              >
+                <Plus className="h-4 w-4" />
+                {t("masterclass.registration.addRepertoire")}
+              </button>
+            </div>
+          </div>
+
+          {/* Payment Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              {t("registration.paymentInfo")}
+            </h3>
+
+            <div className="bg-gray-200 p-4 rounded-md">
+              <p className="text-center font-bold text-lg mb-4">
+                {t("registration.bankTransferDetails")}
+              </p>
+              <p>Bank Central Asia (BCA)</p>
+              <p>3720421151</p>
+              <p>RODERICK OR NICHOLAS</p>
+            </div>
+
+            <div className="bg-gray-200 p-4 rounded-md">
+              <p className="text-center font-bold text-lg mb-4">
+                {t("registration.qris")}
+              </p>
+              <img src="/Musica-Lumina_QR.jpeg" alt="QRIS" className="w-full" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.bankName")}
+              </label>
+              <input
+                type="text"
+                {...register("bank_name")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.bank_name && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.bank_name.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.accountNumber")}
+              </label>
+              <input
+                type="text"
+                {...register("bank_account_number")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.bank_account_number && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.bank_account_number.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.accountHolderName")}
+              </label>
+              <input
+                type="text"
+                {...register("bank_account_name")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.bank_account_name && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.bank_account_name.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Terms and Conditions */}
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  type="checkbox"
+                  {...register("terms_accepted")}
+                  className="h-4 w-4 text-marigold border-gray-300 rounded focus:ring-marigold"
+                />
+              </div>
+              <div className="ml-3">
+                <label className="text-sm text-gray-700">
+                  {t("registration.termsAndConditions")}{" "}
+                  <button
+                    type="button"
+                    onClick={onOpenTerms}
+                    className="text-marigold hover:text-marigold/90 underline"
+                  >
+                    {t("registration.termsLink")}
+                  </button>
+                </label>
+                {errors.terms_accepted && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.terms_accepted.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              {t("registration.cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting
+                ? t("registration.submitting")
+                : t("registration.submit")}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </>
   );
 }
 

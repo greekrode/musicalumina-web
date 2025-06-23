@@ -129,6 +129,7 @@ export interface Database {
           email_sent_at: string | null;
           created_at: string;
           updated_at: string;
+          number_of_slots: number | null;
         };
         Insert: {
           id?: string;
@@ -152,6 +153,7 @@ export interface Database {
           status?: RegistrationState;
           created_at?: string;
           updated_at?: string;
+          number_of_slots?: number | null;
         };
         Update: {
           id?: string;
@@ -175,6 +177,7 @@ export interface Database {
           status?: RegistrationState;
           created_at?: string;
           updated_at?: string;
+          number_of_slots?: number | null;
         };
       };
       contact_messages: {

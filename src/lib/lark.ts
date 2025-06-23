@@ -25,6 +25,8 @@ interface LarkRegistrationData {
     bank_account_name: string;
     bank_account_number: string;
     payment_receipt_url?: string | null;
+    number_of_slots: number;
+    repertoire: string;
     created_at: string;
   };
 }
@@ -46,7 +48,7 @@ interface LarkSearchResponse {
     items: Array<{
       fields: {
         "Participant's Name": Array<{ text: string }>;
-        "Category": string;
+        Category: string;
         "Sub Category": string;
         "Song Title": Array<{ text: string }>;
         "Video URL"?: { link: string; text: string };
@@ -69,34 +71,39 @@ export class LarkService {
     try {
       const username = import.meta.env.VITE_N8N_USERNAME?.trim();
       const password = import.meta.env.VITE_N8N_PASSWORD?.trim();
-      
+
       if (!username || !password) {
         throw new Error("N8N credentials are not configured");
       }
 
       const credentials = btoa(`${username}:${password}`);
-      
-      const response = await fetch('https://n8n.kangritel.com/webhook/lark-access-token', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${credentials}`,
-          'Content-Type': 'application/json',
-        },
-      });
+
+      const response = await fetch(
+        "https://n8n.kangritel.com/webhook/lark-access-token",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to get Lark access token: ${response.statusText}`);
+        throw new Error(
+          `Failed to get Lark access token: ${response.statusText}`
+        );
       }
 
       const data = await response.json();
-      
+
       if (!data.lark_access_token) {
-        throw new Error('No lark_access_token in response');
+        throw new Error("No lark_access_token in response");
       }
 
       return data.lark_access_token;
     } catch (error) {
-      console.error('Error getting Lark access token:', error);
+      console.error("Error getting Lark access token:", error);
       throw error;
     }
   }
@@ -104,24 +111,26 @@ export class LarkService {
   /**
    * Search for participant data by registration reference code
    */
-  public static async searchParticipantData(registrationRefCode: string): Promise<ParticipantData> {
+  public static async searchParticipantData(
+    registrationRefCode: string
+  ): Promise<ParticipantData> {
     try {
       const username = import.meta.env.VITE_N8N_USERNAME?.trim();
       const password = import.meta.env.VITE_N8N_PASSWORD?.trim();
-      
+
       if (!username || !password) {
         throw new Error("N8N credentials are not configured");
       }
 
       const credentials = btoa(`${username}:${password}`);
-      
+
       const response = await fetch(
-        'https://n8n.kangritel.com/webhook/search-lark',
+        "https://n8n.kangritel.com/webhook/search-lark",
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Basic ${credentials}`,
-            'Content-Type': 'application/json',
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             base_id: "DPxNbSyPEa918OsuMJWlzy43gId",
@@ -133,16 +142,18 @@ export class LarkService {
                 {
                   field_name: "Registration Reference Code",
                   operator: "is",
-                  value: [registrationRefCode]
-                }
-              ]
-            }
+                  value: [registrationRefCode],
+                },
+              ],
+            },
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to search participant data: ${response.statusText}`);
+        throw new Error(
+          `Failed to search participant data: ${response.statusText}`
+        );
       }
 
       const data: LarkSearchResponse = await response.json();
@@ -152,7 +163,7 @@ export class LarkService {
       }
 
       if (data.data.total === 0) {
-        throw new Error('Invalid registration reference code');
+        throw new Error("Invalid registration reference code");
       }
 
       const item = data.data.items[0];
@@ -171,9 +182,8 @@ export class LarkService {
         existingVideoUrl: fields["Video URL"]?.link,
         recordId: item.record_id,
       };
-
     } catch (error) {
-      console.error('Error searching participant data:', error);
+      console.error("Error searching participant data:", error);
       throw error;
     }
   }
@@ -191,13 +201,13 @@ export class LarkService {
     try {
       const username = import.meta.env.VITE_N8N_USERNAME?.trim();
       const password = import.meta.env.VITE_N8N_PASSWORD?.trim();
-      
+
       if (!username || !password) {
         throw new Error("N8N credentials are not configured");
       }
 
       const credentials = btoa(`${username}:${password}`);
-      
+
       const requestBody = {
         base_id: "DPxNbSyPEa918OsuMJWlzy43gId",
         table_id: "tblh4z8siDb2qt50",
@@ -205,37 +215,38 @@ export class LarkService {
         record_id: recordId,
         fields: {
           "Video URL": {
-            "link": videoUrl,
-            "text": `${participantName} - ${category} - ${subCategory}`
-          }
-        }
+            link: videoUrl,
+            text: `${participantName} - ${category} - ${subCategory}`,
+          },
+        },
       };
 
       // Debug logging
       console.log("Update request body:", JSON.stringify(requestBody, null, 2));
       console.log("Record ID being sent:", recordId);
-      
+
       const response = await fetch(
-        'https://n8n.kangritel.com/webhook/update-lark-record',
+        "https://n8n.kangritel.com/webhook/update-lark-record",
         {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Authorization': `Basic ${credentials}`,
-            'Content-Type': 'application/json',
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to update participant video: ${response.statusText}`);
+        throw new Error(
+          `Failed to update participant video: ${response.statusText}`
+        );
       }
 
       const data = await response.json();
-      console.log('Video URL updated successfully:', data);
-
+      console.log("Video URL updated successfully:", data);
     } catch (error) {
-      console.error('Error updating participant video:', error);
+      console.error("Error updating participant video:", error);
       throw error;
     }
   }
@@ -327,6 +338,14 @@ export class LarkService {
 
     if (registration.participant_age) {
       fields["Participant's Age"] = registration.participant_age;
+    }
+
+    if (registration.number_of_slots) {
+      fields["Slots"] = registration.number_of_slots;
+    }
+
+    if (registration.repertoire) {
+      fields["Repertoires"] = registration.repertoire;
     }
 
     return {

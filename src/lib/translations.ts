@@ -83,9 +83,8 @@ export const translations = {
       registrantStatus: "Registrant Status",
       registrantName: "Registrant Full Name",
       whatsappNumber: "WhatsApp Number",
-      whatsappPlaceholder: "Enter WhatsApp number without country code",
-      whatsappHelp:
-        "Please select your country code and enter your WhatsApp number",
+      whatsappPlaceholder: "+62 812 3456 7890",
+      whatsappHelp: "Include country code (e.g., +62 for Indonesia)",
       email: "Email",
       participantData: "Participant's Data",
       fullName: "Full Name",
@@ -120,6 +119,8 @@ export const translations = {
       personal: "Personal",
       parents: "Parents",
       teacher: "Teacher",
+      participantAge: "Participant Age",
+      errorSubmitting: "Error submitting registration. Please try again.",
     },
     validation: {
       required: "This field is required",
@@ -148,6 +149,12 @@ export const translations = {
       maxAccountNameLength: "Account holder name cannot exceed 100 characters",
       enterReferenceCode: "Please enter your registration reference code",
       maxReferenceLength: "Reference code cannot exceed 50 characters",
+      enterPhone: "Please enter your WhatsApp number",
+      maxPhoneLength: "Phone number must be less than 20 characters",
+      enterAge: "Please enter participant age",
+      invalidAge: "Age must be between 1 and 100",
+      selectSlots: "Please select number of slots",
+      invalidSlots: "Number of slots must be between 1 and 5",
     },
     loading: {
       title: "Processing Your Request",
@@ -237,7 +244,12 @@ export const translations = {
       repertoire: "Repertoire",
       registration: {
         title: "Masterclass Registration",
-        description: "Please fill in the required information to register for this masterclass."
+        description: "Please fill in the details below to register for this masterclass",
+        numberOfSlots: "Number of Slots",
+        repertoire: "Repertoire Titles",
+        repertoirePlaceholder: "Enter repertoire title",
+        addRepertoire: "Add Another Repertoire",
+        addAtLeastOneRepertoire: "Please add at least one repertoire title",
       },
     },
     common: {
@@ -358,9 +370,8 @@ export const translations = {
       registrantStatus: "Status Pendaftar",
       registrantName: "Nama Lengkap Pendaftar",
       whatsappNumber: "Nomor WhatsApp",
-      whatsappPlaceholder: "Masukkan nomor WhatsApp tanpa kode negara",
-      whatsappHelp:
-        "Silakan pilih kode negara dan masukkan nomor WhatsApp Anda",
+      whatsappPlaceholder: "+62 812 3456 7890",
+      whatsappHelp: "Sertakan kode negara (contoh: +62 untuk Indonesia)",
       email: "Email",
       participantData: "Data Peserta",
       fullName: "Nama Lengkap",
@@ -396,6 +407,8 @@ export const translations = {
       parents: "Orang Tua",
       teacher: "Guru",
       quotaExceeded: "Kuota pendaftaran telah tercapai. Pendaftaran sekarang ditutup.",
+      participantAge: "Usia Peserta",
+      errorSubmitting: "Kesalahan saat mengirim pendaftaran. Silakan coba lagi.",
     },
     validation: {
       required: "Wajib diisi",
@@ -425,6 +438,12 @@ export const translations = {
         "Nama pemilik rekening tidak boleh melebihi 100 karakter",
       enterReferenceCode: "Masukkan kode referensi pendaftaran Anda",
       maxReferenceLength: "Kode referensi tidak boleh melebihi 50 karakter",
+      enterPhone: "Silakan masukkan nomor WhatsApp Anda",
+      maxPhoneLength: "Nomor telepon harus kurang dari 20 karakter",
+      enterAge: "Silakan masukkan usia peserta",
+      invalidAge: "Usia harus antara 1 dan 100",
+      selectSlots: "Silakan pilih jumlah slot",
+      invalidSlots: "Jumlah slot harus antara 1 dan 5",
     },
     loading: {
       title: "Memproses Permintaan Anda",
@@ -513,7 +532,12 @@ export const translations = {
       repertoire: "Partitur",
       registration: {
         title: "Pendaftaran Masterclass",
-        description: "Silakan isi informasi yang diperlukan untuk mendaftar masterclass ini."
+        description: "Silakan isi detail di bawah ini untuk mendaftar ke masterclass ini",
+        numberOfSlots: "Jumlah Slot",
+        repertoire: "Judul Repertoire",
+        repertoirePlaceholder: "Masukkan judul repertoire",
+        addRepertoire: "Tambah Repertoire Lain",
+        addAtLeastOneRepertoire: "Silakan tambahkan setidaknya satu judul repertoire",
       },
     },
     common: {

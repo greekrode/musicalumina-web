@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Calendar,
@@ -18,6 +18,7 @@ import type { Database } from "../lib/database.types";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { useLanguage } from "../lib/LanguageContext";
+import { supabase } from "@/lib/supabase";
 
 type Event = Database["public"]["Tables"]["events"]["Row"] & {
   event_jury: EventJuror[];
@@ -30,6 +31,9 @@ type EventJuror = Omit<
   credentials: string | null;
 };
 
+type RegistrationFee =
+  Database["public"]["Tables"]["event_registration_fees"]["Row"];
+
 function MasterclassDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -41,15 +45,47 @@ function MasterclassDetails() {
     error: PostgrestError | null;
   };
   const { t, language } = useLanguage();
+  const [registrationFees, setRegistrationFees] = useState<RegistrationFee[]>(
+    []
+  );
+  const [feesLoading, setFeesLoading] = useState(true);
 
   usePageTitle(event?.title || "");
+
+  // Fetch registration fees
+  useEffect(() => {
+    async function fetchRegistrationFees() {
+      if (!event?.id) return;
+
+      try {
+        setFeesLoading(true);
+        const { data, error } = await supabase
+          .from("event_registration_fees")
+          .select("*")
+          .eq("event_id", event.id)
+          .order("price");
+
+        if (error) throw error;
+
+        if (data) {
+          setRegistrationFees(data);
+        }
+      } catch (err) {
+        console.error("Error fetching registration fees:", err);
+      } finally {
+        setFeesLoading(false);
+      }
+    }
+
+    fetchRegistrationFees();
+  }, [event?.id]);
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
     navigate("/events");
   };
 
-  if (loading) {
+  if (loading || feesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FFFFF0]">
         <LoadingSpinner message={t("loading.loadingEventDetails")} />
@@ -153,19 +189,24 @@ function MasterclassDetails() {
                 </div>
               </div>
             )}
-            <div className="flex items-start space-x-3">
-              <Coins className="h-5 w-5 text-marigold mt-1" />
-              <div>
-                <h3 className="font-medium text-black">
-                  {t("masterclass.registrationFee")}
-                </h3>
-                <p className="text-black/80">
-                  {event.registration_fee
-                    ? `IDR ${event.registration_fee.toLocaleString()}`
-                    : t("common.tbd")}
-                </p>
+
+            {registrationFees.length > 0 && (
+              <div className="flex items-start space-x-3">
+                <Coins className="h-5 w-5 text-marigold mt-1" />
+                <div>
+                  <h3 className="font-medium text-black">
+                    {t("groupClass.registrationFees")}
+                  </h3>
+                  <div className="space-y-1">
+                    {registrationFees.map((fee) => (
+                      <p key={fee.id} className="text-black/80">
+                        IDR {fee.price.toLocaleString()}/{fee.uom}
+                      </p>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {event.status === "ongoing" && (

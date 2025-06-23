@@ -12,6 +12,8 @@ interface WhatsAppMessageData {
   category?: string;
   sub_category?: string;
   registration_ref_code: string;
+  number_of_slots: number;
+  repertoire: string[];
   event_name: string;
   language: string;
 }
@@ -46,7 +48,7 @@ export class WhatsAppService {
         personal: data.language === "id" ? "Personal" : "Personal",
         parents: data.language === "id" ? "Orang Tua" : "Parents",
         teacher: data.language === "id" ? "Guru" : "Teacher",
-      }[data.registrant_status] || data.registrant_status;
+      }[data.registrant_status || ""] || data.registrant_status;
 
     // Format message with WhatsApp markdown
     return data.language === "id"
@@ -175,5 +177,67 @@ export class WhatsAppService {
       console.error("Error sending WhatsApp message:", error);
       throw error;
     }
+  }
+
+  public static async sendMasterclassRegistrationMessage(
+    data: WhatsAppMessageData
+  ): Promise<void> {
+    try {
+      const message = this.formatMasterclassMessage(data);
+      const phone = this.formatPhoneNumber(data.registrant_whatsapp);
+      const token = await this.generateAuthToken();
+
+      const response = await fetch(this.WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          phone,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to send WhatsApp message: ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("WhatsApp message sent successfully:", result);
+    } catch (error) {
+      console.error("Error sending WhatsApp message:", error);
+      throw error;
+    }
+  }
+
+  private static formatMasterclassMessage(data: WhatsAppMessageData): string {
+    return data.language === "id"
+      ? `*Pendaftaran ${data.event_name} Berhasil!* 🎉\n\n` +
+          `Halo *${data.registrant_name}*,\n\n` +
+          `Terima kasih telah mendaftar untuk ${data.event_name}. Berikut adalah detail pendaftaran Anda:\n\n` +
+          `*Nomor Referensi:* ${data.registration_ref_code}\n\n` +
+          `*Nama Peserta:* ${data.participant_name}\n` +
+          `*Umur Peserta:* ${data.participant_age}\n` +
+          `*Jumlah Slot:* ${data.number_of_slots}\n` +
+          `*Repertoire:* ${data.repertoire.join("\n")}\n` +
+          `\nKami akan segera memproses pendaftaran Anda. Silakan simpan nomor referensi di atas untuk keperluan di masa mendatang.\n\n` +
+          `Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.\n\n` +
+          `Salam musik,\n` +
+          `Tim Musical Lumina`
+      : `*${data.event_name} Registration Successful!* 🎉\n\n` +
+          `Hello *${data.registrant_name}*,\n\n` +
+          `Thank you for registering for ${data.event_name}. Here are your registration details:\n\n` +
+          `*Reference Number:* ${data.registration_ref_code}\n\n` +
+          `*Participant Name:* ${data.participant_name}\n` +
+          `*Age:* ${data.participant_age}\n` +
+          `*Number of Slots:* ${data.number_of_slots}\n` +
+          `*Repertoire:* ${data.repertoire.join("\n")}\n` +
+          `\nWe will process your registration shortly. Please keep the reference number for future correspondence.\n\n` +
+          `If you have any questions, please don't hesitate to contact us.\n\n` +
+          `Musical regards,\n` +
+          `Musical Lumina Team`;
   }
 }
