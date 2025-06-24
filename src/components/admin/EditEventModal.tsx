@@ -14,7 +14,7 @@ type Event = Database["public"]["Tables"]["events"]["Row"];
 
 const eventDateSchema = z.object({
   date: z.string().min(1, "Date is required"),
-  time: z.string().min(1, "Time is required")
+  time: z.string().min(1, "Time is required"),
 });
 
 const formSchema = z.object({
@@ -26,7 +26,9 @@ const formSchema = z.object({
   }),
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().optional(),
-  event_date: z.array(eventDateSchema).min(1, "At least one event date is required"),
+  event_date: z
+    .array(eventDateSchema)
+    .min(1, "At least one event date is required"),
   registration_deadline: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   venue_details: z.string().optional(),
@@ -54,9 +56,9 @@ export function EditEventModal({
 }: EditEventModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [eventDates, setEventDates] = useState<Array<{ date: string; time: string }>>([
-    { date: "", time: "" }
-  ]);
+  const [eventDates, setEventDates] = useState<
+    Array<{ date: string; time: string }>
+  >([{ date: "", time: "" }]);
 
   const {
     register,
@@ -90,11 +92,15 @@ export function EditEventModal({
   // Initialize event dates when event prop changes
   useEffect(() => {
     if (event) {
-      if (event.event_date && Array.isArray(event.event_date) && event.event_date.length > 0) {
+      if (
+        event.event_date &&
+        Array.isArray(event.event_date) &&
+        event.event_date.length > 0
+      ) {
         // Handle new format (string array)
-        const dates = event.event_date.map(date => {
+        const dates = event.event_date.map((date) => {
           const dateObj = new Date(date);
-          const dateStr = dateObj.toISOString().split('T')[0];
+          const dateStr = dateObj.toISOString().split("T")[0];
           const timeStr = dateObj.toTimeString().slice(0, 5);
           return { date: dateStr, time: timeStr };
         });
@@ -102,7 +108,7 @@ export function EditEventModal({
       } else {
         // Fallback to start_date if event_date is not available
         const startDate = new Date(event.start_date);
-        const dateStr = startDate.toISOString().split('T')[0];
+        const dateStr = startDate.toISOString().split("T")[0];
         const timeStr = startDate.toTimeString().slice(0, 5);
         setEventDates([{ date: dateStr, time: timeStr }]);
       }
@@ -112,9 +118,13 @@ export function EditEventModal({
         title: event.title,
         type: event.type,
         description: event.description || { en: "", id: "" },
-        start_date: new Date(event.start_date).toISOString().split('T')[0],
-        end_date: event.end_date ? new Date(event.end_date).toISOString().split('T')[0] : "",
-        registration_deadline: event.registration_deadline ? new Date(event.registration_deadline).toISOString().split('T')[0] : "",
+        start_date: new Date(event.start_date).toISOString().split("T")[0],
+        end_date: event.end_date
+          ? new Date(event.end_date).toISOString().split("T")[0]
+          : "",
+        registration_deadline: event.registration_deadline
+          ? new Date(event.registration_deadline).toISOString().split("T")[0]
+          : "",
         location: event.location,
         venue_details: event.venue_details || "",
         poster_image: event.poster_image || "",
@@ -134,8 +144,8 @@ export function EditEventModal({
 
       // Convert event dates to ISO strings
       const convertedEventDates = eventDates
-        .filter(ed => ed.date && ed.time)
-        .map(ed => {
+        .filter((ed) => ed.date && ed.time)
+        .map((ed) => {
           const dateTime = new Date(`${ed.date}T${ed.time}`);
           return dateTime.toISOString();
         });
@@ -208,7 +218,11 @@ export function EditEventModal({
     }
   };
 
-  const updateEventDate = (index: number, field: "date" | "time", value: string) => {
+  const updateEventDate = (
+    index: number,
+    field: "date" | "time",
+    value: string
+  ) => {
     const updated = [...eventDates];
     updated[index][field] = value;
     setEventDates(updated);
@@ -237,7 +251,9 @@ export function EditEventModal({
               </label>
               <Input {...register("title")} />
               {errors.title && (
-                <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.title.message}
+                </p>
               )}
             </div>
 
@@ -255,7 +271,9 @@ export function EditEventModal({
                 <option value="group class">Group Class</option>
               </select>
               {errors.type && (
-                <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.type.message}
+                </p>
               )}
             </div>
           </div>
@@ -265,21 +283,41 @@ export function EditEventModal({
               English Description
             </label>
             <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
               value={description.en}
-              onEditorChange={(content: string) => setValue("description.en", content)}
+              onEditorChange={(content: string) =>
+                setValue("description.en", content)
+              }
               init={{
                 height: 300,
                 menubar: false,
                 plugins: [
-                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                  'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
                 ],
-                toolbar: 'undo redo | blocks | ' +
-                  'bold italic forecolor | alignleft aligncenter ' +
-                  'alignright alignjustify | bullist numlist outdent indent | ' +
-                  'removeformat | help',
-                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
             {errors.description?.en && (
@@ -294,21 +332,41 @@ export function EditEventModal({
               Indonesian Description
             </label>
             <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
               value={description.id}
-              onEditorChange={(content: string) => setValue("description.id", content)}
+              onEditorChange={(content: string) =>
+                setValue("description.id", content)
+              }
               init={{
                 height: 300,
                 menubar: false,
                 plugins: [
-                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                  'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
                 ],
-                toolbar: 'undo redo | blocks | ' +
-                  'bold italic forecolor | alignleft aligncenter ' +
-                  'alignright alignjustify | bullist numlist outdent indent | ' +
-                  'removeformat | help',
-                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
             {errors.description?.id && (
@@ -347,21 +405,29 @@ export function EditEventModal({
               {eventDates.map((eventDate, index) => (
                 <div key={index} className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">Date</label>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Date
+                    </label>
                     <input
                       type="date"
                       value={eventDate.date}
-                      onChange={(e) => updateEventDate(index, "date", e.target.value)}
+                      onChange={(e) =>
+                        updateEventDate(index, "date", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
                       required
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">Time</label>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Time
+                    </label>
                     <input
                       type="time"
                       value={eventDate.time}
-                      onChange={(e) => updateEventDate(index, "time", e.target.value)}
+                      onChange={(e) =>
+                        updateEventDate(index, "time", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
                       required
                     />
