@@ -350,9 +350,9 @@ export class LarkService {
     }
 
     if (registration.selected_date) {
-      // Convert to Unix timestamp for Lark
-      const unixTimestamp = Math.floor(new Date(registration.selected_date).getTime() / 1000);
-      fields["Selected Date"] = unixTimestamp;
+      // Convert to Unix timestamp in milliseconds for Lark
+      const epochTimestamp = new Date(registration.selected_date).getTime();
+      fields["Selected Date"] = epochTimestamp;
     }
 
     return {
