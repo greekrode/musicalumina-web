@@ -21,8 +21,11 @@ const formSchema = z.object({
     en: z.string().min(1, "English description is required"),
     id: z.string().min(1, "Indonesian description is required"),
   }),
+  terms_and_conditions: z.object({
+    en: z.string().optional(),
+    id: z.string().optional(),
+  }).optional(),
   start_date: z.string().min(1, "Start date is required"),
-  end_date: z.string().optional(),
   event_date: z.array(eventDateSchema).min(1, "At least one event date is required"),
   registration_deadline: z.string().optional(),
   location: z.string().min(1, "Location is required"),
@@ -66,14 +69,14 @@ export function AddEventModal({
     defaultValues: {
       type: "competition",
       description: { en: "", id: "" },
+      terms_and_conditions: { en: "", id: "" },
       start_date: "",
-      end_date: "",
       event_date: [{ date: "", time: "" }],
       registration_deadline: "",
       location: "",
       venue_details: "",
       poster_image: "",
-             max_quota: undefined,
+      max_quota: undefined,
       lark_base: "",
       lark_table: "",
     },
@@ -81,6 +84,7 @@ export function AddEventModal({
 
   // Watch form values for the editors
   const description = watch("description");
+  const termsAndConditions = watch("terms_and_conditions");
 
   // Remove unused destructured elements
   // const { fields, append, remove } = useFieldArray({
@@ -145,6 +149,7 @@ export function AddEventModal({
           title: eventData.title,
           type: eventData.type,
           description: eventData.description,
+          terms_and_conditions: eventData.terms_and_conditions,
           event_date: eventData.event_date,
           registration_deadline: eventData.registration_deadline,
           location: eventData.location,
@@ -300,6 +305,80 @@ export function AddEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Terms and Conditions (English)
+            </label>
+            <Editor
+              apiKey="no-api-key"
+              value={termsAndConditions?.en || ""}
+              onEditorChange={(content: string) => setValue("terms_and_conditions.en", content)}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  'lists link',
+                  'image',
+                  'charmap',
+                  'anchor',
+                  'searchreplace',
+                  'visualblocks',
+                  'code',
+                  'fullscreen',
+                  'insertdatetime',
+                  'media',
+                  'table',
+                  'code',
+                  'help',
+                  'wordcount'
+                ],
+                toolbar: 'bold italic underline | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
+              }}
+            />
+            {errors.terms_and_conditions?.en && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.terms_and_conditions?.en.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Terms and Conditions (Indonesian)
+            </label>
+            <Editor
+              apiKey="no-api-key"
+              value={termsAndConditions?.id || ""}
+              onEditorChange={(content: string) => setValue("terms_and_conditions.id", content)}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  'lists link',
+                  'image',
+                  'charmap',
+                  'anchor',
+                  'searchreplace',
+                  'visualblocks',
+                  'code',
+                  'fullscreen',
+                  'insertdatetime',
+                  'media',
+                  'table',
+                  'code',
+                  'help',
+                  'wordcount'
+                ],
+                toolbar: 'bold italic underline | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
+              }}
+            />
+            {errors.terms_and_conditions?.id && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.terms_and_conditions?.id.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Start Date
             </label>
             <Input type="date" {...register("start_date")} />
@@ -308,13 +387,6 @@ export function AddEventModal({
                 {errors.start_date.message}
               </p>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date
-            </label>
-            <Input type="date" {...register("end_date")} />
           </div>
 
           <div>

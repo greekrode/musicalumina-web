@@ -24,8 +24,13 @@ const formSchema = z.object({
     en: z.string().min(1, "English description is required"),
     id: z.string().min(1, "Indonesian description is required"),
   }),
+  terms_and_conditions: z
+    .object({
+      en: z.string().optional(),
+      id: z.string().optional(),
+    })
+    .optional(),
   start_date: z.string().min(1, "Start date is required"),
-  end_date: z.string().optional(),
   event_date: z
     .array(eventDateSchema)
     .min(1, "At least one event date is required"),
@@ -72,8 +77,8 @@ export function EditEventModal({
     defaultValues: {
       type: "competition",
       description: { en: "", id: "" },
+      terms_and_conditions: { en: "", id: "" },
       start_date: "",
-      end_date: "",
       event_date: [{ date: "", time: "" }],
       registration_deadline: "",
       location: "",
@@ -88,6 +93,7 @@ export function EditEventModal({
 
   // Watch form values for the editors
   const description = watch("description");
+  const termsAndConditions = watch("terms_and_conditions");
 
   // Initialize event dates when event prop changes
   useEffect(() => {
@@ -118,10 +124,8 @@ export function EditEventModal({
         title: event.title,
         type: event.type,
         description: event.description || { en: "", id: "" },
+        terms_and_conditions: event.terms_and_conditions || { en: "", id: "" },
         start_date: new Date(event.start_date).toISOString().split("T")[0],
-        end_date: event.end_date
-          ? new Date(event.end_date).toISOString().split("T")[0]
-          : "",
         registration_deadline: event.registration_deadline
           ? new Date(event.registration_deadline).toISOString().split("T")[0]
           : "",
@@ -182,8 +186,8 @@ export function EditEventModal({
           title: values.title,
           type: values.type,
           description: values.description,
+          terms_and_conditions: values.terms_and_conditions,
           start_date: values.start_date,
-          end_date: values.end_date,
           event_date: convertedEventDates,
           registration_deadline: values.registration_deadline,
           location: values.location,
@@ -376,6 +380,104 @@ export function EditEventModal({
             )}
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Terms and Conditions (English)
+            </label>
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+              value={termsAndConditions?.en || ""}
+              onEditorChange={(content: string) =>
+                setValue("terms_and_conditions.en", content)
+              }
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
+                ],
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+              }}
+            />
+            {errors.terms_and_conditions?.en && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.terms_and_conditions?.en.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Terms and Conditions (Indonesian)
+            </label>
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+              value={termsAndConditions?.id || ""}
+              onEditorChange={(content: string) =>
+                setValue("terms_and_conditions.id", content)
+              }
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
+                ],
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+              }}
+            />
+            {errors.terms_and_conditions?.id && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.terms_and_conditions?.id.message}
+              </p>
+            )}
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -387,13 +489,6 @@ export function EditEventModal({
                   {errors.start_date.message}
                 </p>
               )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date
-              </label>
-              <Input type="date" {...register("end_date")} />
             </div>
           </div>
 
@@ -438,7 +533,7 @@ export function EditEventModal({
                     disabled={eventDates.length === 1}
                     className="px-3 py-2 text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
-                    Remove
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}

@@ -21,7 +21,6 @@ export interface Database {
           type: EventType;
           description: { en: string; id: string } | null;
           start_date: string;
-          end_date: string | null;
           registration_deadline: string | null;
           location: string;
           venue_details: string | null;
@@ -42,7 +41,6 @@ export interface Database {
           type: EventType;
           description?: { en: string; id: string } | null;
           start_date: string;
-          end_date?: string | null;
           registration_deadline?: string | null;
           location: string;
           venue_details?: string | null;
@@ -62,7 +60,6 @@ export interface Database {
           type?: EventType;
           description?: { en: string; id: string } | null;
           start_date?: string;
-          end_date?: string | null;
           registration_deadline?: string | null;
           location?: string;
           venue_details?: string | null;
