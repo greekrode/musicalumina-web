@@ -27,6 +27,7 @@ interface LarkRegistrationData {
     payment_receipt_url?: string | null;
     number_of_slots?: number | null;
     repertoire?: string | null;
+    selected_date?: string | null;
     created_at: string;
   };
 }
@@ -346,6 +347,12 @@ export class LarkService {
 
     if (registration.repertoire) {
       fields["Repertoires"] = registration.repertoire;
+    }
+
+    if (registration.selected_date) {
+      // Convert to Unix timestamp for Lark
+      const unixTimestamp = Math.floor(new Date(registration.selected_date).getTime() / 1000);
+      fields["Selected Date"] = unixTimestamp;
     }
 
     return {

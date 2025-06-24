@@ -130,6 +130,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
           number_of_slots: number | null;
+          selected_date: string | null;
         };
         Insert: {
           id?: string;
@@ -154,6 +155,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           number_of_slots?: number | null;
+          selected_date?: string | null;
         };
         Update: {
           id?: string;
@@ -178,6 +180,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           number_of_slots?: number | null;
+          selected_date?: string | null;
         };
       };
       contact_messages: {

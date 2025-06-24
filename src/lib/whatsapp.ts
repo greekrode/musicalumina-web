@@ -1,5 +1,22 @@
 import * as jose from "jose";
 
+// Helper function to format date for WhatsApp display
+function formatDateForWhatsApp(dateString: string): string {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const year = date.getFullYear();
+  
+  // Add ordinal suffix to day
+  const getOrdinal = (n: number) => {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+  
+  return `${getOrdinal(day)} ${month} ${year}`;
+}
+
 interface WhatsAppMessageData {
   registrant_status?: string;
   registrant_name: string;
@@ -14,6 +31,7 @@ interface WhatsAppMessageData {
   registration_ref_code: string;
   number_of_slots?: number | null;
   repertoire?: string[] | null;
+  selected_date?: string | null;
   event_name: string;
   language: string;
 }
@@ -221,8 +239,9 @@ export class WhatsAppService {
           `*Nomor Referensi:* ${data.registration_ref_code}\n\n` +
           `*Nama Peserta:* ${data.participant_name}\n` +
           `*Umur Peserta:* ${data.participant_age}\n` +
+          (data.selected_date ? `*Tanggal yang Dipilih:* ${formatDateForWhatsApp(data.selected_date)}\n` : "") +
           `*Jumlah Slot:* ${data.number_of_slots}\n` +
-          `*Repertoire:* ${data.repertoire.join("\n")}\n` +
+          `*Repertoire:* ${data.repertoire?.join("\n") || "Tidak ada repertoar yang ditentukan"}\n` +
           `\nKami akan segera memproses pendaftaran Anda. Silakan simpan nomor referensi di atas untuk keperluan di masa mendatang.\n\n` +
           `Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.\n\n` +
           `Salam musik,\n` +
@@ -233,8 +252,9 @@ export class WhatsAppService {
           `*Reference Number:* ${data.registration_ref_code}\n\n` +
           `*Participant Name:* ${data.participant_name}\n` +
           `*Age:* ${data.participant_age}\n` +
+          (data.selected_date ? `*Selected Date:* ${formatDateForWhatsApp(data.selected_date)}\n` : "") +
           `*Number of Slots:* ${data.number_of_slots}\n` +
-          `*Repertoire:* ${data.repertoire.join("\n")}\n` +
+          `*Repertoire:* ${data.repertoire?.join("\n") || "No repertoire specified"}\n` +
           `\nWe will process your registration shortly. Please keep the reference number for future correspondence.\n\n` +
           `If you have any questions, please don't hesitate to contact us.\n\n` +
           `Musical regards,\n` +

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -12,6 +12,23 @@ import { WhatsAppService } from "../lib/whatsapp";
 import LoadingModal from "./LoadingModal";
 import Modal from "./Modal";
 import ThankYouModal from "./ThankYouModal";
+
+// Helper function to format date for display
+function formatDateForDisplay(dateString: string): string {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const year = date.getFullYear();
+  
+  // Add ordinal suffix to day
+  const getOrdinal = (n: number) => {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+  
+  return `${getOrdinal(day)} ${month} ${year}`;
+}
 
 function createMasterclassSchema(t: (key: string) => string) {
   return z.object({
@@ -36,12 +53,15 @@ function createMasterclassSchema(t: (key: string) => string) {
         const age = parseInt(val);
         return !isNaN(age) && age >= 1 && age <= 100;
       }, t("validation.invalidAge")),
+    selected_date: z
+      .string()
+      .min(1, t("validation.selectDate")),
     number_of_slots: z
       .string()
       .min(1, t("validation.selectSlots"))
       .refine((val) => {
         const slots = parseInt(val);
-        return !isNaN(slots) && slots >= 1 && slots <= 5;
+        return !isNaN(slots) && slots >= 1 && slots <= 3;
       }, t("validation.invalidSlots")),
     bank_name: z
       .string()
@@ -86,6 +106,7 @@ function MasterclassRegistrationModal({
   const [registrationRef, setRegistrationRef] = useState("");
   const [registeredName, setRegisteredName] = useState("");
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
+  const [eventDates, setEventDates] = useState<string[]>([]);
 
   const masterclassSchema = createMasterclassSchema(t);
 
@@ -102,10 +123,36 @@ function MasterclassRegistrationModal({
       registrant_status: "personal",
       registrant_whatsapp: "",
       number_of_slots: "1",
+      selected_date: "",
     },
   });
 
   const registrantStatus = watch("registrant_status");
+
+  // Fetch event data to get event_date array
+  useEffect(() => {
+    const fetchEventData = async () => {
+      try {
+        const { data: eventData, error } = await supabase
+          .from("events")
+          .select("event_date")
+          .eq("id", eventId)
+          .single();
+
+        if (error) throw error;
+
+        if (eventData?.event_date) {
+          setEventDates(eventData.event_date);
+        }
+      } catch (error) {
+        console.error("Error fetching event data:", error);
+      }
+    };
+
+    if (eventId && isOpen) {
+      fetchEventData();
+    }
+  }, [eventId, isOpen]);
 
   const handleClose = () => {
     setRepertoireList([""]);
@@ -162,6 +209,7 @@ function MasterclassRegistrationModal({
           registrant_email: data.registrant_email,
           participant_name: data.participant_name,
           participant_age: parseInt(data.participant_age),
+          selected_date: data.selected_date,
           number_of_slots: parseInt(data.number_of_slots),
           bank_name: data.bank_name,
           bank_account_number: data.bank_account_number,
@@ -227,6 +275,7 @@ function MasterclassRegistrationModal({
               registrant_whatsapp: data.registrant_whatsapp,
               participant_name: data.participant_name,
               participant_age: parseInt(data.participant_age),
+              selected_date: data.selected_date,
               number_of_slots: parseInt(data.number_of_slots),
               repertoire: filteredRepertoire.join("; "),
               bank_name: data.bank_name,
@@ -252,6 +301,7 @@ function MasterclassRegistrationModal({
           registrant_whatsapp: data.registrant_whatsapp,
           participant_name: data.participant_name,
           participant_age: parseInt(data.participant_age),
+          selected_date: data.selected_date,
           number_of_slots: parseInt(data.number_of_slots),
           repertoire: filteredRepertoire,
           registration_ref_code: refNumber,
@@ -410,21 +460,43 @@ function MasterclassRegistrationModal({
               )}
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {t("registration.participantAge")}
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                {...register("participant_age")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+              />
+              {errors.participant_age && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.participant_age.message}
+                </p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  {t("registration.participantAge")}
+                  Select Date
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  {...register("participant_age")}
+                <select
+                  {...register("selected_date")}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-                />
-                {errors.participant_age && (
+                >
+                  <option value="">Select a date...</option>
+                  {eventDates.map((date, index) => (
+                    <option key={index} value={date}>
+                      {formatDateForDisplay(date)}
+                    </option>
+                  ))}
+                </select>
+                {errors.selected_date && (
                   <p className="mt-1 text-sm text-red-600">
-                    {errors.participant_age.message}
+                    {errors.selected_date.message}
                   </p>
                 )}
               </div>

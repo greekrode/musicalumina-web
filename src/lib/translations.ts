@@ -102,7 +102,8 @@ export const translations = {
       songPdf: "Song PDF",
       videoUrl: "Video Link (Can be submitted after registration)",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
-      videoUrlHelp: "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [BTFE 2025] Participant Name - Category - Sub Category (Song Title - Composer)",
+      videoUrlHelp:
+        "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [BTFE 2025] Participant Name - Category - Sub Category (Song Title - Composer)",
       paymentInfo: "Payment Information",
       bankTransferDetails: "Bank Transfer",
       qris: "Scan QRIS to Pay",
@@ -154,7 +155,8 @@ export const translations = {
       enterAge: "Please enter participant age",
       invalidAge: "Age must be between 1 and 100",
       selectSlots: "Please select number of slots",
-      invalidSlots: "Number of slots must be between 1 and 5",
+      invalidSlots: "Number of slots must be between 1 and 3",
+      selectDate: "Please select a date",
     },
     loading: {
       title: "Processing Your Request",
@@ -244,7 +246,8 @@ export const translations = {
       repertoire: "Repertoire",
       registration: {
         title: "Masterclass Registration",
-        description: "Please fill in the details below to register for this masterclass",
+        description:
+          "Please fill in the details below to register for this masterclass",
         numberOfSlots: "Number of Slots",
         repertoire: "Repertoire Titles",
         repertoirePlaceholder: "Enter repertoire title",
@@ -257,10 +260,12 @@ export const translations = {
     },
     videoSubmissionForm: {
       title: "Video Submission",
-      description: "Submit your competition video using your registration reference code",
+      description:
+        "Submit your competition video using your registration reference code",
       referenceCode: "Registration Reference Code",
       referenceCodePlaceholder: "Enter your registration reference code",
-      referenceCodeHelp: "This is the reference code you received after registration",
+      referenceCodeHelp:
+        "This is the reference code you received after registration",
       loadParticipantData: "Load Participant Data",
       loadingParticipantData: "Loading...",
       participantName: "Participant Name",
@@ -269,20 +274,25 @@ export const translations = {
       songTitle: "Song Title",
       videoUrl: "Video Link",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
-      videoUrlHelp: "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [BTFE 2025] Participant Name - Category - Sub Category (Song Title - Composer)",
+      videoUrlHelp:
+        "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [BTFE 2025] Participant Name - Category - Sub Category (Song Title - Composer)",
       submit: "Submit Video",
       submitting: "Submitting...",
       successMessage: "Video submitted successfully!",
-      invalidReferenceCode: "Invalid registration reference code. Please check your code and try again.",
-      warningMessage: "Ensure the participant information is correct, otherwise your submission will be deemed invalid",
-      unableToSubmit: "Unable to submit - A video has already been submitted for this participant.",
+      invalidReferenceCode:
+        "Invalid registration reference code. Please check your code and try again.",
+      warningMessage:
+        "Ensure the participant information is correct, otherwise your submission will be deemed invalid",
+      unableToSubmit:
+        "Unable to submit - A video has already been submitted for this participant.",
       existingVideoUrl: "Existing Video URL",
     },
     groupClass: {
       registrationFees: "Registration Fee",
       registration: {
         title: "Group Class Registration",
-        description: "Please fill in the required information to register for this group class.",
+        description:
+          "Please fill in the required information to register for this group class.",
         eventName: "Group Class Name",
         participantAge: "Participant Age",
       },
@@ -389,7 +399,8 @@ export const translations = {
       songPdf: "PDF Partitur",
       videoUrl: "Link Video (Bisa disubmit setelah pendaftaran)",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
-      videoUrlHelp: "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [BTFE 2025] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
+      videoUrlHelp:
+        "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [BTFE 2025] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
       paymentInfo: "Informasi Pembayaran",
       qris: "Scan QRIS untuk membayar",
       bankTransferDetails: "Transfer Bank",
@@ -406,9 +417,11 @@ export const translations = {
       personal: "Pribadi",
       parents: "Orang Tua",
       teacher: "Guru",
-      quotaExceeded: "Kuota pendaftaran telah tercapai. Pendaftaran sekarang ditutup.",
+      quotaExceeded:
+        "Kuota pendaftaran telah tercapai. Pendaftaran sekarang ditutup.",
       participantAge: "Usia Peserta",
-      errorSubmitting: "Kesalahan saat mengirim pendaftaran. Silakan coba lagi.",
+      errorSubmitting:
+        "Kesalahan saat mengirim pendaftaran. Silakan coba lagi.",
     },
     validation: {
       required: "Wajib diisi",
@@ -443,7 +456,8 @@ export const translations = {
       enterAge: "Silakan masukkan usia peserta",
       invalidAge: "Usia harus antara 1 dan 100",
       selectSlots: "Silakan pilih jumlah slot",
-      invalidSlots: "Jumlah slot harus antara 1 dan 5",
+      invalidSlots: "Jumlah slot harus antara 1 dan 3",
+      selectDate: "Silakan pilih tanggal",
     },
     loading: {
       title: "Memproses Permintaan Anda",
@@ -532,12 +546,14 @@ export const translations = {
       repertoire: "Partitur",
       registration: {
         title: "Pendaftaran Masterclass",
-        description: "Silakan isi detail di bawah ini untuk mendaftar ke masterclass ini",
+        description:
+          "Silakan isi detail di bawah ini untuk mendaftar ke masterclass ini",
         numberOfSlots: "Jumlah Slot",
         repertoire: "Judul Repertoire",
         repertoirePlaceholder: "Masukkan judul repertoire",
         addRepertoire: "Tambah Repertoire Lain",
-        addAtLeastOneRepertoire: "Silakan tambahkan setidaknya satu judul repertoire",
+        addAtLeastOneRepertoire:
+          "Silakan tambahkan setidaknya satu judul repertoire",
       },
     },
     common: {
@@ -545,10 +561,12 @@ export const translations = {
     },
     videoSubmissionForm: {
       title: "Submit Video",
-      description: "Kirim video kompetisi Anda menggunakan kode referensi pendaftaran Anda",
+      description:
+        "Kirim video kompetisi Anda menggunakan kode referensi pendaftaran Anda",
       referenceCode: "Kode Referensi Pendaftaran",
       referenceCodePlaceholder: "Masukkan kode referensi pendaftaran Anda",
-      referenceCodeHelp: "Ini adalah kode referensi yang Anda terima setelah pendaftaran",
+      referenceCodeHelp:
+        "Ini adalah kode referensi yang Anda terima setelah pendaftaran",
       loadParticipantData: "Muat Data Peserta",
       loadingParticipantData: "Memuat...",
       participantName: "Nama Peserta",
@@ -557,20 +575,25 @@ export const translations = {
       songTitle: "Judul Partitur",
       videoUrl: "Link Video",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
-      videoUrlHelp: "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [BTFE 2025] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
+      videoUrlHelp:
+        "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [BTFE 2025] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
       submit: "Submit Video",
       submitting: "Mengirim...",
       successMessage: "Video berhasil dikirim!",
-      invalidReferenceCode: "Kode referensi pendaftaran tidak valid. Mohon periksa kode Anda dan coba lagi.",
-      warningMessage: "Pastikan informasi peserta sudah benar, jika tidak maka penyerahan data Anda akan dianggap tidak valid",
-      unableToSubmit: "Tidak dapat mengirim - Video sudah pernah dikirim untuk peserta ini.",
+      invalidReferenceCode:
+        "Kode referensi pendaftaran tidak valid. Mohon periksa kode Anda dan coba lagi.",
+      warningMessage:
+        "Pastikan informasi peserta sudah benar, jika tidak maka penyerahan data Anda akan dianggap tidak valid",
+      unableToSubmit:
+        "Tidak dapat mengirim - Video sudah pernah dikirim untuk peserta ini.",
       existingVideoUrl: "URL Video yang Ada",
     },
     groupClass: {
       registrationFees: "Biaya Pendaftaran",
       registration: {
         title: "Pendaftaran Group Class",
-        description: "Silakan isi informasi yang diperlukan untuk mendaftar group class ini.",
+        description:
+          "Silakan isi informasi yang diperlukan untuk mendaftar group class ini.",
         eventName: "Nama Group Class",
         participantAge: "Usia Peserta",
       },
