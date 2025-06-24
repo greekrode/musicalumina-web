@@ -8,7 +8,7 @@ interface EventCardProps {
   id: string;
   title: string;
   type: EventType;
-  date: string;
+  dates: string[];
   location: string;
   status: EventStatus;
   image: string;
@@ -18,7 +18,7 @@ function EventCard({
   id,
   title,
   type,
-  date,
+  dates,
   location,
   status,
   image,
@@ -67,9 +67,16 @@ function EventCard({
     }
   };
 
+  // Format multiple dates separated by commas
+  const formatDates = (dates: string[]) => {
+    return dates
+      .map((date) => formatDateWithLocale(date, language))
+      .join("; ");
+  };
+
   const buttonConfig = getButtonConfig();
   const typeColor = getTypeColor(type);
-  const formattedDate = formatDateWithLocale(date, language);
+  const formattedDates = formatDates(dates);
 
   return (
     <div className="bg-[#FFFFF0] rounded-lg overflow-hidden shadow-lg h-full flex flex-col">
@@ -86,7 +93,7 @@ function EventCard({
         <div className="space-y-2 mb-6">
           <div className="flex items-center space-x-2">
             <Calendar className="h-4 w-4 text-marigold" />
-            <span className="text-sm text-[#808080]">{formattedDate}</span>
+            <span className="text-sm text-[#808080]">{formattedDates}</span>
           </div>
           <div className="flex items-center space-x-2">
             <MapPin className="h-4 w-4 text-marigold" />
@@ -103,8 +110,8 @@ function EventCard({
                 : type === "masterclass"
                 ? `/masterclass/${id}`
                 : type === "group class"
-                  ? `/group-class/${id}`
-                  : `/event/${id}`
+                ? `/group-class/${id}`
+                : `/event/${id}`
             }
             className={`block w-full text-[#FFFFF0] px-4 py-2 rounded-lg transition-colors text-center ${buttonConfig.className}`}
             onClick={(e) => buttonConfig.disabled && e.preventDefault()}

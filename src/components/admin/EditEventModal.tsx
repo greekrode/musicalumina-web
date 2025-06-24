@@ -8,31 +8,36 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import type { Database } from "@/lib/database.types";
 import { Editor } from "@tinymce/tinymce-react";
+import { Plus, Trash2 } from "lucide-react";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
-const eventSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  type: z.enum(["festival", "competition", "masterclass", "group class"] as const),
-  description: z.object({
-    en: z.string().nullable().default(null),
-    id: z.string().nullable().default(null),
-  }).nullable().default(null),
-  terms_and_conditions: z.object({
-    en: z.string().nullable().default(null),
-    id: z.string().nullable().default(null),
-  }).nullable().default(null),
-  start_date: z.string().min(1, "Start date is required"),
-  end_date: z.string().nullable(),
-  registration_deadline: z.string().nullable(),
-  location: z.string().min(1, "Location is required"),
-  venue_details: z.string().nullable(),
-  poster_image: z.string().nullable(),
-  status: z.enum(["upcoming", "ongoing", "completed"] as const),
-  max_quota: z.number().nullable(),
+const eventDateSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  time: z.string().min(1, "Time is required")
 });
 
-type EventFormData = z.infer<typeof eventSchema>;
+const formSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  type: z.enum(["festival", "competition", "masterclass", "group class"]),
+  description: z.object({
+    en: z.string().min(1, "English description is required"),
+    id: z.string().min(1, "Indonesian description is required"),
+  }),
+  start_date: z.string().min(1, "Start date is required"),
+  end_date: z.string().optional(),
+  event_date: z.array(eventDateSchema).min(1, "At least one event date is required"),
+  registration_deadline: z.string().optional(),
+  location: z.string().min(1, "Location is required"),
+  venue_details: z.string().optional(),
+  status: z.enum(["upcoming", "ongoing", "completed"]),
+  poster_image: z.string().optional(),
+  max_quota: z.number().optional(),
+  lark_base: z.string().optional(),
+  lark_table: z.string().optional(),
+});
+
+type EventFormData = z.infer<typeof formSchema>;
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -49,6 +54,9 @@ export function EditEventModal({
 }: EditEventModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [eventDates, setEventDates] = useState<Array<{ date: string; time: string }>>([
+    { date: "", time: "" }
+  ]);
 
   const {
     register,
@@ -58,101 +66,131 @@ export function EditEventModal({
     watch,
     formState: { errors },
   } = useForm<EventFormData>({
-    resolver: zodResolver(eventSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       type: "competition",
-      description: null,
-      terms_and_conditions: null,
-      end_date: null,
-      registration_deadline: null,
-      venue_details: null,
-      poster_image: null,
+      description: { en: "", id: "" },
+      start_date: "",
+      end_date: "",
+      event_date: [{ date: "", time: "" }],
+      registration_deadline: "",
+      location: "",
+      venue_details: "",
+      poster_image: "",
       status: "upcoming",
-      max_quota: null,
+      max_quota: undefined,
+      lark_base: "",
+      lark_table: "",
     },
   });
 
   // Watch form values for the editors
   const description = watch("description");
-  const termsAndConditions = watch("terms_and_conditions");
 
-  // Update form when event changes
+  // Initialize event dates when event prop changes
   useEffect(() => {
     if (event) {
-      // Format dates to YYYY-MM-DD for input[type="date"]
-      const formatDate = (dateStr: string | null) => {
-        if (!dateStr) return undefined;
-        return new Date(dateStr).toISOString().split('T')[0];
-      };
+      if (event.event_date && Array.isArray(event.event_date) && event.event_date.length > 0) {
+        // Handle new format (string array)
+        const dates = event.event_date.map(date => {
+          const dateObj = new Date(date);
+          const dateStr = dateObj.toISOString().split('T')[0];
+          const timeStr = dateObj.toTimeString().slice(0, 5);
+          return { date: dateStr, time: timeStr };
+        });
+        setEventDates(dates);
+      } else {
+        // Fallback to start_date if event_date is not available
+        const startDate = new Date(event.start_date);
+        const dateStr = startDate.toISOString().split('T')[0];
+        const timeStr = startDate.toTimeString().slice(0, 5);
+        setEventDates([{ date: dateStr, time: timeStr }]);
+      }
 
+      // Reset form with event data
       reset({
         title: event.title,
         type: event.type,
-        description: event.description,
-        terms_and_conditions: event.terms_and_conditions,
-        start_date: formatDate(event.start_date) || '',
-        end_date: formatDate(event.end_date),
-        registration_deadline: formatDate(event.registration_deadline),
+        description: event.description || { en: "", id: "" },
+        start_date: new Date(event.start_date).toISOString().split('T')[0],
+        end_date: event.end_date ? new Date(event.end_date).toISOString().split('T')[0] : "",
+        registration_deadline: event.registration_deadline ? new Date(event.registration_deadline).toISOString().split('T')[0] : "",
         location: event.location,
-        venue_details: event.venue_details || null,
-        poster_image: event.poster_image || null,
+        venue_details: event.venue_details || "",
+        poster_image: event.poster_image || "",
         status: event.status,
-        max_quota: event.max_quota,
+        max_quota: event.max_quota || undefined,
+        lark_base: event.lark_base || "",
+        lark_table: event.lark_table || "",
       });
     }
   }, [event, reset]);
 
-  const onSubmit = async (data: EventFormData) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!event) return;
-    
+
     try {
       setIsSubmitting(true);
 
-      let posterUrl = data.poster_image;
+      // Convert event dates to ISO strings
+      const convertedEventDates = eventDates
+        .filter(ed => ed.date && ed.time)
+        .map(ed => {
+          const dateTime = new Date(`${ed.date}T${ed.time}`);
+          return dateTime.toISOString();
+        });
+
+      const eventData = {
+        ...values,
+        event_date: convertedEventDates,
+        max_quota: values.max_quota,
+        lark_base: values.lark_base,
+        lark_table: values.lark_table,
+      };
+
+      let posterUrl = values.poster_image;
       if (posterFile) {
-        const fileExt = posterFile.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileExt = posterFile.name.split(".").pop();
+        const fileName = `${event.id}.${fileExt}`;
         const filePath = `event-posters/${fileName}`;
 
-        const { error: uploadError, data: uploadData } = await supabase.storage
-          .from('public')
-          .upload(filePath, posterFile);
+        const { error: uploadError } = await supabase.storage
+          .from("events")
+          .upload(filePath, posterFile, { upsert: true });
 
         if (uploadError) throw uploadError;
-        if (uploadData) {
-          // Delete old poster if exists
-          if (event.poster_image) {
-            await supabase.storage
-              .from('public')
-              .remove([event.poster_image]);
-          }
-          posterUrl = filePath;
-        }
-      }
 
-      // Format dates to ISO string for Supabase
-      const formatDateForDB = (dateStr: string | null | undefined) => {
-        if (!dateStr) return null;
-        // Append time to make it a valid timestamp
-        return new Date(dateStr + 'T00:00:00Z').toISOString();
-      };
+        const { data: urlData } = supabase.storage
+          .from("events")
+          .getPublicUrl(filePath);
+        posterUrl = urlData.publicUrl;
+      }
 
       const { error } = await supabase
         .from("events")
         .update({
-          ...data,
-          start_date: formatDateForDB(data.start_date),
-          end_date: formatDateForDB(data.end_date),
-          registration_deadline: formatDateForDB(data.registration_deadline),
+          title: values.title,
+          type: values.type,
+          description: values.description,
+          start_date: values.start_date,
+          end_date: values.end_date,
+          event_date: convertedEventDates,
+          registration_deadline: values.registration_deadline,
+          location: values.location,
+          venue_details: values.venue_details,
           poster_image: posterUrl,
+          status: values.status,
+          max_quota: eventData.max_quota,
+          lark_base: eventData.lark_base,
+          lark_table: eventData.lark_table,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', event.id);
+        .eq("id", event.id);
 
       if (error) throw error;
 
       onEventUpdated();
-      handleClose();
+      onClose();
     } catch (error) {
       console.error("Error updating event:", error);
     } finally {
@@ -160,56 +198,46 @@ export function EditEventModal({
     }
   };
 
-  const handleClose = () => {
-    reset();
-    setPosterFile(null);
-    onClose();
+  const addEventDate = () => {
+    setEventDates([...eventDates, { date: "", time: "" }]);
   };
 
-  const handlePosterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setPosterFile(e.target.files[0]);
+  const removeEventDate = (index: number) => {
+    if (eventDates.length > 1) {
+      setEventDates(eventDates.filter((_, i) => i !== index));
     }
   };
 
-  return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
-      title="Edit Event"
-      maxWidth="2xl"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                {...register("status")}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
-              </select>
-              {errors.status && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.status.message}
-                </p>
-              )}
-            </div>
+  const updateEventDate = (index: number, field: "date" | "time", value: string) => {
+    const updated = [...eventDates];
+    updated[index][field] = value;
+    setEventDates(updated);
+  };
 
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-900">Edit Event</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Title
               </label>
               <Input {...register("title")} />
               {errors.title && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.title.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
               )}
             </div>
 
@@ -227,202 +255,70 @@ export function EditEventModal({
                 <option value="group class">Group Class</option>
               </select>
               {errors.type && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.type.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
               )}
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              English Description (Optional)
+              English Description
             </label>
             <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={description?.en || ''}
-              onEditorChange={(content: string) => {
-                setValue("description", {
-                  en: content,
-                  id: description?.id || null
-                });
-              }}
+              value={description.en}
+              onEditorChange={(content: string) => setValue("description.en", content)}
               init={{
-                height: 500,
+                height: 300,
                 menubar: false,
                 plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
+                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                  'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
                 ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+                toolbar: 'undo redo | blocks | ' +
+                  'bold italic forecolor | alignleft aligncenter ' +
+                  'alignright alignjustify | bullist numlist outdent indent | ' +
+                  'removeformat | help',
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
               }}
             />
+            {errors.description?.en && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.description?.en.message}
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Indonesian Description (Optional)
+              Indonesian Description
             </label>
             <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={description?.id || ''}
-              onEditorChange={(content: string) => {
-                setValue("description", {
-                  en: description?.en || null,
-                  id: content
-                });
-              }}
+              value={description.id}
+              onEditorChange={(content: string) => setValue("description.id", content)}
               init={{
-                height: 500,
+                height: 300,
                 menubar: false,
                 plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
+                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                  'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
                 ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+                toolbar: 'undo redo | blocks | ' +
+                  'bold italic forecolor | alignleft aligncenter ' +
+                  'alignright alignjustify | bullist numlist outdent indent | ' +
+                  'removeformat | help',
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
               }}
             />
+            {errors.description?.id && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.description?.id.message}
+              </p>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              English Terms & Conditions (Optional)
-            </label>
-            <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={termsAndConditions?.en || ''}
-              onEditorChange={(content: string) => {
-                setValue("terms_and_conditions", {
-                  en: content,
-                  id: termsAndConditions?.id || null
-                });
-              }}
-              init={{
-                height: 500,
-                menubar: false,
-                plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
-                ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-              }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Indonesian Terms & Conditions (Optional)
-            </label>
-            <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={termsAndConditions?.id || ''}
-              onEditorChange={(content: string) => {
-                setValue("terms_and_conditions", {
-                  en: termsAndConditions?.en || null,
-                  id: content
-                });
-              }}
-              init={{
-                height: 500,
-                menubar: false,
-                plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
-                ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-              }}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Start Date
@@ -437,20 +333,67 @@ export function EditEventModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date (Optional)
+                End Date
               </label>
               <Input type="date" {...register("end_date")} />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Registration Deadline (Optional)
-              </label>
-              <Input type="date" {...register("registration_deadline")} />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Dates & Times
+            </label>
+            <div className="space-y-4">
+              {eventDates.map((eventDate, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-600 mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={eventDate.date}
+                      onChange={(e) => updateEventDate(index, "date", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-600 mb-1">Time</label>
+                    <input
+                      type="time"
+                      value={eventDate.time}
+                      onChange={(e) => updateEventDate(index, "time", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeEventDate(index)}
+                    disabled={eventDates.length === 1}
+                    className="px-3 py-2 text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addEventDate}
+                className="text-marigold hover:text-marigold/80 text-sm"
+              >
+                + Add Another Date
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Registration Deadline
+            </label>
+            <Input type="date" {...register("registration_deadline")} />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Location
@@ -465,25 +408,18 @@ export function EditEventModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Registration Quota (Optional)
+                Max Registration Quota
               </label>
               <Input
                 type="number"
-                min="1"
                 {...register("max_quota", { valueAsNumber: true })}
-                placeholder="Leave empty for unlimited"
               />
-              {errors.max_quota && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.max_quota.message}
-                </p>
-              )}
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Venue Details (Optional)
+              Venue Details
             </label>
             <textarea
               {...register("venue_details")}
@@ -493,40 +429,49 @@ export function EditEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Poster (Optional)
+              Event Poster
             </label>
             <Input
               type="file"
               accept="image/*"
-              onChange={handlePosterChange}
-              className="w-full"
+              onChange={(e) => setPosterFile(e.target.files?.[0] || null)}
             />
-            {event?.poster_image && !posterFile && (
-              <p className="mt-1 text-sm text-gray-500">
-                Current poster: {event.poster_image}
-              </p>
-            )}
           </div>
-        </div>
 
-        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={handleClose}
-            className="w-full sm:w-auto order-2 sm:order-1"
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full sm:w-auto order-1 sm:order-2"
-          >
-            {isSubmitting ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              {...register("status")}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="upcoming">Upcoming</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              {isSubmitting ? "Updating..." : "Update Event"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
-} 
+}

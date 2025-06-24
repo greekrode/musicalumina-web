@@ -34,6 +34,7 @@ export interface Database {
           lark_base: string | null;
           lark_table: string | null;
           max_quota: number | null;
+          event_date: string[] | null;
         };
         Insert: {
           id?: string;
@@ -53,6 +54,7 @@ export interface Database {
           lark_base?: string | null;
           lark_table?: string | null;
           max_quota?: number | null;
+          event_date?: string[] | null;
         };
         Update: {
           id?: string;
@@ -72,6 +74,7 @@ export interface Database {
           lark_base?: string | null;
           lark_table?: string | null;
           max_quota?: number | null;
+          event_date?: string[] | null;
         };
       };
       songs: {

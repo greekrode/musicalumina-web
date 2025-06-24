@@ -69,7 +69,7 @@ export function AdminEvents() {
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Title</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Start Date</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Event Date</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Location</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Max Quota</th>
                 <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Actions</th>
@@ -111,7 +111,9 @@ export function AdminEvents() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {new Date(event.start_date).toLocaleDateString()}
+                      {event.event_date && event.event_date.length > 0
+                        ? event.event_date.map(date => new Date(date).toLocaleDateString()).join(', ')
+                        : new Date(event.start_date).toLocaleDateString()}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {event.location}
@@ -191,9 +193,11 @@ export function AdminEvents() {
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-500 block">Start Date</span>
+                        <span className="text-gray-500 block">Event Date</span>
                         <span className="text-gray-900 font-medium">
-                          {new Date(event.start_date).toLocaleDateString()}
+                          {event.event_date && event.event_date.length > 0
+                            ? event.event_date.map(date => new Date(date).toLocaleDateString()).join(', ')
+                            : new Date(event.start_date).toLocaleDateString()}
                         </span>
                       </div>
                       <div>

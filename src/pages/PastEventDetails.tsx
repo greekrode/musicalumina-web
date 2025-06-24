@@ -9,7 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEvent } from "../hooks/useEvent";
-import { formatDateWithLocale } from "../lib/utils";
+import { formatDateWithLocale, formatMultipleDatesWithLocale } from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
@@ -350,7 +350,7 @@ function PastEventDetails() {
               <Calendar className="h-5 w-5 text-marigold" />
               <div>
                 <h3 className="font-medium text-black">{t("eventDetails.eventDate")}</h3>
-                <p className="text-black/80">{formatDateWithLocale(event.start_date, language)}</p>
+                <div className="text-black/80 whitespace-pre-line">{formatMultipleDatesWithLocale(event.event_date, language)}</div>
               </div>
             </div>
             <div className="flex items-center space-x-3">

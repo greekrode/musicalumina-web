@@ -1,7 +1,6 @@
 import { useEvents } from "../hooks/useEvents";
 import EventCard from "./EventCard";
 import LoadingSpinner from "./LoadingSpinner";
-import { formatDateWithIntl } from "../lib/utils";
 
 interface EventListProps {
   status?: "upcoming" | "completed";
@@ -40,7 +39,9 @@ function EventList({ status }: EventListProps) {
           id={event.id}
           title={event.title}
           type={event.type}
-          date={formatDateWithIntl(event.start_date)}
+          dates={event.event_date && event.event_date.length > 0 
+            ? event.event_date
+            : [event.start_date]}
           location={event.location}
           status={event.status}
           image={

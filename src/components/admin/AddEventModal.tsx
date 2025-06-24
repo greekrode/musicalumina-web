@@ -4,30 +4,37 @@ import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
+import { Plus, Trash2 } from "lucide-react";
+import { Editor } from "@tinymce/tinymce-react";
 
-const eventSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  type: z.enum(["festival", "competition", "masterclass", "group class"] as const),
-  description: z.object({
-    en: z.string().nullable().default(null),
-    id: z.string().nullable().default(null),
-  }).nullable().default(null),
-  terms_and_conditions: z.object({
-    en: z.string().nullable().default(null),
-    id: z.string().nullable().default(null),
-  }).nullable().default(null),
-  start_date: z.string().min(1, "Start date is required"),
-  end_date: z.string().nullable(),
-  registration_deadline: z.string().nullable(),
-  location: z.string().min(1, "Location is required"),
-  venue_details: z.string().nullable(),
-  poster_image: z.string().nullable(),
-  max_quota: z.number().nullable(),
+const eventDateSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  time: z.string().min(1, "Time is required")
 });
 
-type EventFormData = z.infer<typeof eventSchema>;
+const formSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  type: z.enum(["festival", "competition", "masterclass", "group class"]),
+  description: z.object({
+    en: z.string().min(1, "English description is required"),
+    id: z.string().min(1, "Indonesian description is required"),
+  }),
+  start_date: z.string().min(1, "Start date is required"),
+  end_date: z.string().optional(),
+  event_date: z.array(eventDateSchema).min(1, "At least one event date is required"),
+  registration_deadline: z.string().optional(),
+  location: z.string().min(1, "Location is required"),
+  venue_details: z.string().optional(),
+  status: z.enum(["upcoming", "ongoing", "completed"]),
+  poster_image: z.string().optional(),
+  max_quota: z.number().optional(),
+  lark_base: z.string().optional(),
+  lark_table: z.string().optional(),
+});
+
+type EventFormData = z.infer<typeof formSchema>;
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -42,29 +49,80 @@ export function AddEventModal({
 }: AddEventModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [eventDates, setEventDates] = useState<Array<{ date: string; time: string }>>([
+    { date: "", time: "" }
+  ]);
 
   const {
     register,
     handleSubmit,
     reset,
+    control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<EventFormData>({
-    resolver: zodResolver(eventSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       type: "competition",
-      description: null,
-      terms_and_conditions: null,
-      end_date: null,
-      registration_deadline: null,
-      venue_details: null,
-      poster_image: null,
-      max_quota: null,
+      description: { en: "", id: "" },
+      start_date: "",
+      end_date: "",
+      event_date: [{ date: "", time: "" }],
+      registration_deadline: "",
+      location: "",
+      venue_details: "",
+      poster_image: "",
+             max_quota: undefined,
+      lark_base: "",
+      lark_table: "",
     },
   });
 
-  const onSubmit = async (data: EventFormData) => {
+  // Watch form values for the editors
+  const description = watch("description");
+
+  // Remove unused destructured elements
+  // const { fields, append, remove } = useFieldArray({
+  //   control,
+  //   name: "event_date",
+  // });
+
+  const addEventDate = () => {
+    setEventDates([...eventDates, { date: "", time: "" }]);
+  };
+
+  const removeEventDate = (index: number) => {
+    if (eventDates.length > 1) {
+      setEventDates(eventDates.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateEventDate = (index: number, field: "date" | "time", value: string) => {
+    const updated = [...eventDates];
+    updated[index][field] = value;
+    setEventDates(updated);
+  };
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsSubmitting(true);
+
+      // Convert event dates to ISO strings
+      const convertedEventDates = eventDates
+        .filter(ed => ed.date && ed.time)
+        .map(ed => {
+          const dateTime = new Date(`${ed.date}T${ed.time}`);
+          return dateTime.toISOString();
+        });
+
+      const eventData = {
+        ...values,
+        event_date: convertedEventDates,
+        max_quota: values.max_quota,
+        lark_base: values.lark_base,
+        lark_table: values.lark_table,
+      };
 
       let posterUrl = null;
       if (posterFile) {
@@ -84,9 +142,16 @@ export function AddEventModal({
 
       const { error } = await supabase.from("events").insert([
         {
-          ...data,
+          title: eventData.title,
+          type: eventData.type,
+          description: eventData.description,
+          event_date: eventData.event_date,
+          registration_deadline: eventData.registration_deadline,
+          location: eventData.location,
+          venue_details: eventData.venue_details,
           poster_image: posterUrl,
-          status: "upcoming",
+          max_quota: eventData.max_quota,
+          status: eventData.status,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -106,6 +171,7 @@ export function AddEventModal({
   const handleClose = () => {
     reset();
     setPosterFile(null);
+    setEventDates([{ date: "", time: "" }]);
     onClose();
   };
 
@@ -160,11 +226,33 @@ export function AddEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              English Description (Optional)
+              English Description
             </label>
-            <textarea
-              {...register("description.en")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
+            <Editor
+              apiKey="no-api-key"
+              initialValue=""
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  'lists link',
+                  'image',
+                  'charmap',
+                  'anchor',
+                  'searchreplace',
+                  'visualblocks',
+                  'code',
+                  'fullscreen',
+                  'insertdatetime',
+                  'media',
+                  'table',
+                  'code',
+                  'help',
+                  'wordcount'
+                ],
+                toolbar: 'bold italic underline | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
+              }}
+                             onEditorChange={(content: string) => setValue("description.en", content)}
             />
             {errors.description?.en && (
               <p className="mt-1 text-sm text-red-600">
@@ -175,11 +263,33 @@ export function AddEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Indonesian Description (Optional)
+              Indonesian Description
             </label>
-            <textarea
-              {...register("description.id")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
+            <Editor
+              apiKey="no-api-key"
+              initialValue=""
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: [
+                  'lists link',
+                  'image',
+                  'charmap',
+                  'anchor',
+                  'searchreplace',
+                  'visualblocks',
+                  'code',
+                  'fullscreen',
+                  'insertdatetime',
+                  'media',
+                  'table',
+                  'code',
+                  'help',
+                  'wordcount'
+                ],
+                toolbar: 'bold italic underline | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
+              }}
+                             onEditorChange={(content: string) => setValue("description.id", content)}
             />
             {errors.description?.id && (
               <p className="mt-1 text-sm text-red-600">
@@ -190,60 +300,75 @@ export function AddEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              English Terms & Conditions (Optional)
+              Start Date
             </label>
-            <textarea
-              {...register("terms_and_conditions.en")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
-            />
-            {errors.terms_and_conditions?.en && (
+            <Input type="date" {...register("start_date")} />
+            {errors.start_date && (
               <p className="mt-1 text-sm text-red-600">
-                {errors.terms_and_conditions?.en.message}
+                {errors.start_date.message}
               </p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Indonesian Terms & Conditions (Optional)
+              End Date
             </label>
-            <textarea
-              {...register("terms_and_conditions.id")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] sm:min-h-[100px]"
-            />
-            {errors.terms_and_conditions?.id && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.terms_and_conditions?.id.message}
-              </p>
-            )}
+            <Input type="date" {...register("end_date")} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
-              <Input type="date" {...register("start_date")} />
-              {errors.start_date && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.start_date.message}
-                </p>
-              )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Dates & Times
+            </label>
+            <div className="space-y-4">
+              {eventDates.map((eventDate, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-600 mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={eventDate.date}
+                      onChange={(e) => updateEventDate(index, "date", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-600 mb-1">Time</label>
+                    <input
+                      type="time"
+                      value={eventDate.time}
+                      onChange={(e) => updateEventDate(index, "time", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeEventDate(index)}
+                    disabled={eventDates.length === 1}
+                    className="px-3 py-2 text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addEventDate}
+                className="text-marigold hover:text-marigold/80 text-sm"
+              >
+                + Add Another Date
+              </button>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date (Optional)
-              </label>
-              <Input type="date" {...register("end_date")} />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Registration Deadline (Optional)
-              </label>
-              <Input type="date" {...register("registration_deadline")} />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Registration Deadline
+            </label>
+            <Input type="date" {...register("registration_deadline")} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -261,7 +386,7 @@ export function AddEventModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Registration Quota (Optional)
+                Max Registration Quota
               </label>
               <Input
                 type="number"
@@ -279,7 +404,7 @@ export function AddEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Venue Details (Optional)
+              Venue Details
             </label>
             <textarea
               {...register("venue_details")}
@@ -289,7 +414,7 @@ export function AddEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Poster (Optional)
+              Event Poster
             </label>
             <Input
               type="file"

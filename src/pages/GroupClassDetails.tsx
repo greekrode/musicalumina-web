@@ -12,7 +12,7 @@ import {
 import TermsModal from "../components/TermsModal";
 import GroupClassRegistrationModal from "../components/GroupClassRegistrationModal";
 import { useEvent } from "../hooks/useEvent";
-import { formatDateWithLocale } from "../lib/utils";
+import { formatDateWithLocale, formatMultipleDatesWithLocale } from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import type { Database } from "../lib/database.types";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -153,11 +153,11 @@ function GroupClassDetails() {
                 <h3 className="font-medium text-black">
                   {t("eventDetails.eventDate")}
                 </h3>
-                <p className="text-black/80">
-                  {event.start_date
-                    ? formatDateWithLocale(event.start_date, language)
+                <div className="text-black/80 whitespace-pre-line">
+                  {event.event_date
+                    ? formatMultipleDatesWithLocale(event.event_date, language)
                     : t("common.tbd")}
-                </p>
+                </div>
               </div>
             </div>
             <div className="flex items-start space-x-3">
