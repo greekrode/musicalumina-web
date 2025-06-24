@@ -22,17 +22,6 @@
       "has": [
         {
           "type": "host",
-          "value": "poco.musicalumina.com"
-        }
-      ],
-      "destination": "https://www.musicalumina.com/group-class/04e16f52-2d81-4f2e-9bcf-dfb77f56d28c",
-      "permanent": true
-    },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
           "value": "btfe.musicalumina.com"
         }
       ],
