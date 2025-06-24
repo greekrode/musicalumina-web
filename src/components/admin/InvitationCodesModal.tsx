@@ -36,6 +36,23 @@ export default function InvitationCodesModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Calculate default expiry: 3 days from today at end of day
+  const getDefaultExpiry = () => {
+    const now = new Date();
+    const threeDaysFromNow = new Date(now);
+    threeDaysFromNow.setDate(now.getDate() + 3);
+    threeDaysFromNow.setHours(23, 59, 59, 999); // End of day
+    
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    const year = threeDaysFromNow.getFullYear();
+    const month = String(threeDaysFromNow.getMonth() + 1).padStart(2, '0');
+    const day = String(threeDaysFromNow.getDate()).padStart(2, '0');
+    const hours = String(threeDaysFromNow.getHours()).padStart(2, '0');
+    const minutes = String(threeDaysFromNow.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const {
     register,
     handleSubmit,
@@ -44,7 +61,8 @@ export default function InvitationCodesModal({
   } = useForm<InvitationCodeForm>({
     resolver: zodResolver(invitationCodeSchema),
     defaultValues: {
-      max_uses: 1
+      max_uses: 1,
+      expires_at: getDefaultExpiry()
     }
   });
 
