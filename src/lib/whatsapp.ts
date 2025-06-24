@@ -12,8 +12,8 @@ interface WhatsAppMessageData {
   category?: string;
   sub_category?: string;
   registration_ref_code: string;
-  number_of_slots: number;
-  repertoire: string[];
+  number_of_slots?: number | null;
+  repertoire?: string[] | null;
   event_name: string;
   language: string;
 }

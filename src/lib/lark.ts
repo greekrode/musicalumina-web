@@ -25,8 +25,8 @@ interface LarkRegistrationData {
     bank_account_name: string;
     bank_account_number: string;
     payment_receipt_url?: string | null;
-    number_of_slots: number;
-    repertoire: string;
+    number_of_slots?: number | null;
+    repertoire?: string | null;
     created_at: string;
   };
 }

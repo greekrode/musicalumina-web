@@ -108,6 +108,7 @@ interface RegistrationModalProps {
   onOpenTerms: () => void;
   maxQuota?: number;
   registrationCount?: number;
+  invitationCodeId?: string | null;
 }
 
 function RegistrationModal({
@@ -120,6 +121,7 @@ function RegistrationModal({
   onOpenTerms,
   maxQuota,
   registrationCount = 0,
+  invitationCodeId,
 }: RegistrationModalProps) {
   const { t, language } = useLanguage();
   const [showThankYou, setShowThankYou] = useState(false);
@@ -451,6 +453,35 @@ function RegistrationModal({
         });
       } catch (error) {
         console.error("Error sending WhatsApp message:", error);
+      }
+
+      // Increment invitation code usage
+      if (invitationCodeId) {
+        try {
+          // Get current usage and increment it
+          const { data: currentCode, error: fetchError } = await supabase
+            .from("invitation_codes")
+            .select("current_uses")
+            .eq("id", invitationCodeId)
+            .single();
+
+          if (fetchError) {
+            console.error("Error fetching invitation code:", fetchError);
+          } else {
+            const { error: updateError } = await supabase
+              .from("invitation_codes")
+              .update({ 
+                current_uses: currentCode.current_uses + 1
+              })
+              .eq("id", invitationCodeId);
+
+            if (updateError) {
+              console.error("Error updating invitation code usage:", updateError);
+            }
+          }
+        } catch (error) {
+          console.error("Error incrementing invitation code usage:", error);
+        }
       }
 
       setRegistrationRef(refNumber);

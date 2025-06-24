@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import TermsModal from "../components/TermsModal";
 import RegistrationModal from "../components/RegistrationModal";
+import InvitationPasswordModal from "../components/InvitationPasswordModal";
 import { useEvent } from "../hooks/useEvent";
 import {
   formatDateWithLocale,
@@ -442,6 +443,8 @@ function EventDetails() {
   const navigate = useNavigate();
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+  const [isInvitationPasswordModalOpen, setIsInvitationPasswordModalOpen] = useState(false);
+  const [validInvitationCodeId, setValidInvitationCodeId] = useState<string | null>(null);
   const { event, loading, error } = useEvent(id || "") as {
     event: Event | null;
     loading: boolean;
@@ -455,6 +458,46 @@ function EventDetails() {
     e.preventDefault();
     navigate("/events");
   };
+
+  const handleRegistrationClick = () => {
+    if (!import.meta.env.DEV) {
+      window.umami?.track("register_now_click", {
+        type: "competition",
+        eventId: id,
+      });
+    }
+    // Normal registration - no invitation code needed
+    setIsRegistrationModalOpen(true);
+  };
+
+  const handleWaitlistRegistrationClick = () => {
+    if (!import.meta.env.DEV) {
+      window.umami?.track("waitlist_register_click", {
+        type: "competition",
+        eventId: id,
+      });
+    }
+    // Waitlist registration - requires invitation code
+    setIsInvitationPasswordModalOpen(true);
+  };
+
+  const handleInvitationPasswordSuccess = (invitationCodeId: string) => {
+    setValidInvitationCodeId(invitationCodeId);
+    setIsInvitationPasswordModalOpen(false);
+    setIsRegistrationModalOpen(true);
+  };
+
+  const handleRegistrationModalClose = () => {
+    setIsRegistrationModalOpen(false);
+    setValidInvitationCodeId(null);
+  };
+
+  const isQuotaFull = event?.max_quota && 
+    event.registration_count !== undefined && 
+    event.registration_count >= event.max_quota;
+
+  const isRegistrationClosed = event?.registration_deadline &&
+    new Date() >= new Date(event.registration_deadline);
 
   const formatEventType = (type: EventType) => {
     return t(`eventCard.eventTypes.${type}`);
@@ -585,48 +628,43 @@ function EventDetails() {
           </div>
 
           {event.status === "ongoing" && (
-            <div className="mt-8">
+            <div className="mt-8 space-y-4">
+              {/* Normal Registration Button */}
               <button
-                onClick={() => {
-                  if (!import.meta.env.DEV) {
-                    window.umami?.track("register_now_click", {
-                      type: "competition",
-                      eventId: id,
-                    });
-                  }
-                  setIsRegistrationModalOpen(true);
-                }}
+                onClick={handleRegistrationClick}
                 disabled={
                   Boolean(
                     !event.registration_deadline ||
-                    (!!event.registration_deadline &&
-                      new Date() >= new Date(event.registration_deadline)) ||
-                    (event.max_quota && 
-                      event.registration_count !== undefined && 
-                      event.registration_count >= event.max_quota)
+                    isRegistrationClosed ||
+                    isQuotaFull
                   )
                 }
                 className={`${
                   !event.registration_deadline ||
-                  (!!event.registration_deadline &&
-                    new Date() >= new Date(event.registration_deadline)) ||
-                  (event.max_quota && 
-                    event.registration_count !== undefined && 
-                    event.registration_count >= event.max_quota)
+                  isRegistrationClosed ||
+                  isQuotaFull
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-marigold hover:bg-marigold/90"
                 } text-white px-6 py-3 rounded-lg transition-colors w-full md:w-auto`}
               >
                 {!event.registration_deadline
                   ? t("eventDetails.comingSoon")
-                  : (event.max_quota && 
-                      event.registration_count !== undefined && 
-                      event.registration_count >= event.max_quota)
+                  : isQuotaFull
                   ? t("eventDetails.quotaFull")
-                  : new Date() >= new Date(event.registration_deadline)
+                  : isRegistrationClosed
                   ? t("eventDetails.registrationClosed")
                   : t("eventDetails.registerNow")}
               </button>
+
+              {/* Waitlist Registration Button - only show when quota is full */}
+              {isQuotaFull && !isRegistrationClosed && (
+                <button
+                  onClick={handleWaitlistRegistrationClick}
+                  className="bg-marigold hover:bg-marigold/90 text-white px-6 py-3 rounded-lg transition-colors w-full md:w-auto ml-0 md:ml-4"
+                >
+                  Waitlist Registration
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -694,15 +732,23 @@ function EventDetails() {
         </div>
       </div>
 
+      <InvitationPasswordModal
+        isOpen={isInvitationPasswordModalOpen}
+        onClose={() => setIsInvitationPasswordModalOpen(false)}
+        eventId={event.id}
+        onSuccess={handleInvitationPasswordSuccess}
+      />
+
       <RegistrationModal
         isOpen={isRegistrationModalOpen}
-        onClose={() => setIsRegistrationModalOpen(false)}
+        onClose={handleRegistrationModalClose}
         eventId={event.id}
         eventName={event.title}
         eventVenue={event.location}
         categories={event.event_categories}
-        maxQuota={event.max_quota || undefined}
+        maxQuota={validInvitationCodeId ? undefined : (event.max_quota || undefined)} // Remove quota limit for waitlist registrations
         registrationCount={event.registration_count || 0}
+        invitationCodeId={validInvitationCodeId}
         onOpenTerms={() => {
           setIsTermsModalOpen(true);
         }}

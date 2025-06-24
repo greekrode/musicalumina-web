@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { AddEventModal } from "@/components/admin/AddEventModal";
 import { EditEventModal } from "@/components/admin/EditEventModal";
+import InvitationCodesModal from "@/components/admin/InvitationCodesModal";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
@@ -14,6 +15,7 @@ export function AdminEvents() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [invitationCodesEvent, setInvitationCodesEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -38,6 +40,10 @@ export function AdminEvents() {
 
   const handleEdit = (event: Event) => {
     setEditingEvent(event);
+  };
+
+  const handleInvitationCodes = (event: Event) => {
+    setInvitationCodesEvent(event);
   };
 
   return (
@@ -120,6 +126,13 @@ export function AdminEvents() {
                         onClick={() => handleEdit(event)}
                       >
                         Edit
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="mr-2"
+                        onClick={() => handleInvitationCodes(event)}
+                      >
+                        Invite Codes
                       </Button>
                       <Button variant="ghost" className="text-red-600 hover:text-red-800">
                         Delete
@@ -208,6 +221,14 @@ export function AdminEvents() {
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="flex-1"
+                        onClick={() => handleInvitationCodes(event)}
+                      >
+                        Invite Codes
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
                         className="flex-1 text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
                       >
                         Delete
@@ -232,6 +253,13 @@ export function AdminEvents() {
         onClose={() => setEditingEvent(null)}
         onEventUpdated={fetchEvents}
         event={editingEvent}
+      />
+
+      <InvitationCodesModal
+        isOpen={!!invitationCodesEvent}
+        onClose={() => setInvitationCodesEvent(null)}
+        eventId={invitationCodesEvent?.id || ""}
+        eventTitle={invitationCodesEvent?.title || ""}
       />
     </AdminLayout>
   );
