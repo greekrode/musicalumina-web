@@ -319,7 +319,7 @@ function RegistrationModal({
           song_title: data.song_title,
           song_duration: data.song_duration,
           birth_certificate_url: birthCertUrl,
-          song_pdf_url: songPdfUrl || null,
+          song_pdf_url: songPdfUrl ? [songPdfUrl] : null,
           video_url: data.video_url || null,
           bank_name: data.bank_name,
           bank_account_number: data.bank_account_number,
@@ -350,7 +350,7 @@ function RegistrationModal({
       // Get event details for Lark integration
       const { data: eventData, error: eventError } = await supabase
         .from("events")
-        .select("lark_base, lark_table")
+        .select("lark_base, lark_table, type")
         .eq("id", eventId)
         .single();
 
@@ -367,6 +367,7 @@ function RegistrationModal({
               id: eventId,
               lark_base: eventData.lark_base,
               lark_table: eventData.lark_table,
+              type: eventData.type,
             },
             registration: {
               ref_code: refNumber,
@@ -382,7 +383,7 @@ function RegistrationModal({
               song_title: data.song_title,
               song_duration: data.song_duration || "",
               birth_certificate_url: birthCertUrl,
-              song_pdf_url: songPdfUrl || null,
+              song_pdf_url: songPdfUrl ? [songPdfUrl] : null,
               video_url: data.video_url || null,
               bank_name: data.bank_name,
               bank_account_name: data.bank_account_name,

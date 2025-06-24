@@ -5,6 +5,7 @@ interface LarkRegistrationData {
     id: string;
     lark_base: string;
     lark_table: string;
+    type: string;
   };
   registration: {
     ref_code: string;
@@ -19,7 +20,7 @@ interface LarkRegistrationData {
     song_title?: string | null;
     song_duration?: string | null;
     birth_certificate_url?: string | null;
-    song_pdf_url?: string | null;
+    song_pdf_url?: string[] | null;
     video_url?: string | null;
     bank_name: string;
     bank_account_name: string;
@@ -276,7 +277,10 @@ export class LarkService {
     return phone.replace(/^\+/, "");
   }
 
-  private static formatLarkData(data: LarkRegistrationData): any {
+  private static formatLarkData(
+    data: LarkRegistrationData,
+    event: { type: string }
+  ): any {
     const { registration } = data;
     const whatsappNumber = this.formatWhatsAppNumber(
       registration.registrant_whatsapp
@@ -311,10 +315,16 @@ export class LarkService {
     }
 
     if (registration.song_pdf_url) {
-      fields["Song PDF"] = {
-        link: registration.song_pdf_url,
-        text: registration.song_title,
-      };
+      if (event.type === "masterclass") {
+        // For masterclass with multiple PDFs, create comma-separated links
+        fields["Song PDF"] = registration.song_pdf_url.join(", ");
+      } else {
+        // For single PDF (backward compatibility)
+        fields["Song PDF"] = {
+          link: registration.song_pdf_url,
+          text: registration.song_title,
+        };
+      }
     }
 
     if (registration.video_url) {
@@ -371,7 +381,7 @@ export class LarkService {
         return;
       }
 
-      const formData = this.formatLarkData(data);
+      const formData = this.formatLarkData(data, event);
       const token = await this.generateAuthToken();
 
       const response = await fetch(this.WEBHOOK_URL, {

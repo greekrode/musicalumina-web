@@ -119,7 +119,7 @@ export interface Database {
           song_title: string | null;
           song_duration: string | null;
           birth_certificate_url: string | null;
-          song_pdf_url: string | null;
+          song_pdf_url: string[] | null;
           video_url: string | null;
           bank_name: string;
           bank_account_number: string;
@@ -145,7 +145,7 @@ export interface Database {
           song_title?: string | null;
           song_duration?: string | null;
           birth_certificate_url: string;
-          song_pdf_url?: string | null;
+          song_pdf_url?: string[] | null;
           video_url?: string | null;
           bank_name: string;
           bank_account_number: string;
@@ -170,7 +170,7 @@ export interface Database {
           song_title?: string | null;
           song_duration?: string | null;
           birth_certificate_url?: string;
-          song_pdf_url?: string | null;
+          song_pdf_url?: string[] | null;
           video_url?: string | null;
           bank_name?: string;
           bank_account_number?: string;

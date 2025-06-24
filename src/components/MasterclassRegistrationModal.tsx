@@ -9,24 +9,36 @@ import { useLanguage } from "../lib/LanguageContext";
 import { LarkService } from "../lib/lark";
 import { supabase } from "../lib/supabase";
 import { WhatsAppService } from "../lib/whatsapp";
+import FileUpload from "./FileUpload";
 import LoadingModal from "./LoadingModal";
 import Modal from "./Modal";
 import ThankYouModal from "./ThankYouModal";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+interface FileState {
+  file: File | null;
+  error?: string;
+}
+
+interface FileStates {
+  song_pdfs: FileState[];
+}
 
 // Helper function to format date for display
 function formatDateForDisplay(dateString: string): string {
   const date = new Date(dateString);
   const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const month = date.toLocaleDateString("en-US", { month: "long" });
   const year = date.getFullYear();
-  
+
   // Add ordinal suffix to day
   const getOrdinal = (n: number) => {
-    const s = ['th', 'st', 'nd', 'rd'];
+    const s = ["th", "st", "nd", "rd"];
     const v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
-  
+
   return `${getOrdinal(day)} ${month} ${year}`;
 }
 
@@ -53,9 +65,7 @@ function createMasterclassSchema(t: (key: string) => string) {
         const age = parseInt(val);
         return !isNaN(age) && age >= 1 && age <= 100;
       }, t("validation.invalidAge")),
-    selected_date: z
-      .string()
-      .min(1, t("validation.selectDate")),
+    selected_date: z.string().min(1, t("validation.selectDate")),
     number_of_slots: z
       .string()
       .min(1, t("validation.selectSlots"))
@@ -107,6 +117,9 @@ function MasterclassRegistrationModal({
   const [registeredName, setRegisteredName] = useState("");
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
   const [eventDates, setEventDates] = useState<string[]>([]);
+  const [files, setFiles] = useState<FileStates>({
+    song_pdfs: [{ file: null }],
+  });
 
   const masterclassSchema = createMasterclassSchema(t);
 
@@ -156,6 +169,9 @@ function MasterclassRegistrationModal({
 
   const handleClose = () => {
     setRepertoireList([""]);
+    setFiles({
+      song_pdfs: [{ file: null }],
+    });
     setShowThankYou(false);
     reset();
     onClose();
@@ -178,6 +194,82 @@ function MasterclassRegistrationModal({
     setRepertoireList(newList);
   };
 
+  const handleFileChange = (index: number) => (file: File | null) => {
+    if (file && file.size > MAX_FILE_SIZE) {
+      setFiles((prev) => ({
+        ...prev,
+        song_pdfs: prev.song_pdfs.map((item, i) =>
+          i === index
+            ? { file: null, error: t("validation.fileSizeLimit") }
+            : item
+        ),
+      }));
+      return;
+    }
+
+    setFiles((prev) => ({
+      ...prev,
+      song_pdfs: prev.song_pdfs.map((item, i) =>
+        i === index ? { file, error: undefined } : item
+      ),
+    }));
+  };
+
+  const addFileUpload = () => {
+    setFiles((prev) => ({
+      ...prev,
+      song_pdfs: [...prev.song_pdfs, { file: null }],
+    }));
+  };
+
+  const removeFileUpload = (index: number) => {
+    if (files.song_pdfs.length > 1) {
+      setFiles((prev) => ({
+        ...prev,
+        song_pdfs: prev.song_pdfs.filter((_, i) => i !== index),
+      }));
+    }
+  };
+
+  const uploadFile = async (file: File, path: string) => {
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
+      const filePath = `${path}/${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from("registration-documents")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw new Error(`Error uploading ${path}: ${uploadError.message}`);
+      }
+
+      if (!data?.path) {
+        throw new Error("Upload succeeded but no path returned");
+      }
+
+      const { data: signedUrlData, error: signedUrlError } =
+        await supabase.storage
+          .from("registration-documents")
+          .createSignedUrl(data.path, 31536000); // 1 year expiry
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error("Signed URL error:", signedUrlError);
+        throw new Error("Failed to generate signed URL for uploaded file");
+      }
+
+      return signedUrlData.signedUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      throw error;
+    }
+  };
+
   const onSubmit = async (data: MasterclassForm) => {
     try {
       setIsSubmitting(true);
@@ -193,6 +285,27 @@ function MasterclassRegistrationModal({
         setIsSubmitting(false);
         setShowLoadingModal(false);
         return;
+      }
+
+      // Upload PDF files
+      const pdfFiles = files.song_pdfs.filter(
+        (fileState) => fileState.file !== null
+      );
+      let songPdfUrls: string[] = [];
+
+      if (pdfFiles.length > 0) {
+        try {
+          const uploadPromises = pdfFiles.map((fileState) =>
+            uploadFile(fileState.file!, "song-pdfs")
+          );
+          songPdfUrls = await Promise.all(uploadPromises);
+        } catch (error) {
+          console.error("Error uploading PDF files:", error);
+          alert(t("registration.errorSubmitting"));
+          setIsSubmitting(false);
+          setShowLoadingModal(false);
+          return;
+        }
       }
 
       // Create registration
@@ -214,6 +327,7 @@ function MasterclassRegistrationModal({
           bank_name: data.bank_name,
           bank_account_number: data.bank_account_number,
           bank_account_name: data.bank_account_name,
+          song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
           payment_receipt_url: "", // Will be handled separately if needed
           status: "pending",
         })
@@ -250,7 +364,7 @@ function MasterclassRegistrationModal({
       // Send to Lark if configured
       const { data: eventData } = await supabase
         .from("events")
-        .select("lark_base, lark_table")
+        .select("lark_base, lark_table, type")
         .eq("id", eventId)
         .single();
 
@@ -261,6 +375,7 @@ function MasterclassRegistrationModal({
               id: eventId,
               lark_base: eventData.lark_base,
               lark_table: eventData.lark_table,
+              type: eventData.type,
             },
             registration: {
               ref_code: refNumber,
@@ -278,6 +393,7 @@ function MasterclassRegistrationModal({
               selected_date: data.selected_date,
               number_of_slots: parseInt(data.number_of_slots),
               repertoire: filteredRepertoire.join("; "),
+              song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
               bank_name: data.bank_name,
               bank_account_name: data.bank_account_name,
               bank_account_number: data.bank_account_number,
@@ -317,6 +433,9 @@ function MasterclassRegistrationModal({
       setShowThankYou(true);
       reset();
       setRepertoireList([""]);
+      setFiles({
+        song_pdfs: [{ file: null }],
+      });
     } catch (error) {
       console.error("Error submitting registration:", error);
       alert(t("registration.errorSubmitting"));
@@ -556,6 +675,52 @@ function MasterclassRegistrationModal({
               >
                 <Plus className="h-4 w-4" />
                 {t("masterclass.registration.addRepertoire")}
+              </button>
+            </div>
+
+            {/* PDF Upload Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t("masterclass.registration.repertoirePdf")}
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                {t("masterclass.registration.repertoirePdfHelp")}
+              </p>
+              {files.song_pdfs.map((fileState, index) => (
+                <div key={index} className="mb-3">
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <FileUpload
+                        label={`PDF ${index + 1}`}
+                        accept=".pdf"
+                        registration={{
+                          name: `song_pdf_${index}`,
+                          onChange: async () => true,
+                          onBlur: async () => true,
+                        }}
+                        error={fileState.error}
+                        onFileChange={handleFileChange(index)}
+                      />
+                    </div>
+                    {files.song_pdfs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeFileUpload(index)}
+                        className="mt-6 p-2 text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addFileUpload}
+                className="flex items-center gap-2 text-sm text-marigold hover:text-marigold/90"
+              >
+                <Plus className="h-4 w-4" />
+                {t("masterclass.registration.addPdf")}
               </button>
             </div>
           </div>

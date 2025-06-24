@@ -253,6 +253,9 @@ export const translations = {
         repertoirePlaceholder: "Enter repertoire title",
         addRepertoire: "Add Another Repertoire",
         addAtLeastOneRepertoire: "Please add at least one repertoire title",
+        repertoirePdf: "Repertoire PDFs (Optional)",
+        repertoirePdfHelp: "Upload PDF files for your repertoire (optional)",
+        addPdf: "Add Another PDF",
       },
     },
     common: {
@@ -554,6 +557,9 @@ export const translations = {
         addRepertoire: "Tambah Repertoire Lain",
         addAtLeastOneRepertoire:
           "Silakan tambahkan setidaknya satu judul repertoire",
+        repertoirePdf: "PDF Repertoire (Opsional)",
+        repertoirePdfHelp: "Unggah file PDF untuk repertoire Anda (opsional)",
+        addPdf: "Tambah PDF Lain",
       },
     },
     common: {
