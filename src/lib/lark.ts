@@ -319,9 +319,9 @@ export class LarkService {
         // For masterclass with multiple PDFs, create comma-separated links
         fields["Song PDF"] = registration.song_pdf_url.join(", ");
       } else {
-        // For single PDF (backward compatibility)
+        // For single PDF (backward compatibility) - extract first element from array
         fields["Song PDF"] = {
-          link: registration.song_pdf_url,
+          link: registration.song_pdf_url[0],
           text: registration.song_title,
         };
       }
