@@ -21,8 +21,8 @@ const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   type: z.enum(["festival", "competition", "masterclass", "group class"]),
   description: z.object({
-    en: z.string().min(1, "English description is required"),
-    id: z.string().min(1, "Indonesian description is required"),
+    en: z.string().optional(),
+    id: z.string().optional(),
   }),
   terms_and_conditions: z
     .object({
@@ -39,7 +39,7 @@ const formSchema = z.object({
   venue_details: z.string().optional(),
   status: z.enum(["upcoming", "ongoing", "completed"]),
   poster_image: z.string().optional(),
-  max_quota: z.number().optional(),
+  max_quota: z.union([z.number(), z.string()]).optional(),
   lark_base: z.string().optional(),
   lark_table: z.string().optional(),
 });
@@ -59,6 +59,8 @@ export function EditEventModal({
   onEventUpdated,
   event,
 }: EditEventModalProps) {
+  console.log("EditEventModal rendered with event:", event);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [eventDates, setEventDates] = useState<
@@ -94,6 +96,11 @@ export function EditEventModal({
   // Watch form values for the editors
   const description = watch("description");
   const termsAndConditions = watch("terms_and_conditions");
+  
+  // Sync eventDates with form when they change
+  useEffect(() => {
+    setValue("event_date", eventDates);
+  }, [eventDates, setValue]);
 
   // Initialize event dates when event prop changes
   useEffect(() => {
@@ -126,6 +133,7 @@ export function EditEventModal({
         description: event.description || { en: "", id: "" },
         terms_and_conditions: event.terms_and_conditions || { en: "", id: "" },
         start_date: new Date(event.start_date).toISOString().split("T")[0],
+        event_date: [{ date: "", time: "" }], // Initialize with empty event date
         registration_deadline: event.registration_deadline
           ? new Date(event.registration_deadline).toISOString().split("T")[0]
           : "",
@@ -143,6 +151,15 @@ export function EditEventModal({
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!event) return;
 
+    console.log("Form submitted with values:", values);
+    console.log("Event dates:", eventDates);
+
+    // Manual validation check
+    if (!values.title || !values.start_date || !values.location) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -154,10 +171,15 @@ export function EditEventModal({
           return dateTime.toISOString();
         });
 
+      console.log("Converted event dates:", convertedEventDates);
+
+      // Handle max_quota - convert empty string to null
+      const maxQuota = values.max_quota === "" ? null : values.max_quota;
+
       const eventData = {
         ...values,
         event_date: convertedEventDates,
-        max_quota: values.max_quota,
+        max_quota: maxQuota,
         lark_base: values.lark_base,
         lark_table: values.lark_table,
       };
@@ -180,33 +202,46 @@ export function EditEventModal({
         posterUrl = urlData.publicUrl;
       }
 
+      const updateData = {
+        title: values.title,
+        type: values.type,
+        description: {
+          en: values.description.en || "",
+          id: values.description.id || "",
+        },
+        terms_and_conditions: values.terms_and_conditions || { en: "", id: "" },
+        start_date: values.start_date,
+        event_date: convertedEventDates,
+        registration_deadline: values.registration_deadline,
+        location: values.location,
+        venue_details: values.venue_details,
+        poster_image: posterUrl,
+        status: values.status,
+        max_quota: maxQuota,
+        lark_base: eventData.lark_base,
+        lark_table: eventData.lark_table,
+        updated_at: new Date().toISOString(),
+      };
+      
+      console.log("Updating event with data:", updateData);
+      console.log("Event ID:", event.id);
+
       const { error } = await supabase
         .from("events")
-        .update({
-          title: values.title,
-          type: values.type,
-          description: values.description,
-          terms_and_conditions: values.terms_and_conditions,
-          start_date: values.start_date,
-          event_date: convertedEventDates,
-          registration_deadline: values.registration_deadline,
-          location: values.location,
-          venue_details: values.venue_details,
-          poster_image: posterUrl,
-          status: values.status,
-          max_quota: eventData.max_quota,
-          lark_base: eventData.lark_base,
-          lark_table: eventData.lark_table,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", event.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
+      console.log("Event updated successfully");
       onEventUpdated();
       onClose();
     } catch (error) {
       console.error("Error updating event:", error);
+      alert("Failed to update event. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -247,7 +282,29 @@ export function EditEventModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          console.log("Form submitted manually");
+          console.log("Form errors:", errors);
+          console.log("Form values:", watch());
+          
+          // Check if event dates are valid
+          const validEventDates = eventDates.filter(ed => ed.date && ed.time);
+          if (validEventDates.length === 0) {
+            alert("Please add at least one event date and time");
+            return;
+          }
+          
+          // Check required fields
+          const formValues = watch();
+          if (!formValues.title || !formValues.start_date || !formValues.location) {
+            alert("Please fill in all required fields (Title, Start Date, Location)");
+            return;
+          }
+          
+          // If all validations pass, call the onSubmit function directly
+          onSubmit(watch());
+        }} className="p-6 space-y-6">
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -284,7 +341,7 @@ export function EditEventModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              English Description
+              English Description - Optional
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
@@ -324,16 +381,12 @@ export function EditEventModal({
                   "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
-            {errors.description?.en && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.description?.en.message}
-              </p>
-            )}
+
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Indonesian Description
+              Indonesian Description - Optional
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
@@ -373,16 +426,12 @@ export function EditEventModal({
                   "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
-            {errors.description?.id && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.description?.id.message}
-              </p>
-            )}
+
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Terms and Conditions (English)
+              Terms and Conditions (English) - Optional
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
@@ -422,16 +471,11 @@ export function EditEventModal({
                   "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
-            {errors.terms_and_conditions?.en && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.terms_and_conditions?.en.message}
-              </p>
-            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Terms and Conditions (Indonesian)
+              Terms and Conditions (Indonesian) - Optional
             </label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
@@ -471,11 +515,6 @@ export function EditEventModal({
                   "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
-            {errors.terms_and_conditions?.id && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.terms_and_conditions?.id.message}
-              </p>
-            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -510,7 +549,6 @@ export function EditEventModal({
                         updateEventDate(index, "date", e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
-                      required
                     />
                   </div>
                   <div className="flex-1">
@@ -524,7 +562,6 @@ export function EditEventModal({
                         updateEventDate(index, "time", e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
-                      required
                     />
                   </div>
                   <button
@@ -569,7 +606,7 @@ export function EditEventModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Registration Quota
+                Max Registration Quota - Optional
               </label>
               <Input
                 type="number"
@@ -622,6 +659,7 @@ export function EditEventModal({
             >
               Cancel
             </Button>
+
             <Button
               type="submit"
               variant="default"
