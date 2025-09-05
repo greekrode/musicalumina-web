@@ -173,6 +173,17 @@ function MasterclassDetails() {
                 )}
               </div>
             </div>
+            {Array.isArray((event as any).event_duration) && (event as any).event_duration.length > 0 && (
+              <div className="flex items-start space-x-3">
+                <Clock className="h-5 w-5 text-marigold mt-1" />
+                <div>
+                  <h3 className="font-medium text-black">{t("eventDetails.eventDuration")}</h3>
+                  <p className="text-black/80">
+                    {((event as any).event_duration as number[]).join(" / ")} minutes
+                  </p>
+                </div>
+              </div>
+            )}
             {event.registration_deadline && (
               <div className="flex items-start space-x-3">
                 <Clock className="h-5 w-5 text-marigold mt-1" />

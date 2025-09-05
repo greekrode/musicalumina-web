@@ -1,13 +1,12 @@
+import Modal from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import * as z from "zod";
-import { Plus, Trash2 } from "lucide-react";
 import { Editor } from "@tinymce/tinymce-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 
 const eventDateSchema = z.object({
   date: z.string().min(1, "Date is required"),
@@ -35,6 +34,7 @@ const formSchema = z.object({
   max_quota: z.number().optional(),
   lark_base: z.string().optional(),
   lark_table: z.string().optional(),
+  event_duration: z.array(z.number().int().positive()).optional(),
 });
 
 type EventFormData = z.infer<typeof formSchema>;
@@ -55,6 +55,7 @@ export function AddEventModal({
   const [eventDates, setEventDates] = useState<Array<{ date: string; time: string }>>([
     { date: "", time: "" }
   ]);
+  const [durations, setDurations] = useState<number[]>([]);
 
   const {
     register,
@@ -79,6 +80,7 @@ export function AddEventModal({
       max_quota: undefined,
       lark_base: "",
       lark_table: "",
+      event_duration: [],
     },
   });
 
@@ -126,6 +128,7 @@ export function AddEventModal({
         max_quota: values.max_quota,
         lark_base: values.lark_base,
         lark_table: values.lark_table,
+        event_duration: durations.length ? durations : null,
       };
 
       let posterUrl = null;
@@ -151,6 +154,7 @@ export function AddEventModal({
           description: eventData.description,
           terms_and_conditions: eventData.terms_and_conditions,
           event_date: eventData.event_date,
+          event_duration: eventData.event_duration,
           registration_deadline: eventData.registration_deadline,
           location: eventData.location,
           venue_details: eventData.venue_details,
@@ -177,6 +181,7 @@ export function AddEventModal({
     reset();
     setPosterFile(null);
     setEventDates([{ date: "", time: "" }]);
+    setDurations([]);
     onClose();
   };
 
@@ -432,6 +437,41 @@ export function AddEventModal({
                 className="text-marigold hover:text-marigold/80 text-sm"
               >
                 + Add Another Date
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Durations (minutes)
+            </label>
+            <div className="space-y-2">
+              {durations.map((d, idx) => (
+                <div key={idx} className="flex items-end gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={d}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value || "0", 10);
+                      setDurations((prev) => prev.map((val, i) => (i === idx ? v : val)));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDurations((prev) => prev.filter((_, i) => i !== idx))}
+                    className="px-3 py-2 text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDurations((prev) => [...prev, 10])}
+                className="text-marigold hover:text-marigold/80 text-sm"
+              >
+                + Add Duration
               </button>
             </div>
           </div>

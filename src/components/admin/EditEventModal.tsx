@@ -1,14 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import Modal from "@/components/Modal";
+import type { Database } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useEffect } from "react";
+import { Editor } from "@tinymce/tinymce-react";
+import { Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { Database } from "@/lib/database.types";
-import { Editor } from "@tinymce/tinymce-react";
-import { Plus, Trash2 } from "lucide-react";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
@@ -42,6 +41,7 @@ const formSchema = z.object({
   max_quota: z.union([z.number(), z.string()]).optional(),
   lark_base: z.string().optional(),
   lark_table: z.string().optional(),
+  event_duration: z.array(z.number().int().positive()).optional(),
 });
 
 type EventFormData = z.infer<typeof formSchema>;
@@ -66,6 +66,7 @@ export function EditEventModal({
   const [eventDates, setEventDates] = useState<
     Array<{ date: string; time: string }>
   >([{ date: "", time: "" }]);
+  const [durations, setDurations] = useState<number[]>([]);
 
   const {
     register,
@@ -90,6 +91,7 @@ export function EditEventModal({
       max_quota: undefined,
       lark_base: "",
       lark_table: "",
+      event_duration: [],
     },
   });
 
@@ -144,7 +146,14 @@ export function EditEventModal({
         max_quota: event.max_quota || undefined,
         lark_base: event.lark_base || "",
         lark_table: event.lark_table || "",
+        event_duration: (event as any).event_duration || [],
       });
+
+      if ((event as any).event_duration && Array.isArray((event as any).event_duration)) {
+        setDurations((event as any).event_duration as number[]);
+      } else {
+        setDurations([]);
+      }
     }
   }, [event, reset]);
 
@@ -182,6 +191,7 @@ export function EditEventModal({
         max_quota: maxQuota,
         lark_base: values.lark_base,
         lark_table: values.lark_table,
+        event_duration: durations.length ? durations : null,
       };
 
       let posterUrl = values.poster_image;
@@ -212,6 +222,7 @@ export function EditEventModal({
         terms_and_conditions: values.terms_and_conditions || { en: "", id: "" },
         start_date: values.start_date,
         event_date: convertedEventDates,
+        event_duration: eventData.event_duration,
         registration_deadline: values.registration_deadline,
         location: values.location,
         venue_details: values.venue_details,
@@ -336,6 +347,41 @@ export function EditEventModal({
                   {errors.type.message}
                 </p>
               )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Durations (minutes)
+            </label>
+            <div className="space-y-2">
+              {durations.map((d, idx) => (
+                <div key={idx} className="flex items-end gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={d}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value || "0", 10);
+                      setDurations((prev) => prev.map((val, i) => (i === idx ? v : val)));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDurations((prev) => prev.filter((_, i) => i !== idx))}
+                    className="px-3 py-2 text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDurations((prev) => [...prev, 10])}
+                className="text-marigold hover:text-marigold/80 text-sm"
+              >
+                + Add Duration
+              </button>
             </div>
           </div>
 

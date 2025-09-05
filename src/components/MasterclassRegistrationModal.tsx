@@ -66,6 +66,7 @@ function createMasterclassSchema(t: (key: string) => string) {
         return !isNaN(age) && age >= 1 && age <= 100;
       }, t("validation.invalidAge")),
     selected_date: z.string().min(1, t("validation.selectDate")),
+    selected_duration: z.string().min(1, t("validation.selectDuration")),
     number_of_slots: z
       .string()
       .min(1, t("validation.selectSlots"))
@@ -117,6 +118,8 @@ function MasterclassRegistrationModal({
   const [registeredName, setRegisteredName] = useState("");
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
   const [eventDates, setEventDates] = useState<string[]>([]);
+  const [eventDurations, setEventDurations] = useState<number[]>([]);
+  const [registrationFees, setRegistrationFees] = useState<{ uom: string; price: number }[]>([]);
   const [files, setFiles] = useState<FileStates>({
     song_pdfs: [{ file: null }],
   });
@@ -141,6 +144,27 @@ function MasterclassRegistrationModal({
   });
 
   const registrantStatus = watch("registrant_status");
+  const selectedDuration = watch("selected_duration");
+  const selectedSlots = watch("number_of_slots");
+
+  const matchedFee = (() => {
+    if (!selectedDuration) return null;
+    const durationMinutes = parseInt(selectedDuration, 10);
+    if (isNaN(durationMinutes)) return null;
+    // uom example: "15 minutes" → parse leading number
+    for (const fee of registrationFees) {
+      const n = parseInt(String(fee.uom).replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n) && n === durationMinutes) return fee;
+    }
+    return null;
+  })();
+
+  const computedTotal = (() => {
+    if (!matchedFee) return null;
+    const slots = parseInt(selectedSlots || "1", 10);
+    if (isNaN(slots)) return null;
+    return matchedFee.price * slots;
+  })();
 
   // Fetch event data to get event_date array
   useEffect(() => {
@@ -148,7 +172,7 @@ function MasterclassRegistrationModal({
       try {
         const { data: eventData, error } = await supabase
           .from("events")
-          .select("event_date")
+          .select("event_date, event_duration")
           .eq("id", eventId)
           .single();
 
@@ -156,6 +180,9 @@ function MasterclassRegistrationModal({
 
         if (eventData?.event_date) {
           setEventDates(eventData.event_date);
+        }
+        if (eventData?.event_duration) {
+          setEventDurations(eventData.event_duration as number[]);
         }
       } catch (error) {
         console.error("Error fetching event data:", error);
@@ -165,6 +192,25 @@ function MasterclassRegistrationModal({
     if (eventId && isOpen) {
       fetchEventData();
     }
+  }, [eventId, isOpen]);
+
+  // Fetch registration fees for price calculation
+  useEffect(() => {
+    const fetchFees = async () => {
+      try {
+        if (!eventId || !isOpen) return;
+        const { data, error } = await supabase
+          .from("event_registration_fees")
+          .select("uom, price")
+          .eq("event_id", eventId)
+          .order("price");
+        if (error) throw error;
+        setRegistrationFees(data || []);
+      } catch (err) {
+        console.error("Error fetching registration fees:", err);
+      }
+    };
+    fetchFees();
   }, [eventId, isOpen]);
 
   const handleClose = () => {
@@ -323,7 +369,7 @@ function MasterclassRegistrationModal({
           participant_name: data.participant_name,
           participant_age: parseInt(data.participant_age),
           selected_date: data.selected_date,
-          number_of_slots: parseInt(data.number_of_slots),
+          song_duration: `${data.selected_duration} minutes`,
           bank_name: data.bank_name,
           bank_account_number: data.bank_account_number,
           bank_account_name: data.bank_account_name,
@@ -343,6 +389,8 @@ function MasterclassRegistrationModal({
           event_id: eventId,
           name: data.participant_name,
           repertoire: filteredRepertoire,
+          duration: parseInt(data.selected_duration),
+          number_of_slots: parseInt(data.number_of_slots),
         });
 
       if (participantError) {
@@ -392,6 +440,7 @@ function MasterclassRegistrationModal({
               participant_age: parseInt(data.participant_age),
               selected_date: data.selected_date,
               number_of_slots: parseInt(data.number_of_slots),
+              duration: parseInt(data.selected_duration),
               repertoire: filteredRepertoire.join("; "),
               song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
               bank_name: data.bank_name,
@@ -419,6 +468,7 @@ function MasterclassRegistrationModal({
           participant_age: parseInt(data.participant_age),
           selected_date: data.selected_date,
           number_of_slots: parseInt(data.number_of_slots),
+          duration: parseInt(data.selected_duration),
           repertoire: filteredRepertoire,
           registration_ref_code: refNumber,
           event_name: eventName,
@@ -597,7 +647,7 @@ function MasterclassRegistrationModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Select Date
@@ -621,11 +671,30 @@ function MasterclassRegistrationModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
+                  Select Duration (minutes)
+                </label>
+                <select
+                  {...register("selected_duration")}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                >
+                  <option value="">Select duration...</option>
+                  {eventDurations.map((d, index) => (
+                    <option key={index} value={d}>{d}</option>
+                  ))}
+                </select>
+                {errors.selected_duration && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.selected_duration.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
                   {t("masterclass.registration.numberOfSlots")}
                 </label>
                 <select
                   {...register("number_of_slots")}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                  className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50 sm:w-40"
                 >
                   {[1, 2, 3].map((num) => (
                     <option key={num} value={num}>
@@ -638,6 +707,12 @@ function MasterclassRegistrationModal({
                     {errors.number_of_slots.message}
                   </p>
                 )}
+              </div>
+              <div>
+                <span className="block text-xs text-gray-500">Total price:</span>
+                <div className="mt-1 text-base font-medium">
+                  {computedTotal !== null ? `IDR ${computedTotal.toLocaleString()}` : "-"}
+                </div>
               </div>
             </div>
 

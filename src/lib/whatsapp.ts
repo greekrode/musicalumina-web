@@ -32,6 +32,7 @@ interface WhatsAppMessageData {
   number_of_slots?: number | null;
   repertoire?: string[] | null;
   selected_date?: string | null;
+  duration?: number | null;
   event_name: string;
   language: string;
 }
@@ -241,6 +242,7 @@ export class WhatsAppService {
           `*Umur Peserta:* ${data.participant_age}\n` +
           (data.selected_date ? `*Tanggal yang Dipilih:* ${formatDateForWhatsApp(data.selected_date)}\n` : "") +
           `*Jumlah Slot:* ${data.number_of_slots}\n` +
+          `*Durasi:* ${data.duration}\n` +
           `*Repertoire:* ${data.repertoire?.join("\n") || "Tidak ada repertoar yang ditentukan"}\n` +
           `\nKami akan segera memproses pendaftaran Anda. Silakan simpan nomor referensi di atas untuk keperluan di masa mendatang.\n\n` +
           `Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.\n\n` +
@@ -254,6 +256,7 @@ export class WhatsAppService {
           `*Age:* ${data.participant_age}\n` +
           (data.selected_date ? `*Selected Date:* ${formatDateForWhatsApp(data.selected_date)}\n` : "") +
           `*Number of Slots:* ${data.number_of_slots}\n` +
+          `*Duration:* ${data.duration}\n` +
           `*Repertoire:* ${data.repertoire?.join("\n") || "No repertoire specified"}\n` +
           `\nWe will process your registration shortly. Please keep the reference number for future correspondence.\n\n` +
           `If you have any questions, please don't hesitate to contact us.\n\n` +

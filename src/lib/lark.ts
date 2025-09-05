@@ -29,6 +29,7 @@ interface LarkRegistrationData {
     number_of_slots?: number | null;
     repertoire?: string | null;
     selected_date?: string | null;
+    duration?: number | null;
     created_at: string;
   };
 }
@@ -363,6 +364,10 @@ export class LarkService {
       // Convert to Unix timestamp in milliseconds for Lark
       const epochTimestamp = new Date(registration.selected_date).getTime();
       fields["Selected Date"] = epochTimestamp;
+    }
+
+    if (registration.duration) {
+      fields["Duration"] = registration.duration;
     }
 
     return {

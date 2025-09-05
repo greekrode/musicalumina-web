@@ -34,6 +34,7 @@ export interface Database {
           lark_table: string | null;
           max_quota: number | null;
           event_date: string[] | null;
+          event_duration: number[] | null;
         };
         Insert: {
           id?: string;
@@ -53,6 +54,7 @@ export interface Database {
           lark_table?: string | null;
           max_quota?: number | null;
           event_date?: string[] | null;
+          event_duration?: number[] | null;
         };
         Update: {
           id?: string;
@@ -72,6 +74,7 @@ export interface Database {
           lark_table?: string | null;
           max_quota?: number | null;
           event_date?: string[] | null;
+          event_duration?: number[] | null;
         };
       };
       songs: {
@@ -129,7 +132,6 @@ export interface Database {
           email_sent_at: string | null;
           created_at: string;
           updated_at: string;
-          number_of_slots: number | null;
           selected_date: string | null;
         };
         Insert: {
@@ -154,7 +156,6 @@ export interface Database {
           status?: RegistrationState;
           created_at?: string;
           updated_at?: string;
-          number_of_slots?: number | null;
           selected_date?: string | null;
         };
         Update: {
@@ -179,7 +180,6 @@ export interface Database {
           status?: RegistrationState;
           created_at?: string;
           updated_at?: string;
-          number_of_slots?: number | null;
           selected_date?: string | null;
         };
       };
@@ -358,6 +358,8 @@ export interface Database {
           event_id: string;
           name: string;
           repertoire: string[];
+          duration: number | null;
+          number_of_slots: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -366,6 +368,8 @@ export interface Database {
           event_id: string;
           name: string;
           repertoire: string[];
+          duration?: number | null;
+          number_of_slots?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -374,6 +378,8 @@ export interface Database {
           event_id?: string;
           name?: string;
           repertoire?: string[];
+          duration?: number | null;
+          number_of_slots?: number | null;
           created_at?: string;
           updated_at?: string;
         };
