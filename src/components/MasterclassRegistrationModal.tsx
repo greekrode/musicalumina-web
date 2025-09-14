@@ -23,6 +23,7 @@ interface FileState {
 
 interface FileStates {
   song_pdfs: FileState[];
+  payment_receipt: FileState;
 }
 
 // Helper function to format date for display
@@ -122,6 +123,7 @@ function MasterclassRegistrationModal({
   const [registrationFees, setRegistrationFees] = useState<{ uom: string; price: number }[]>([]);
   const [files, setFiles] = useState<FileStates>({
     song_pdfs: [{ file: null }],
+    payment_receipt: { file: null },
   });
 
   const masterclassSchema = createMasterclassSchema(t);
@@ -217,6 +219,7 @@ function MasterclassRegistrationModal({
     setRepertoireList([""]);
     setFiles({
       song_pdfs: [{ file: null }],
+      payment_receipt: { file: null },
     });
     setShowThankYou(false);
     reset();
@@ -240,25 +243,39 @@ function MasterclassRegistrationModal({
     setRepertoireList(newList);
   };
 
-  const handleFileChange = (index: number) => (file: File | null) => {
+  const handleFileChange = (type: keyof FileStates, index?: number) => (file: File | null) => {
     if (file && file.size > MAX_FILE_SIZE) {
-      setFiles((prev) => ({
-        ...prev,
-        song_pdfs: prev.song_pdfs.map((item, i) =>
-          i === index
-            ? { file: null, error: t("validation.fileSizeLimit") }
-            : item
-        ),
-      }));
+      if (type === 'song_pdfs' && index !== undefined) {
+        setFiles((prev) => ({
+          ...prev,
+          song_pdfs: prev.song_pdfs.map((item, i) =>
+            i === index
+              ? { file: null, error: t("validation.fileSizeLimit") }
+              : item
+          ),
+        }));
+      } else if (type === 'payment_receipt') {
+        setFiles((prev) => ({
+          ...prev,
+          payment_receipt: { file: null, error: t("validation.fileSizeLimit") },
+        }));
+      }
       return;
     }
 
-    setFiles((prev) => ({
-      ...prev,
-      song_pdfs: prev.song_pdfs.map((item, i) =>
-        i === index ? { file, error: undefined } : item
-      ),
-    }));
+    if (type === 'song_pdfs' && index !== undefined) {
+      setFiles((prev) => ({
+        ...prev,
+        song_pdfs: prev.song_pdfs.map((item, i) =>
+          i === index ? { file, error: undefined } : item
+        ),
+      }));
+    } else if (type === 'payment_receipt') {
+      setFiles((prev) => ({
+        ...prev,
+        payment_receipt: { file, error: undefined },
+      }));
+    }
   };
 
   const addFileUpload = () => {
@@ -316,6 +333,19 @@ function MasterclassRegistrationModal({
     }
   };
 
+  const validateFiles = () => {
+    let isValid = true;
+    const newFiles = { ...files };
+
+    if (!files.payment_receipt.file) {
+      newFiles.payment_receipt.error = t("validation.uploadPayment");
+      isValid = false;
+    }
+
+    setFiles(newFiles);
+    return isValid;
+  };
+
   const onSubmit = async (data: MasterclassForm) => {
     try {
       setIsSubmitting(true);
@@ -333,25 +363,42 @@ function MasterclassRegistrationModal({
         return;
       }
 
+      // Validate files first
+      if (!validateFiles()) {
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
+
+      // Upload files to storage
+      const uploadPromises = [
+        uploadFile(files.payment_receipt.file!, "payment-receipts"),
+      ];
+
       // Upload PDF files
       const pdfFiles = files.song_pdfs.filter(
         (fileState) => fileState.file !== null
       );
       let songPdfUrls: string[] = [];
+      let paymentReceiptUrl: string;
 
       if (pdfFiles.length > 0) {
-        try {
-          const uploadPromises = pdfFiles.map((fileState) =>
-            uploadFile(fileState.file!, "song-pdfs")
-          );
-          songPdfUrls = await Promise.all(uploadPromises);
-        } catch (error) {
-          console.error("Error uploading PDF files:", error);
-          alert(t("registration.errorSubmitting"));
-          setIsSubmitting(false);
-          setShowLoadingModal(false);
-          return;
-        }
+        const pdfUploadPromises = pdfFiles.map((fileState) =>
+          uploadFile(fileState.file!, "song-pdfs")
+        );
+        uploadPromises.push(...pdfUploadPromises);
+      }
+
+      try {
+        const uploadedFiles = await Promise.all(uploadPromises);
+        paymentReceiptUrl = uploadedFiles[0];
+        songPdfUrls = uploadedFiles.slice(1);
+      } catch (error) {
+        console.error("Error uploading files:", error);
+        alert(t("registration.errorSubmitting"));
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
       }
 
       // Create registration
@@ -374,7 +421,7 @@ function MasterclassRegistrationModal({
           bank_account_number: data.bank_account_number,
           bank_account_name: data.bank_account_name,
           song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
-          payment_receipt_url: "", // Will be handled separately if needed
+          payment_receipt_url: paymentReceiptUrl,
           status: "pending",
         })
         .select()
@@ -443,6 +490,7 @@ function MasterclassRegistrationModal({
               duration: parseInt(data.selected_duration),
               repertoire: filteredRepertoire.join("; "),
               song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
+              payment_receipt_url: paymentReceiptUrl,
               bank_name: data.bank_name,
               bank_account_name: data.bank_account_name,
               bank_account_number: data.bank_account_number,
@@ -485,6 +533,7 @@ function MasterclassRegistrationModal({
       setRepertoireList([""]);
       setFiles({
         song_pdfs: [{ file: null }],
+        payment_receipt: { file: null },
       });
     } catch (error) {
       console.error("Error submitting registration:", error);
@@ -774,7 +823,7 @@ function MasterclassRegistrationModal({
                           onBlur: async () => true,
                         }}
                         error={fileState.error}
-                        onFileChange={handleFileChange(index)}
+                        onFileChange={handleFileChange('song_pdfs', index)}
                       />
                     </div>
                     {files.song_pdfs.length > 1 && (
@@ -869,6 +918,18 @@ function MasterclassRegistrationModal({
                 </p>
               )}
             </div>
+
+            <FileUpload
+              label={t("registration.paymentReceipt")}
+              accept=".pdf,.jpg,.jpeg,.png"
+              registration={{
+                name: "payment_receipt",
+                onChange: async () => true,
+                onBlur: async () => true,
+              }}
+              error={files.payment_receipt.error}
+              onFileChange={handleFileChange('payment_receipt')}
+            />
           </div>
 
           {/* Terms and Conditions */}

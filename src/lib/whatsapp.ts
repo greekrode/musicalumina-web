@@ -4,16 +4,16 @@ import * as jose from "jose";
 function formatDateForWhatsApp(dateString: string): string {
   const date = new Date(dateString);
   const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const month = date.toLocaleDateString("en-US", { month: "long" });
   const year = date.getFullYear();
-  
+
   // Add ordinal suffix to day
   const getOrdinal = (n: number) => {
-    const s = ['th', 'st', 'nd', 'rd'];
+    const s = ["th", "st", "nd", "rd"];
     const v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
-  
+
   return `${getOrdinal(day)} ${month} ${year}`;
 }
 
@@ -235,29 +235,39 @@ export class WhatsAppService {
   private static formatMasterclassMessage(data: WhatsAppMessageData): string {
     return data.language === "id"
       ? `*Pendaftaran ${data.event_name} Berhasil!* 🎉\n\n` +
-          `Halo *${data.registrant_name}*,\n\n` +
+          `Halo *${data.registrant_name.trim()}*,\n\n` +
           `Terima kasih telah mendaftar untuk ${data.event_name}. Berikut adalah detail pendaftaran Anda:\n\n` +
           `*Nomor Referensi:* ${data.registration_ref_code}\n\n` +
           `*Nama Peserta:* ${data.participant_name}\n` +
           `*Umur Peserta:* ${data.participant_age}\n` +
-          (data.selected_date ? `*Tanggal yang Dipilih:* ${formatDateForWhatsApp(data.selected_date)}\n` : "") +
+          (data.selected_date
+            ? `*Tanggal yang Dipilih:* ${formatDateForWhatsApp(
+                data.selected_date
+              )}\n`
+            : "") +
           `*Jumlah Slot:* ${data.number_of_slots}\n` +
-          `*Durasi:* ${data.duration}\n` +
-          `*Repertoire:* ${data.repertoire?.join("\n") || "Tidak ada repertoar yang ditentukan"}\n` +
+          `*Durasi dipilih:* ${data.duration} menit\n` +
+          `*Repertoire:* ${
+            data.repertoire?.join("\n") || "Tidak ada repertoar yang ditentukan"
+          }\n` +
           `\nKami akan segera memproses pendaftaran Anda. Silakan simpan nomor referensi di atas untuk keperluan di masa mendatang.\n\n` +
           `Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.\n\n` +
           `Salam musik,\n` +
           `Tim Musical Lumina`
       : `*${data.event_name} Registration Successful!* 🎉\n\n` +
-          `Hello *${data.registrant_name}*,\n\n` +
+          `Hello *${data.registrant_name.trim()}*,\n\n` +
           `Thank you for registering for ${data.event_name}. Here are your registration details:\n\n` +
           `*Reference Number:* ${data.registration_ref_code}\n\n` +
           `*Participant Name:* ${data.participant_name}\n` +
           `*Age:* ${data.participant_age}\n` +
-          (data.selected_date ? `*Selected Date:* ${formatDateForWhatsApp(data.selected_date)}\n` : "") +
+          (data.selected_date
+            ? `*Selected Date:* ${formatDateForWhatsApp(data.selected_date)}\n`
+            : "") +
           `*Number of Slots:* ${data.number_of_slots}\n` +
-          `*Duration:* ${data.duration}\n` +
-          `*Repertoire:* ${data.repertoire?.join("\n") || "No repertoire specified"}\n` +
+          `*Selected duration:* ${data.duration} minutes\n` +
+          `*Repertoire:* ${
+            data.repertoire?.join("\n") || "No repertoire specified"
+          }\n` +
           `\nWe will process your registration shortly. Please keep the reference number for future correspondence.\n\n` +
           `If you have any questions, please don't hesitate to contact us.\n\n` +
           `Musical regards,\n` +
