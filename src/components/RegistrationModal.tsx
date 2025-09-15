@@ -397,45 +397,6 @@ function RegistrationModal({
         }
       }
 
-      // Send confirmation email
-      try {
-        const templateData = {
-          registrant_status: data.registrant_status,
-          registrant_name: data.registrant_name || data.participant_name,
-          registrant_email: data.registrant_email,
-          registrant_whatsapp: data.registrant_whatsapp,
-          participant_name: data.participant_name,
-          song_title: data.song_title,
-          song_duration: data.song_duration || "",
-          category: category?.name || "",
-          sub_category: subCategory?.name || "",
-          registration_ref_code: refNumber,
-          event_name: eventName,
-        };
-
-        const templateHtml = loadEmailTemplate(language, templateData);
-
-        const { error: emailError } = await supabase.functions.invoke(
-          "send-registration-email",
-          {
-            body: {
-              data: {
-                ...templateData,
-                registrationId: registration.id,
-                language,
-                template_html: templateHtml,
-              },
-            },
-          }
-        );
-
-        if (emailError) {
-          console.error("Error sending confirmation email:", emailError);
-        }
-      } catch (error) {
-        console.error("Error sending confirmation email:", error);
-      }
-
       // Send WhatsApp message
       try {
         await WhatsAppService.sendCompetitionRegistrationMessage({
