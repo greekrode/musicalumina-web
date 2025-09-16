@@ -12,7 +12,10 @@ import {
 import TermsModal from "../components/TermsModal";
 import MasterclassRegistrationModal from "../components/MasterclassRegistrationModal";
 import { useEvent } from "../hooks/useEvent";
-import { formatDateWithLocale, formatMultipleDatesWithLocale } from "../lib/utils";
+import {
+  formatDateWithLocale,
+  formatMultipleDatesWithLocale,
+} from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import type { Database } from "../lib/database.types";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -173,17 +176,21 @@ function MasterclassDetails() {
                 )}
               </div>
             </div>
-            {Array.isArray((event as any).event_duration) && (event as any).event_duration.length > 0 && (
-              <div className="flex items-start space-x-3">
-                <Clock className="h-5 w-5 text-marigold mt-1" />
-                <div>
-                  <h3 className="font-medium text-black">{t("eventDetails.eventDuration")}</h3>
-                  <p className="text-black/80">
-                    {((event as any).event_duration as number[]).join(" / ")} minutes
-                  </p>
+            {Array.isArray((event as any).event_duration) &&
+              (event as any).event_duration.length > 0 && (
+                <div className="flex items-start space-x-3">
+                  <Clock className="h-5 w-5 text-marigold mt-1" />
+                  <div>
+                    <h3 className="font-medium text-black">
+                      {t("eventDetails.eventDuration")}
+                    </h3>
+                    <p className="text-black/80">
+                      {((event as any).event_duration as number[]).join(" / ")}{" "}
+                      minutes
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             {event.registration_deadline && (
               <div className="flex items-start space-x-3">
                 <Clock className="h-5 w-5 text-marigold mt-1" />
@@ -279,14 +286,12 @@ function MasterclassDetails() {
                     {instructor.title}
                   </p>
                   {instructor.description && (
-                    <div className="text-sm text-black/80 mb-3 space-y-2 text-left">
-                      {instructor.description
-                        .replace(/\\n/g, "\n")
-                        .split("\n")
-                        .map((line, index) => (
-                          <p key={index}>{line}</p>
-                        ))}
-                    </div>
+                    <div
+                      className="text-sm text-black/80 mb-3 space-y-2 text-left"
+                      dangerouslySetInnerHTML={{
+                        __html: instructor.description,
+                      }}
+                    ></div>
                   )}
                 </div>
               </div>
