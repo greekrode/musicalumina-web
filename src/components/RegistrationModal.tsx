@@ -104,6 +104,7 @@ interface RegistrationModalProps {
   eventId: string;
   eventName: string;
   eventVenue: string;
+  eventType: string;
   categories: Category[];
   onOpenTerms: () => void;
   maxQuota?: number;
@@ -117,6 +118,7 @@ function RegistrationModal({
   eventId,
   eventName,
   eventVenue,
+  eventType,
   categories = [],
   onOpenTerms,
   maxQuota,
@@ -165,10 +167,10 @@ function RegistrationModal({
   const selectedCategory = categories.find((cat) => cat.id === categoryId);
   const hasRepertoire =
     (selectedCategory?.repertoire && selectedCategory.repertoire.length > 0) ||
-    selectedCategory?.event_subcategories.some(
+    (selectedCategory?.event_subcategories.some(
       (sub: { repertoire?: string[] }) =>
         sub.repertoire && sub.repertoire.length > 0
-    );
+    )) && eventType === "festival";
 
   const handleFileChange = (type: keyof FileStates) => (file: File | null) => {
     if (file && file.size > MAX_FILE_SIZE) {
@@ -432,13 +434,16 @@ function RegistrationModal({
           } else {
             const { error: updateError } = await supabase
               .from("invitation_codes")
-              .update({ 
-                current_uses: currentCode.current_uses + 1
+              .update({
+                current_uses: currentCode.current_uses + 1,
               })
               .eq("id", invitationCodeId);
 
             if (updateError) {
-              console.error("Error updating invitation code usage:", updateError);
+              console.error(
+                "Error updating invitation code usage:",
+                updateError
+              );
             }
           }
         } catch (error) {

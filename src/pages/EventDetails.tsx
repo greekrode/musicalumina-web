@@ -817,6 +817,7 @@ function EventDetails() {
         eventId={event.id}
         eventName={event.title}
         eventVenue={event.location}
+        eventType={event.type}
         categories={event.event_categories}
         maxQuota={
           validInvitationCodeId ? undefined : event.max_quota || undefined
