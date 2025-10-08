@@ -4,13 +4,12 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Editor } from "@tinymce/tinymce-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 const eventDateSchema = z.object({
-  date: z.string().min(1, "Date is required"),
-  time: z.string().min(1, "Time is required")
+  datetime: z.string().min(1, "Date and time are required")
 });
 
 const formSchema = z.object({
@@ -25,7 +24,9 @@ const formSchema = z.object({
     id: z.string().optional(),
   }).optional(),
   start_date: z.string().min(1, "Start date is required"),
-  event_date: z.array(eventDateSchema).min(1, "At least one event date is required"),
+  event_date: z
+    .array(eventDateSchema)
+    .min(1, "At least one event date is required"),
   registration_deadline: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   venue_details: z.string().optional(),
@@ -52,8 +53,8 @@ export function AddEventModal({
 }: AddEventModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [eventDates, setEventDates] = useState<Array<{ date: string; time: string }>>([
-    { date: "", time: "" }
+  const [eventDates, setEventDates] = useState<Array<{ datetime: string }>>([
+    { datetime: "" },
   ]);
   const [durations, setDurations] = useState<number[]>([]);
 
@@ -61,7 +62,6 @@ export function AddEventModal({
     register,
     handleSubmit,
     reset,
-    control,
     setValue,
     watch,
     formState: { errors },
@@ -72,7 +72,7 @@ export function AddEventModal({
       description: { en: "", id: "" },
       terms_and_conditions: { en: "", id: "" },
       start_date: "",
-      event_date: [{ date: "", time: "" }],
+      event_date: [{ datetime: "" }],
       registration_deadline: "",
       location: "",
       venue_details: "",
@@ -88,6 +88,10 @@ export function AddEventModal({
   const description = watch("description");
   const termsAndConditions = watch("terms_and_conditions");
 
+  useEffect(() => {
+    setValue("event_date", eventDates);
+  }, [eventDates, setValue]);
+
   // Remove unused destructured elements
   // const { fields, append, remove } = useFieldArray({
   //   control,
@@ -95,7 +99,7 @@ export function AddEventModal({
   // });
 
   const addEventDate = () => {
-    setEventDates([...eventDates, { date: "", time: "" }]);
+    setEventDates([...eventDates, { datetime: "" }]);
   };
 
   const removeEventDate = (index: number) => {
@@ -104,9 +108,9 @@ export function AddEventModal({
     }
   };
 
-  const updateEventDate = (index: number, field: "date" | "time", value: string) => {
+  const updateEventDate = (index: number, value: string) => {
     const updated = [...eventDates];
-    updated[index][field] = value;
+    updated[index].datetime = value;
     setEventDates(updated);
   };
 
@@ -116,15 +120,17 @@ export function AddEventModal({
 
       // Convert event dates to ISO strings
       const convertedEventDates = eventDates
-        .filter(ed => ed.date && ed.time)
-        .map(ed => {
-          const dateTime = new Date(`${ed.date}T${ed.time}`);
-          return dateTime.toISOString();
-        });
+        .filter((ed) => ed.datetime)
+        .map((ed) => new Date(ed.datetime).toISOString());
+
+      const registrationDeadlineIso = values.registration_deadline
+        ? new Date(values.registration_deadline).toISOString()
+        : null;
 
       const eventData = {
         ...values,
         event_date: convertedEventDates,
+        registration_deadline: registrationDeadlineIso,
         max_quota: values.max_quota,
         lark_base: values.lark_base,
         lark_table: values.lark_table,
@@ -180,7 +186,7 @@ export function AddEventModal({
   const handleClose = () => {
     reset();
     setPosterFile(null);
-    setEventDates([{ date: "", time: "" }]);
+    setEventDates([{ datetime: "" }]);
     setDurations([]);
     onClose();
   };
@@ -401,26 +407,13 @@ export function AddEventModal({
             <div className="space-y-4">
               {eventDates.map((eventDate, index) => (
                 <div key={index} className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={eventDate.date}
-                      onChange={(e) => updateEventDate(index, "date", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
-                      required
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">Time</label>
-                    <input
-                      type="time"
-                      value={eventDate.time}
-                      onChange={(e) => updateEventDate(index, "time", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
-                      required
-                    />
-                  </div>
+                  <input
+                    type="datetime-local"
+                    value={eventDate.datetime}
+                    onChange={(e) => updateEventDate(index, e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
+                    required
+                  />
                   <button
                     type="button"
                     onClick={() => removeEventDate(index)}
@@ -480,7 +473,7 @@ export function AddEventModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Registration Deadline
             </label>
-            <Input type="date" {...register("registration_deadline")} />
+            <Input type="datetime-local" {...register("registration_deadline")} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -1,4 +1,5 @@
 import { useState, Suspense } from "react";
+import moment from "moment";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Calendar,
@@ -565,7 +566,7 @@ function EventDetails() {
 
   const isRegistrationClosed =
     event?.registration_deadline &&
-    new Date() >= new Date(event.registration_deadline);
+    moment().isSameOrAfter(moment(event.registration_deadline));
 
   const formatEventType = (type: EventType) => {
     return t(`eventCard.eventTypes.${type}`);

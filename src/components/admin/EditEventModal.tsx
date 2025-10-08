@@ -12,8 +12,7 @@ import * as z from "zod";
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
 const eventDateSchema = z.object({
-  date: z.string().min(1, "Date is required"),
-  time: z.string().min(1, "Time is required"),
+  datetime: z.string().min(1, "Date and time are required"),
 });
 
 const formSchema = z.object({
@@ -63,9 +62,9 @@ export function EditEventModal({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [eventDates, setEventDates] = useState<
-    Array<{ date: string; time: string }>
-  >([{ date: "", time: "" }]);
+  const [eventDates, setEventDates] = useState<Array<{ datetime: string }>>([
+    { datetime: "" },
+  ]);
   const [durations, setDurations] = useState<number[]>([]);
 
   const {
@@ -82,7 +81,7 @@ export function EditEventModal({
       description: { en: "", id: "" },
       terms_and_conditions: { en: "", id: "" },
       start_date: "",
-      event_date: [{ date: "", time: "" }],
+      event_date: [{ datetime: "" }],
       registration_deadline: "",
       location: "",
       venue_details: "",
@@ -104,6 +103,16 @@ export function EditEventModal({
     setValue("event_date", eventDates);
   }, [eventDates, setValue]);
 
+  const formatDateTimeForInput = (dateString: string | null) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "";
+    const pad = (value: number) => value.toString().padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+      date.getDate()
+    )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
   // Initialize event dates when event prop changes
   useEffect(() => {
     if (event) {
@@ -113,19 +122,15 @@ export function EditEventModal({
         event.event_date.length > 0
       ) {
         // Handle new format (string array)
-        const dates = event.event_date.map((date) => {
-          const dateObj = new Date(date);
-          const dateStr = dateObj.toISOString().split("T")[0];
-          const timeStr = dateObj.toTimeString().slice(0, 5);
-          return { date: dateStr, time: timeStr };
-        });
+        const dates = event.event_date.map((date) => ({
+          datetime: formatDateTimeForInput(date),
+        }));
         setEventDates(dates);
       } else {
         // Fallback to start_date if event_date is not available
-        const startDate = new Date(event.start_date);
-        const dateStr = startDate.toISOString().split("T")[0];
-        const timeStr = startDate.toTimeString().slice(0, 5);
-        setEventDates([{ date: dateStr, time: timeStr }]);
+        setEventDates([
+          { datetime: formatDateTimeForInput(event.start_date) },
+        ]);
       }
 
       // Reset form with event data
@@ -135,10 +140,10 @@ export function EditEventModal({
         description: event.description || { en: "", id: "" },
         terms_and_conditions: event.terms_and_conditions || { en: "", id: "" },
         start_date: new Date(event.start_date).toISOString().split("T")[0],
-        event_date: [{ date: "", time: "" }], // Initialize with empty event date
-        registration_deadline: event.registration_deadline
-          ? new Date(event.registration_deadline).toISOString().split("T")[0]
-          : "",
+        event_date: [{ datetime: "" }], // Initialize with empty event date
+        registration_deadline: formatDateTimeForInput(
+          event.registration_deadline
+        ),
         location: event.location,
         venue_details: event.venue_details || "",
         poster_image: event.poster_image || "",
@@ -174,11 +179,12 @@ export function EditEventModal({
 
       // Convert event dates to ISO strings
       const convertedEventDates = eventDates
-        .filter((ed) => ed.date && ed.time)
-        .map((ed) => {
-          const dateTime = new Date(`${ed.date}T${ed.time}`);
-          return dateTime.toISOString();
-        });
+        .filter((ed) => ed.datetime)
+        .map((ed) => new Date(ed.datetime).toISOString());
+
+      const registrationDeadlineIso = values.registration_deadline
+        ? new Date(values.registration_deadline).toISOString()
+        : null;
 
       console.log("Converted event dates:", convertedEventDates);
 
@@ -223,7 +229,7 @@ export function EditEventModal({
         start_date: values.start_date,
         event_date: convertedEventDates,
         event_duration: eventData.event_duration,
-        registration_deadline: values.registration_deadline,
+        registration_deadline: registrationDeadlineIso,
         location: values.location,
         venue_details: values.venue_details,
         poster_image: posterUrl,
@@ -259,7 +265,7 @@ export function EditEventModal({
   };
 
   const addEventDate = () => {
-    setEventDates([...eventDates, { date: "", time: "" }]);
+    setEventDates([...eventDates, { datetime: "" }]);
   };
 
   const removeEventDate = (index: number) => {
@@ -268,13 +274,9 @@ export function EditEventModal({
     }
   };
 
-  const updateEventDate = (
-    index: number,
-    field: "date" | "time",
-    value: string
-  ) => {
+  const updateEventDate = (index: number, value: string) => {
     const updated = [...eventDates];
-    updated[index][field] = value;
+    updated[index].datetime = value;
     setEventDates(updated);
   };
 
@@ -300,7 +302,7 @@ export function EditEventModal({
           console.log("Form values:", watch());
           
           // Check if event dates are valid
-          const validEventDates = eventDates.filter(ed => ed.date && ed.time);
+          const validEventDates = eventDates.filter((ed) => ed.datetime);
           if (validEventDates.length === 0) {
             alert("Please add at least one event date and time");
             return;
@@ -584,32 +586,12 @@ export function EditEventModal({
             <div className="space-y-4">
               {eventDates.map((eventDate, index) => (
                 <div key={index} className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={eventDate.date}
-                      onChange={(e) =>
-                        updateEventDate(index, "date", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">
-                      Time
-                    </label>
-                    <input
-                      type="time"
-                      value={eventDate.time}
-                      onChange={(e) =>
-                        updateEventDate(index, "time", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
-                    />
-                  </div>
+                  <input
+                    type="datetime-local"
+                    value={eventDate.datetime}
+                    onChange={(e) => updateEventDate(index, e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
+                  />
                   <button
                     type="button"
                     onClick={() => removeEventDate(index)}
@@ -634,7 +616,10 @@ export function EditEventModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Registration Deadline
             </label>
-            <Input type="date" {...register("registration_deadline")} />
+            <Input
+              type="datetime-local"
+              {...register("registration_deadline")}
+            />
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
