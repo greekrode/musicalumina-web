@@ -341,9 +341,12 @@ function PastEventDetails() {
 
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <h1 className="text-4xl font-serif text-black mb-8">{event.title}</h1>
-          <p className="text-black/80 mb-8">
-            {event.description?.[language] || event.description?.en}
-          </p>
+          <p
+            className="text-black/80 mb-8"
+            dangerouslySetInnerHTML={{
+              __html: event.description?.[language] || event.description?.en || "",
+            }}
+          />
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="flex items-center space-x-3">
