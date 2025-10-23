@@ -31,7 +31,9 @@ function Navigation() {
   };
 
   const isActive = (path: string) => {
-    return location.pathname === path;
+    return (
+      location.pathname === path || location.pathname.startsWith(`${path}/`)
+    );
   };
 
   const isHomePage = location.pathname === "/";
@@ -65,18 +67,28 @@ function Navigation() {
             <button
               onClick={handleNavigation("/events")}
               className={getNavLinkClass("/events")}
+              aria-current={isActive("/events") ? "page" : undefined}
             >
               {t("navigation.events")}
             </button>
             <button
               onClick={handleNavigation("/about")}
               className={getNavLinkClass("/about")}
+              aria-current={isActive("/about") ? "page" : undefined}
             >
               {t("navigation.about")}
             </button>
             <button
+              onClick={handleNavigation("/partners")}
+              className={getNavLinkClass("/partners")}
+              aria-current={isActive("/partners") ? "page" : undefined}
+            >
+              {t("navigation.partners")}
+            </button>
+            <button
               onClick={handleNavigation("/contact")}
               className={getNavLinkClass("/contact")}
+              aria-current={isActive("/contact") ? "page" : undefined}
             >
               {t("navigation.contact")}
             </button>
@@ -121,18 +133,28 @@ function Navigation() {
             <button
               onClick={handleNavigation("/events")}
               className={`block w-full text-left ${getNavLinkClass("/events")}`}
+              aria-current={isActive("/events") ? "page" : undefined}
             >
               {t("navigation.events")}
             </button>
             <button
               onClick={handleNavigation("/about")}
               className={`block w-full text-left ${getNavLinkClass("/about")}`}
+              aria-current={isActive("/about") ? "page" : undefined}
             >
               {t("navigation.about")}
             </button>
             <button
+              onClick={handleNavigation("/partners")}
+              className={`block w-full text-left ${getNavLinkClass("/partners")}`}
+              aria-current={isActive("/partners") ? "page" : undefined}
+            >
+              {t("navigation.partners")}
+            </button>
+            <button
               onClick={handleNavigation("/contact")}
               className={`block w-full text-left ${getNavLinkClass("/contact")}`}
+              aria-current={isActive("/contact") ? "page" : undefined}
             >
               {t("navigation.contact")}
             </button>

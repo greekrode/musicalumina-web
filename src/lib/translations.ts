@@ -5,6 +5,7 @@ export const translations = {
     navigation: {
       events: "EVENTS",
       about: "ABOUT",
+      partners: "PARTNERS",
       contact: "CONTACT",
     },
     about: {
@@ -30,6 +31,10 @@ export const translations = {
             "We are driven by our love for music and our commitment to nurturing the next generation of musicians.",
         },
       },
+    },
+    partners: {
+      title: "Our Partners",
+      subtitle: "Collaborating for Musical Excellence",
     },
     contact: {
       title: "Contact Us",
@@ -73,6 +78,7 @@ export const translations = {
       home: "Home",
       events: "Events",
       about: "About",
+      partners: "Our Partners",
       contact: "Contact",
       contactUs: "Contact Us",
       copyright: "Copyright © {year} MusicaLumina. All rights reserved.",
@@ -308,6 +314,7 @@ export const translations = {
     navigation: {
       events: "ACARA",
       about: "TENTANG",
+      partners: "MITRA",
       contact: "KONTAK",
     },
     about: {
@@ -333,6 +340,10 @@ export const translations = {
             "Kami didorong oleh kecintaan kami terhadap musik dan komitmen kami untuk membina generasi musisi berikutnya.",
         },
       },
+    },
+    partners: {
+      title: "Mitra Kami",
+      subtitle: "Berkolaborasi untuk Keunggulan Musik",
     },
     contact: {
       title: "Hubungi Kami",
@@ -376,6 +387,7 @@ export const translations = {
       home: "Beranda",
       events: "Acara",
       about: "Tentang",
+      partners: "Mitra Kami",
       contact: "Kontak",
       contactUs: "Hubungi Kami",
       copyright: "Hak Cipta © {year} MusicaLumina. Seluruh hak dilindungi.",
