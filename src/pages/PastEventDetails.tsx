@@ -9,7 +9,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEvent } from "../hooks/useEvent";
-import { formatDateWithLocale, formatMultipleDatesWithLocale } from "../lib/utils";
+import {
+  formatDateWithLocale,
+  formatMultipleDatesWithLocale,
+} from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
@@ -307,7 +310,9 @@ function PastEventDetails() {
           </button>
           <div className="text-center py-12">
             <h2 className="text-3xl font-playfair text-[#808080] mb-4">
-              {eventError ? t("eventDetails.errorLoading") : t("eventDetails.notFound")}
+              {eventError
+                ? t("eventDetails.errorLoading")
+                : t("eventDetails.notFound")}
             </h2>
             <p className="text-lg text-black/60 mb-6">
               {eventError
@@ -344,7 +349,8 @@ function PastEventDetails() {
           <p
             className="text-black/80 mb-8"
             dangerouslySetInnerHTML={{
-              __html: event.description?.[language] || event.description?.en || "",
+              __html:
+                event.description?.[language] || event.description?.en || "",
             }}
           />
 
@@ -352,14 +358,20 @@ function PastEventDetails() {
             <div className="flex items-center space-x-3">
               <Calendar className="h-5 w-5 text-marigold" />
               <div>
-                <h3 className="font-medium text-black">{t("eventDetails.eventDate")}</h3>
-                <div className="text-black/80 whitespace-pre-line">{formatMultipleDatesWithLocale(event.event_date, language)}</div>
+                <h3 className="font-medium text-black">
+                  {t("eventDetails.eventDate")}
+                </h3>
+                <div className="text-black/80 whitespace-pre-line">
+                  {formatMultipleDatesWithLocale(event.event_date, language)}
+                </div>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <MapPin className="h-5 w-5 text-marigold" />
               <div>
-                <h3 className="font-medium text-black">{t("eventDetails.venue")}</h3>
+                <h3 className="font-medium text-black">
+                  {t("eventDetails.venue")}
+                </h3>
                 <p className="text-black/80">{event.location}</p>
               </div>
             </div>
@@ -369,7 +381,9 @@ function PastEventDetails() {
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <div className="flex items-center space-x-3 mb-6">
             <Users className="h-6 w-6 text-marigold" />
-            <h2 className="text-2xl font-serif text-black">{t("eventDetails.juryPanel")}</h2>
+            <h2 className="text-2xl font-serif text-black">
+              {t("eventDetails.juryPanel")}
+            </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {event.event_jury.map((juror) => (
@@ -388,14 +402,12 @@ function PastEventDetails() {
                       {juror.title}
                     </p>
                     {juror.description && (
-                      <div className="text-sm text-black/80 mb-3 space-y-2 text-left">
-                        {juror.description
-                          .replace(/\\n/g, "\n")
-                          .split("\n")
-                          .map((line, index) => (
-                            <p key={index}>{line}</p>
-                          ))}
-                      </div>
+                      <div
+                        className="text-sm text-black/80 mb-3 space-y-2 text-left"
+                        dangerouslySetInnerHTML={{
+                          __html: juror.description,
+                        }}
+                      ></div>
                     )}
                   </div>
                 </div>
