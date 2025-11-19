@@ -1,21 +1,21 @@
-import { useNavigate, useParams } from "react-router-dom";
 import {
-  Calendar,
-  MapPin,
   ArrowLeft,
-  Users,
+  Calendar,
   ChevronLeft,
   ChevronRight,
+  MapPin,
   Music,
+  Users,
 } from "lucide-react";
-import { useEvent } from "../hooks/useEvent";
-import { formatDateWithLocale, formatMultipleDatesWithLocale } from "../lib/utils";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useEvent } from "../hooks/useEvent";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/LanguageContext";
+import { supabase } from "../lib/supabase";
+import { formatMultipleDatesWithLocale } from "../lib/utils";
 
 type EventJuror = Omit<
   Database["public"]["Tables"]["event_jury"]["Row"],
@@ -281,7 +281,9 @@ const PastMasterclassDetails = () => {
     error: Error | null;
   };
   const { photos, loading: photosLoading } = useEventPhotos(id || "");
-  const [participants, setParticipants] = useState<MasterclassParticipant[]>([]);
+  const [participants, setParticipants] = useState<MasterclassParticipant[]>(
+    []
+  );
   const [participantsLoading, setParticipantsLoading] = useState(true);
 
   usePageTitle(event?.title ? `Past Masterclass | ${event.title}` : undefined);
@@ -336,7 +338,9 @@ const PastMasterclassDetails = () => {
           </button>
           <div className="text-center py-12">
             <h2 className="text-3xl font-playfair text-[#808080] mb-4">
-              {eventError ? t("eventDetails.errorLoading") : t("eventDetails.notFound")}
+              {eventError
+                ? t("eventDetails.errorLoading")
+                : t("eventDetails.notFound")}
             </h2>
             <p className="text-lg text-black/60 mb-6">
               {eventError
@@ -373,15 +377,21 @@ const PastMasterclassDetails = () => {
 
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <h1 className="text-4xl font-serif text-black mb-8">{event.title}</h1>
-          <p className="text-black/80 mb-8">
-            {event.description?.[language] || event.description?.en}
-          </p>
+          <p
+            className="text-black/80 mb-8"
+            dangerouslySetInnerHTML={{
+              __html:
+                event.description?.[language] || event.description?.en || "",
+            }}
+          ></p>
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="flex items-center space-x-3">
               <Calendar className="h-5 w-5 text-marigold" />
               <div>
-                <h3 className="font-medium text-black">{t("eventDetails.eventDate")}</h3>
+                <h3 className="font-medium text-black">
+                  {t("eventDetails.eventDate")}
+                </h3>
                 <div className="text-black/80 whitespace-pre-line">
                   {event.event_date
                     ? formatMultipleDatesWithLocale(event.event_date, language)
@@ -392,7 +402,9 @@ const PastMasterclassDetails = () => {
             <div className="flex items-center space-x-3">
               <MapPin className="h-5 w-5 text-marigold" />
               <div>
-                <h3 className="font-medium text-black">{t("eventDetails.venue")}</h3>
+                <h3 className="font-medium text-black">
+                  {t("eventDetails.venue")}
+                </h3>
                 <p className="text-black/80">{event.location}</p>
               </div>
             </div>
@@ -422,14 +434,12 @@ const PastMasterclassDetails = () => {
                     {instructor.title}
                   </p>
                   {instructor.description && (
-                    <div className="text-sm text-black/80 mb-3 space-y-2 text-left">
-                      {instructor.description
-                        .replace(/\\n/g, "\n")
-                        .split("\n")
-                        .map((line, index) => (
-                          <p key={index}>{line}</p>
-                        ))}
-                    </div>
+                    <div
+                      className="text-sm text-black/80 mb-3 space-y-2 text-left"
+                      dangerouslySetInnerHTML={{
+                        __html: instructor.description,
+                      }}
+                    ></div>
                   )}
                 </div>
               </div>
@@ -477,4 +487,4 @@ const PastMasterclassDetails = () => {
 };
 
 export { PastMasterclassDetails };
-export default PastMasterclassDetails; 
+export default PastMasterclassDetails;
