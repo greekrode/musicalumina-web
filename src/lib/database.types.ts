@@ -130,6 +130,7 @@ export interface Database {
           payment_receipt_url: string;
           status: RegistrationState;
           email_sent_at: string | null;
+          ref_code: string | null;
           created_at: string;
           updated_at: string;
           selected_date: string | null;
@@ -138,6 +139,7 @@ export interface Database {
           id?: string;
           event_id: string;
           subcategory_id: string;
+          category_id?: string | null;
           registration_status: RegistrationStatus;
           registrant_name?: string | null;
           registrant_whatsapp: string;
@@ -154,6 +156,7 @@ export interface Database {
           bank_account_name: string;
           payment_receipt_url: string;
           status?: RegistrationState;
+          ref_code?: string | null;
           created_at?: string;
           updated_at?: string;
           selected_date?: string | null;
@@ -178,6 +181,7 @@ export interface Database {
           bank_account_name?: string;
           payment_receipt_url?: string;
           status?: RegistrationState;
+          ref_code?: string | null;
           created_at?: string;
           updated_at?: string;
           selected_date?: string | null;

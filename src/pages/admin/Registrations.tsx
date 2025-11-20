@@ -94,7 +94,6 @@ export default function AdminRegistrations() {
       const { data: eventsData, error: eventsError } = await supabase
         .from("events")
         .select("id, title")
-        .eq("status", "ongoing")
         .order("created_at", { ascending: false });
 
       if (eventsError) throw eventsError;
@@ -576,7 +575,9 @@ function RegistrationDetails({
           </div>
           {registration.song_title && (
             <div>
-              <div className="text-sm font-medium text-gray-500">Song Title</div>
+              <div className="text-sm font-medium text-gray-500">
+                Song Title
+              </div>
               <div>{registration.song_title}</div>
             </div>
           )}
@@ -599,7 +600,9 @@ function RegistrationDetails({
             <Button
               variant="link"
               className="p-0 h-auto"
-              onClick={() => handleDocumentView(registration.birth_certificate_url)}
+              onClick={() =>
+                handleDocumentView(registration.birth_certificate_url)
+              }
             >
               View Document
             </Button>
@@ -627,7 +630,9 @@ function RegistrationDetails({
             <div>{registration.bank_name}</div>
           </div>
           <div>
-            <div className="text-sm font-medium text-gray-500">Account Name</div>
+            <div className="text-sm font-medium text-gray-500">
+              Account Name
+            </div>
             <div>{registration.bank_account_name}</div>
           </div>
           <div>
@@ -643,7 +648,9 @@ function RegistrationDetails({
             <Button
               variant="link"
               className="p-0 h-auto"
-              onClick={() => handleDocumentView(registration.payment_receipt_url)}
+              onClick={() =>
+                handleDocumentView(registration.payment_receipt_url)
+              }
             >
               View Receipt
             </Button>

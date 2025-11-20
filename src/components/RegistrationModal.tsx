@@ -283,6 +283,13 @@ function RegistrationModal({
         return;
       }
 
+      // Generate registration identifiers up front
+      const registrationId = crypto.randomUUID();
+      const phone = data.registrant_whatsapp.replace(/\D/g, "");
+      const refNumber = `${registrationId.slice(-4)}-${
+        phone.slice(-4) || phone
+      }`;
+
       // Upload files to storage
       const uploadPromises = [
         uploadFile(files.birth_certificate.file!, "birth-certificates"),
@@ -310,6 +317,7 @@ function RegistrationModal({
       const { data: registration, error: registrationError } = await supabase
         .from("registrations")
         .insert({
+          id: registrationId,
           event_id: eventId,
           registrant_status: data.registrant_status,
           registrant_name: data.registrant_name,
@@ -328,6 +336,7 @@ function RegistrationModal({
           bank_account_name: data.bank_account_name,
           payment_receipt_url: paymentReceiptUrl,
           status: "pending",
+          ref_code: refNumber,
         })
         .select()
         .single();
@@ -335,11 +344,6 @@ function RegistrationModal({
       if (registrationError) {
         throw new Error(`Registration failed: ${registrationError.message}`);
       }
-
-      // Generate reference number (last 4 of UUID - last 4 of phone)
-      const uuid = registration.id;
-      const phone = data.registrant_whatsapp.replace(/\D/g, "");
-      const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
       if (!import.meta.env.DEV) {
         window.umami?.track("event_registration_submitted", {

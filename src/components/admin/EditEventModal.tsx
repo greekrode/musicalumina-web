@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -66,6 +67,8 @@ export function EditEventModal({
     { datetime: "" },
   ]);
   const [durations, setDurations] = useState<number[]>([]);
+  const [posterPreview, setPosterPreview] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const {
     register,
@@ -97,11 +100,24 @@ export function EditEventModal({
   // Watch form values for the editors
   const description = watch("description");
   const termsAndConditions = watch("terms_and_conditions");
+  const posterImageValue = watch("poster_image");
 
   // Sync eventDates with form when they change
   useEffect(() => {
     setValue("event_date", eventDates);
   }, [eventDates, setValue]);
+
+  // Keep poster preview in sync with form value / selected file
+  useEffect(() => {
+    if (posterFile) {
+      const objectUrl = URL.createObjectURL(posterFile);
+      setPosterPreview(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+
+    setPosterPreview(posterImageValue || null);
+    return undefined;
+  }, [posterFile, posterImageValue]);
 
   const formatDateTimeForInput = (dateString: string | null) => {
     if (!dateString) return "";
@@ -171,7 +187,11 @@ export function EditEventModal({
 
     // Manual validation check
     if (!values.title || !values.start_date || !values.location) {
-      alert("Please fill in all required fields");
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields before saving.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -209,7 +229,7 @@ export function EditEventModal({
 
         const { error: uploadError } = await supabase.storage
           .from("event-photos")
-          .upload(filePath, posterFile);
+          .upload(filePath, posterFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 
@@ -264,7 +284,11 @@ export function EditEventModal({
       onClose();
     } catch (error) {
       console.error("Error updating event:", error);
-      alert("Failed to update event. Please try again.");
+      toast({
+        title: "Failed to update event",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -311,7 +335,11 @@ export function EditEventModal({
             // Check if event dates are valid
             const validEventDates = eventDates.filter((ed) => ed.datetime);
             if (validEventDates.length === 0) {
-              alert("Please add at least one event date and time");
+              toast({
+                title: "Add an event date",
+                description: "Please add at least one event date and time.",
+                variant: "destructive",
+              });
               return;
             }
 
@@ -322,9 +350,11 @@ export function EditEventModal({
               !formValues.start_date ||
               !formValues.location
             ) {
-              alert(
-                "Please fill in all required fields (Title, Start Date, Location)"
-              );
+              toast({
+                title: "Missing information",
+                description: "Please fill in Title, Start Date, and Location.",
+                variant: "destructive",
+              });
               return;
             }
 
@@ -677,6 +707,19 @@ export function EditEventModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Event Poster
             </label>
+            <div className="mb-3">
+              {posterPreview ? (
+                <img
+                  src={posterPreview}
+                  alt="Event poster"
+                  className="w-full max-h-64 rounded-md border object-contain"
+                />
+              ) : (
+                <div className="w-full max-h-64 flex items-center justify-center rounded-md border border-dashed text-sm text-gray-500 py-6">
+                  No poster uploaded
+                </div>
+              )}
+            </div>
             <Input
               type="file"
               accept="image/*"
