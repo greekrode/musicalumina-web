@@ -59,7 +59,7 @@ export function EditEventModal({
   event,
 }: EditEventModalProps) {
   console.log("EditEventModal rendered with event:", event);
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [eventDates, setEventDates] = useState<Array<{ datetime: string }>>([
@@ -97,7 +97,7 @@ export function EditEventModal({
   // Watch form values for the editors
   const description = watch("description");
   const termsAndConditions = watch("terms_and_conditions");
-  
+
   // Sync eventDates with form when they change
   useEffect(() => {
     setValue("event_date", eventDates);
@@ -128,9 +128,7 @@ export function EditEventModal({
         setEventDates(dates);
       } else {
         // Fallback to start_date if event_date is not available
-        setEventDates([
-          { datetime: formatDateTimeForInput(event.start_date) },
-        ]);
+        setEventDates([{ datetime: formatDateTimeForInput(event.start_date) }]);
       }
 
       // Reset form with event data
@@ -154,7 +152,10 @@ export function EditEventModal({
         event_duration: (event as any).event_duration || [],
       });
 
-      if ((event as any).event_duration && Array.isArray((event as any).event_duration)) {
+      if (
+        (event as any).event_duration &&
+        Array.isArray((event as any).event_duration)
+      ) {
         setDurations((event as any).event_duration as number[]);
       } else {
         setDurations([]);
@@ -207,15 +208,20 @@ export function EditEventModal({
         const filePath = `event-posters/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from("events")
-          .upload(filePath, posterFile, { upsert: true });
+          .from("event-photos")
+          .upload(filePath, posterFile);
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from("events")
-          .getPublicUrl(filePath);
-        posterUrl = urlData.publicUrl;
+        const { data, error: urlError } = await supabase.storage
+          .from("event-photos")
+          .createSignedUrl(filePath, 99 * 365 * 24 * 60 * 60);
+
+        if (urlError) throw urlError;
+
+        if (!data?.signedUrl) throw new Error("Failed to generate signed URL");
+
+        posterUrl = data?.signedUrl;
       }
 
       const updateData = {
@@ -239,7 +245,7 @@ export function EditEventModal({
         lark_table: eventData.lark_table,
         updated_at: new Date().toISOString(),
       };
-      
+
       console.log("Updating event with data:", updateData);
       console.log("Event ID:", event.id);
 
@@ -295,29 +301,38 @@ export function EditEventModal({
           </button>
         </div>
 
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          console.log("Form submitted manually");
-          console.log("Form errors:", errors);
-          console.log("Form values:", watch());
-          
-          // Check if event dates are valid
-          const validEventDates = eventDates.filter((ed) => ed.datetime);
-          if (validEventDates.length === 0) {
-            alert("Please add at least one event date and time");
-            return;
-          }
-          
-          // Check required fields
-          const formValues = watch();
-          if (!formValues.title || !formValues.start_date || !formValues.location) {
-            alert("Please fill in all required fields (Title, Start Date, Location)");
-            return;
-          }
-          
-          // If all validations pass, call the onSubmit function directly
-          onSubmit(watch());
-        }} className="p-6 space-y-6">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            console.log("Form submitted manually");
+            console.log("Form errors:", errors);
+            console.log("Form values:", watch());
+
+            // Check if event dates are valid
+            const validEventDates = eventDates.filter((ed) => ed.datetime);
+            if (validEventDates.length === 0) {
+              alert("Please add at least one event date and time");
+              return;
+            }
+
+            // Check required fields
+            const formValues = watch();
+            if (
+              !formValues.title ||
+              !formValues.start_date ||
+              !formValues.location
+            ) {
+              alert(
+                "Please fill in all required fields (Title, Start Date, Location)"
+              );
+              return;
+            }
+
+            // If all validations pass, call the onSubmit function directly
+            onSubmit(watch());
+          }}
+          className="p-6 space-y-6"
+        >
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -365,12 +380,16 @@ export function EditEventModal({
                     value={d}
                     onChange={(e) => {
                       const v = parseInt(e.target.value || "0", 10);
-                      setDurations((prev) => prev.map((val, i) => (i === idx ? v : val)));
+                      setDurations((prev) =>
+                        prev.map((val, i) => (i === idx ? v : val))
+                      );
                     }}
                   />
                   <button
                     type="button"
-                    onClick={() => setDurations((prev) => prev.filter((_, i) => i !== idx))}
+                    onClick={() =>
+                      setDurations((prev) => prev.filter((_, i) => i !== idx))
+                    }
                     className="px-3 py-2 text-red-600 hover:text-red-800"
                   >
                     Remove
@@ -429,7 +448,6 @@ export function EditEventModal({
                   "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
-
           </div>
 
           <div>
@@ -474,7 +492,6 @@ export function EditEventModal({
                   "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
               }}
             />
-
           </div>
 
           <div>
