@@ -1,24 +1,22 @@
-import { useNavigate, useParams } from "react-router-dom";
 import {
-  Calendar,
-  MapPin,
   ArrowLeft,
-  Users,
-  Trophy,
+  Calendar,
   ChevronLeft,
   ChevronRight,
+  MapPin,
+  Medal,
+  Trophy,
+  Users,
 } from "lucide-react";
-import { useEvent } from "../hooks/useEvent";
-import {
-  formatDateWithLocale,
-  formatMultipleDatesWithLocale,
-} from "../lib/utils";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useEvent } from "../hooks/useEvent";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/LanguageContext";
+import { supabase } from "../lib/supabase";
+import { formatMultipleDatesWithLocale } from "../lib/utils";
 
 type EventJuror = Omit<
   Database["public"]["Tables"]["event_jury"]["Row"],
@@ -441,20 +439,25 @@ function PastEventDetails() {
                             {subcategory}
                           </h4>
                           <div className="space-y-3">
-                            {winners.map((winner, index) => (
-                              <div
-                                key={index}
-                                className="flex items-center space-x-3"
-                              >
-                                <Trophy className="h-5 w-5 text-marigold" />
-                                <span className="font-medium text-marigold w-24">
-                                  {winner.prize_title}:
-                                </span>
-                                <span className="text-black/80">
-                                  {winner.participant_name}
-                                </span>
-                              </div>
-                            ))}
+                            {winners.map((winner, index) => {
+                              const isCommendation =
+                                winner.prize_title === "Commendation";
+                              const IconComponent = isCommendation ? Medal : Trophy;
+                              return (
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-3"
+                                >
+                                  <IconComponent className="h-5 w-5 text-marigold flex-shrink-0" />
+                                  <span className="font-medium text-marigold whitespace-nowrap">
+                                    {winner.prize_title}:
+                                  </span>
+                                  <span className="text-black/80 break-words">
+                                    {winner.participant_name}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )

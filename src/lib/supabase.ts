@@ -247,7 +247,8 @@ export async function getEventById(id: string) {
           subcategory_id,
           event_categories!inner (
             id,
-            name
+            name,
+            order_index
           ),
           event_subcategories!inner (
             id,
@@ -264,42 +265,82 @@ export async function getEventById(id: string) {
       }
 
       // Group winners by category and subcategory, maintaining order
-      const groupedWinners = winners.reduce((acc, winner) => {
-        const category = winner.event_categories.name;
-        const subcategory = winner.event_subcategories.name;
-        const orderIndex = winner.event_subcategories.order_index;
+      type CategoryData = {
+        order: number;
+        subcategories: Record<
+          string,
+          {
+            order: number;
+            winners: Array<{
+              participant_name: string;
+              prize_title: string;
+            }>;
+          }
+        >;
+      };
 
-        if (!acc[category]) {
-          acc[category] = {};
-        }
+      const groupedWinners = winners.reduce(
+        (acc: Record<string, CategoryData>, winner: any) => {
+          const categoryData = Array.isArray(winner.event_categories)
+            ? winner.event_categories[0]
+            : winner.event_categories;
+          const subcategoryData = Array.isArray(winner.event_subcategories)
+            ? winner.event_subcategories[0]
+            : winner.event_subcategories;
 
-        if (!acc[category][subcategory]) {
-          acc[category][subcategory] = {
-            order: orderIndex,
-            winners: [],
-          };
-        }
+          const category = categoryData?.name;
+          const categoryOrderIndex = categoryData?.order_index;
+          const subcategory = subcategoryData?.name;
+          const subcategoryOrderIndex = subcategoryData?.order_index;
 
-        acc[category][subcategory].winners.push({
-          participant_name: winner.participant_name,
-          prize_title: winner.prize_title,
+          if (!category || categoryOrderIndex === undefined) return acc;
+          if (!subcategory || subcategoryOrderIndex === undefined) return acc;
+
+          if (!acc[category]) {
+            acc[category] = {
+              order: categoryOrderIndex,
+              subcategories: {},
+            };
+          }
+
+          if (!acc[category].subcategories[subcategory]) {
+            acc[category].subcategories[subcategory] = {
+              order: subcategoryOrderIndex,
+              winners: [],
+            };
+          }
+
+          acc[category].subcategories[subcategory].winners.push({
+            participant_name: winner.participant_name,
+            prize_title: winner.prize_title,
+          });
+
+          return acc;
+        },
+        {}
+      );
+
+      // Sort categories by order_index, then sort subcategories within each category
+      const sortedWinners: Record<
+        string,
+        Record<string, Array<{ participant_name: string; prize_title: string }>>
+      > = {};
+      Object.entries(groupedWinners)
+        .sort(([, a], [, b]) => a.order - b.order)
+        .forEach(([category, categoryData]) => {
+          const sortedSubcategories: Record<
+            string,
+            Array<{ participant_name: string; prize_title: string }>
+          > = {};
+          Object.entries(categoryData.subcategories)
+            .sort(([, a], [, b]) => a.order - b.order)
+            .forEach(([subcategory, subcategoryData]) => {
+              sortedSubcategories[subcategory] = subcategoryData.winners;
+            });
+          sortedWinners[category] = sortedSubcategories;
         });
 
-        return acc;
-      }, {});
-
-      // Sort subcategories within each category by order_index
-      Object.keys(groupedWinners).forEach((category) => {
-        const sortedSubcategories = {};
-        Object.entries(groupedWinners[category])
-          .sort(([, a], [, b]) => a.order - b.order)
-          .forEach(([subcategory, data]) => {
-            sortedSubcategories[subcategory] = data.winners;
-          });
-        groupedWinners[category] = sortedSubcategories;
-      });
-
-      return { ...eventWithCount, winners: groupedWinners };
+      return { ...eventWithCount, winners: sortedWinners };
     }
 
     return eventWithCount;
