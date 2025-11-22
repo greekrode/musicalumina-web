@@ -14,40 +14,7 @@
           "value": "lspf.musicalumina.com"
         }
       ],
-      "destination": "https://www.musicalumina.com/event/793b10ef-dbf2-431b-813f-0b979d638944",
-      "permanent": true
-    },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "btfe.musicalumina.com"
-        }
-      ],
-      "destination": "https://www.musicalumina.com/event/2b425a76-2e4a-418d-926b-054f2a92b5a0",
-      "permanent": true
-    },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "btfe-vid.musicalumina.com"
-        }
-      ],
-      "destination": "https://www.musicalumina.com/video-submission",
-      "permanent": true
-    },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "mc-fs.musicalumina.com"
-        }
-      ],
-      "destination": "https://www.musicalumina.com/masterclass/2a97f04f-1f3b-4d38-b115-7aa36438ee9a",
+      "destination": "https://www.musicalumina.com/event/a18b4bf1-8d80-464a-8ffa-667b5c870dea",
       "permanent": true
     }
   ]
