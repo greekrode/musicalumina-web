@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-export function useRepertoirePdf(categoryId: string) {
+export function useRepertoirePdf(categoryId: string, eventStartDate?: string) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -35,8 +35,9 @@ export function useRepertoirePdf(categoryId: string) {
           return;
         }
 
-        // Calculate the seconds different from today until 10 august 2025
-        const targetDate = new Date('2025-08-10');
+        // Calculate the seconds difference from today until the event start date
+        // If eventStartDate is provided, use it; otherwise fall back to a default date
+        const targetDate = eventStartDate ? new Date(eventStartDate) : new Date('2099-12-31');
         const currentDate = new Date();
         const timeDifference = targetDate.getTime() - currentDate.getTime();
         const secondsDifference = Math.floor(timeDifference / 1000);
@@ -65,7 +66,7 @@ export function useRepertoirePdf(categoryId: string) {
     return () => {
       mounted = false;
     };
-  }, [categoryId]);
+  }, [categoryId, eventStartDate]);
 
   return { pdfUrl, loading, error };
 } 

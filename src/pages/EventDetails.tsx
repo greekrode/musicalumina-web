@@ -69,15 +69,17 @@ type JuryPanelProps = {
 
 type EventCategoriesProps = {
   categories: EventCategory[];
+  eventStartDate?: string;
 };
 
 type CategoryCardProps = {
   category: EventCategory;
+  eventStartDate?: string;
 };
 
-const CategoryCard = ({ category }: CategoryCardProps) => {
+const CategoryCard = ({ category, eventStartDate }: CategoryCardProps) => {
   const { t, language } = useLanguage();
-  const { pdfUrl } = useRepertoirePdf(category.id);
+  const { pdfUrl } = useRepertoirePdf(category.id, eventStartDate);
 
   return (
     <div className="bg-[#F7E7CE]/30 p-6 rounded-lg">
@@ -354,10 +356,10 @@ const CategoryCard = ({ category }: CategoryCardProps) => {
   );
 };
 
-const EventCategories = ({ categories }: EventCategoriesProps) => (
+const EventCategories = ({ categories, eventStartDate }: EventCategoriesProps) => (
   <div className="space-y-8">
     {categories.map((category) => (
-      <CategoryCard key={category.id} category={category} />
+      <CategoryCard key={category.id} category={category} eventStartDate={eventStartDate} />
     ))}
   </div>
 );
@@ -770,7 +772,7 @@ function EventDetails() {
               <LoadingSpinner message={t("loading.loadingCategories")} />
             }
           >
-            <EventCategories categories={event.event_categories} />
+            <EventCategories categories={event.event_categories} eventStartDate={event.start_date} />
           </Suspense>
         </div>
 
