@@ -6,7 +6,7 @@ import "react-phone-input-2/lib/style.css";
 import { z } from "zod";
 import { useLanguage } from "../lib/LanguageContext";
 import { supabase } from "../lib/supabase";
-import { WhatsAppService } from "../lib/whatsapp";
+import { EmailService } from "../lib/email";
 import FileUpload from "./FileUpload";
 import LoadingModal from "./LoadingModal";
 import Modal from "./Modal";
@@ -278,8 +278,8 @@ export default function GroupClassRegistrationModal({
       }
 
       try {
-        // Send WhatsApp notification
-        await WhatsAppService.sendGroupClassRegistrationMessage({
+        // Send Email notification
+        await EmailService.sendGroupClassRegistrationEmail({
           registrant_name: data.registrant_name,
           registrant_email: data.registrant_email,
           registrant_whatsapp: data.registrant_whatsapp,
@@ -290,7 +290,7 @@ export default function GroupClassRegistrationModal({
           language,
         });
       } catch (error) {
-        console.error("Error sending WhatsApp message:", error);
+        console.error("Error sending email:", error);
       }
 
       setRegistrationRef(refNumber);

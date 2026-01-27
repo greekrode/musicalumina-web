@@ -8,7 +8,7 @@ import { z } from "zod";
 import { useLanguage } from "../lib/LanguageContext";
 import { LarkService } from "../lib/lark";
 import { supabase } from "../lib/supabase";
-import { WhatsAppService } from "../lib/whatsapp";
+import { EmailService } from "../lib/email";
 import FileUpload from "./FileUpload";
 import LoadingModal from "./LoadingModal";
 import Modal from "./Modal";
@@ -502,9 +502,9 @@ function MasterclassRegistrationModal({
         }
       }
 
-      // Send WhatsApp message
+      // Send Email
       try {
-        await WhatsAppService.sendMasterclassRegistrationMessage({
+        await EmailService.sendMasterclassRegistrationEmail({
           registrant_status: data.registrant_status,
           registrant_name:
             data.registrant_status === "personal"
@@ -523,7 +523,7 @@ function MasterclassRegistrationModal({
           language,
         });
       } catch (error) {
-        console.error("Error sending WhatsApp message:", error);
+        console.error("Error sending email:", error);
       }
 
       setRegistrationRef(refNumber);

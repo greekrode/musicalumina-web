@@ -11,7 +11,7 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useLanguage } from "../lib/LanguageContext";
 import { loadEmailTemplate } from "../lib/emailTemplates";
-import { WhatsAppService } from "../lib/whatsapp.ts";
+import { EmailService } from "../lib/email.ts";
 import { LarkService } from "../lib/lark.ts";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -403,9 +403,9 @@ function RegistrationModal({
         }
       }
 
-      // Send WhatsApp message
+      // Send Email
       try {
-        await WhatsAppService.sendCompetitionRegistrationMessage({
+        await EmailService.sendCompetitionRegistrationEmail({
           registrant_status: data.registrant_status,
           registrant_name: data.registrant_name || data.participant_name,
           registrant_email: data.registrant_email,
@@ -420,7 +420,7 @@ function RegistrationModal({
           language,
         });
       } catch (error) {
-        console.error("Error sending WhatsApp message:", error);
+        console.error("Error sending email:", error);
       }
 
       // Increment invitation code usage
