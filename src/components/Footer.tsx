@@ -82,7 +82,7 @@ function Footer() {
                 <Instagram className="h-6 w-6" />
               </a>
               <a
-                href="https://wa.me/6282161505577"
+                href="https://wa.me/628211720765"
                 className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
                 aria-label="WhatsApp"
               >

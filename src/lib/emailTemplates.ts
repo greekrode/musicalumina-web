@@ -18,7 +18,7 @@ const enTemplate = `
 
     <p style="margin-bottom: 25px; color: #555;">
         Please review your registration details below. If you notice any discrepancies or need assistance, our team is
-        ready to help via <a href="https://wa.me/6282161505577" target="_blank"
+        ready to help via <a href="https://wa.me/628211720765" target="_blank"
             style="color: #1a73e8; text-decoration: none; font-weight: 500;">WhatsApp</a>.
         <br/>
         <b>DO NOT REPLY TO THIS EMAIL.</b>
@@ -102,7 +102,7 @@ const idTemplate = `<!DOCTYPE html>
 
     <p style="margin-bottom: 25px; color: #555;">
         Silakan periksa detail pendaftaran Anda di bawah ini. Jika Anda menemukan ketidaksesuaian atau membutuhkan bantuan,
-        tim kami siap membantu melalui <a href="https://wa.me/6282161505577" target="_blank"
+        tim kami siap membantu melalui <a href="https://wa.me/628211720765" target="_blank"
             style="color: #1a73e8; text-decoration: none; font-weight: 500;">WhatsApp</a>.
         <br/>
         <b>MOHON UNTUK TIDAK MEMBALAS EMAIL INI.</b>

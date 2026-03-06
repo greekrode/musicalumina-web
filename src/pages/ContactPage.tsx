@@ -246,12 +246,12 @@ function ContactPage() {
                         {t("contact.info.phone")}
                       </h3>
                       <a
-                        href="https://wa.me/6282161505577"
+                        href="https://wa.me/628211720765"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[#808080]/80 hover:text-marigold transition-colors"
                       >
-                        +62 821 6150 5577
+                        +62 821 1720 765
                       </a>
                     </div>
                   </div>
