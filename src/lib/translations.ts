@@ -106,10 +106,10 @@ export const translations = {
       documents: "Documents",
       birthCertificate: "Birth Certificate/Passport",
       songPdf: "Song PDF",
-      videoUrl: "Video Link (Can be submitted after registration)",
+      videoUrl: "Video Link",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
       videoUrlHelp:
-        "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [BTFE 2025] Participant Name - Category - Sub Category (Song Title - Composer)",
+        "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [LSPF 2026] Participant Name - Category - Sub Category (Song Title - Composer)",
       paymentInfo: "Payment Information",
       bankTransferDetails: "Bank Transfer",
       qris: "Scan QRIS to Pay",
@@ -287,7 +287,7 @@ export const translations = {
       videoUrl: "Video Link",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
       videoUrlHelp:
-        "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [BTFE 2025] Participant Name - Category - Sub Category (Song Title - Composer)",
+        "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [LSPF 2026] Participant Name - Category - Sub Category (Song Title - Composer)",
       submit: "Submit Video",
       submitting: "Submitting...",
       successMessage: "Video submitted successfully!",
@@ -415,10 +415,10 @@ export const translations = {
       documents: "Dokumen",
       birthCertificate: "Akta Kelahiran/Paspor",
       songPdf: "PDF Partitur",
-      videoUrl: "Link Video (Bisa disubmit setelah pendaftaran)",
+      videoUrl: "Link Video",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
       videoUrlHelp:
-        "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [BTFE 2025] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
+        "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [LSPF 2026] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
       paymentInfo: "Informasi Pembayaran",
       qris: "Scan QRIS untuk membayar",
       bankTransferDetails: "Transfer Bank",
@@ -600,7 +600,7 @@ export const translations = {
       videoUrl: "Link Video",
       videoUrlPlaceholder: "https://youtube.com/watch?v=...",
       videoUrlHelp:
-        "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [BTFE 2025] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
+        "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [LSPF 2026] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
       submit: "Submit Video",
       submitting: "Mengirim...",
       successMessage: "Video berhasil dikirim!",

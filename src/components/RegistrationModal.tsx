@@ -53,18 +53,21 @@ function createRegistrationSchema(
       .min(1, t("validation.enterSongTitle"))
       .max(150, t("validation.maxSongTitleLength")),
     song_duration: z.string().max(10, t("validation.maxDurationLength")),
-    video_url: z
-      .string()
-      .optional()
-      .refine((val) => {
-        if (!val || val === "") return true; // Allow empty/undefined
-        try {
-          new URL(val);
-          return true;
-        } catch {
-          return false;
-        }
-      }, t("validation.invalidUrl")),
+    video_url: isOnlineEvent
+      ? z
+          .string()
+          .trim()
+          .min(1, t("validation.enterVideoUrl"))
+          .url(t("validation.invalidUrl"))
+      : z.string().refine((val) => {
+          if (!val || val === "") return true;
+          try {
+            new URL(val);
+            return true;
+          } catch {
+            return false;
+          }
+        }, t("validation.invalidUrl")),
     bank_name: z
       .string()
       .min(1, t("validation.enterBankName"))
@@ -775,21 +778,40 @@ function RegistrationModal({
 
             {isOnlineEvent && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="registration-video-url"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   {t("registration.videoUrl")}
                 </label>
                 <input
+                  id="registration-video-url"
                   type="url"
+                  required
+                  aria-required="true"
+                  aria-invalid={errors.video_url ? true : false}
+                  aria-describedby={
+                    errors.video_url
+                      ? "registration-video-url-error registration-video-url-help"
+                      : "registration-video-url-help"
+                  }
                   {...register("video_url")}
                   placeholder={t("registration.videoUrlPlaceholder")}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                 />
                 {errors.video_url && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p
+                    id="registration-video-url-error"
+                    role="alert"
+                    className="mt-1 text-sm text-red-600"
+                  >
                     {errors.video_url.message}
                   </p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">
+                <p
+                  id="registration-video-url-help"
+                  className="mt-1 text-xs text-gray-500"
+                >
                   {t("registration.videoUrlHelp")}
                 </p>
               </div>
