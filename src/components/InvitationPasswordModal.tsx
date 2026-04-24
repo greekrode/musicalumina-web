@@ -2,13 +2,16 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { InvitationCodeCrypto } from "../lib/crypto";
 import Modal from "./Modal";
-import { useLanguage } from "../lib/LanguageContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const invitationPasswordSchema = z.object({
-  password: z.string().min(1, "Please enter the invitation code")
+  password: z.string().min(1, "Please enter the invitation code"),
 });
 
 type InvitationPasswordForm = z.infer<typeof invitationPasswordSchema>;
@@ -20,13 +23,16 @@ interface InvitationPasswordModalProps {
   onSuccess: (invitationCodeId: string) => void;
 }
 
+/**
+ * InvitationPasswordModal — verifies an invitation code against the event's
+ * active codes table. Editorial styling, same crypto + Supabase wiring.
+ */
 export default function InvitationPasswordModal({
   isOpen,
   onClose,
   eventId,
-  onSuccess
+  onSuccess,
 }: InvitationPasswordModalProps) {
-  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +40,9 @@ export default function InvitationPasswordModal({
     register,
     handleSubmit,
     reset,
-    formState: { errors }
+    formState: { errors },
   } = useForm<InvitationPasswordForm>({
-    resolver: zodResolver(invitationPasswordSchema)
+    resolver: zodResolver(invitationPasswordSchema),
   });
 
   const onSubmit = async (data: InvitationPasswordForm) => {
@@ -44,7 +50,6 @@ export default function InvitationPasswordModal({
       setIsLoading(true);
       setError(null);
 
-      // Get all active invitation codes for this event
       const { data: allCodes, error: fetchError } = await supabase
         .from("invitation_codes")
         .select("*")
@@ -60,11 +65,11 @@ export default function InvitationPasswordModal({
         return;
       }
 
-      // Filter codes that have available uses and haven't expired
       const now = new Date();
-      const invitationCodes = allCodes.filter(code => {
+      const invitationCodes = allCodes.filter((code) => {
         const hasAvailableUses = code.current_uses < code.max_uses;
-        const notExpired = !code.expires_at || new Date(code.expires_at) > now;
+        const notExpired =
+          !code.expires_at || new Date(code.expires_at) > now;
         return hasAvailableUses && notExpired;
       });
 
@@ -73,10 +78,12 @@ export default function InvitationPasswordModal({
         return;
       }
 
-      // Check each invitation code
       let validCodeId: string | null = null;
       for (const code of invitationCodes) {
-        const isValid = await InvitationCodeCrypto.verifyCode(data.password, code.code_hash);
+        const isValid = await InvitationCodeCrypto.verifyCode(
+          data.password,
+          code.code_hash
+        );
         if (isValid) {
           validCodeId = code.id;
           break;
@@ -88,7 +95,6 @@ export default function InvitationPasswordModal({
         return;
       }
 
-      // Code is valid, proceed with registration
       onSuccess(validCodeId);
       reset();
     } catch (err) {
@@ -109,58 +115,56 @@ export default function InvitationPasswordModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
+      eyebrow="Restricted access"
       title="Enter Invitation Code"
       maxWidth="md"
     >
-      <div className="space-y-6">
-        <div className="text-center">
-          <p className="text-gray-600">
-            This event requires an invitation code to register. Please enter the code provided to you.
-          </p>
-        </div>
+      <div className="flex flex-col gap-7">
+        <p className="type-body-md text-ink-muted">
+          This event requires an invitation code to register. Enter the code
+          provided to you to continue.
+        </p>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-800">{error}</div>
+            <div className="border-l-2 border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] px-5 py-4 flex items-start gap-3">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span className="type-body-sm">{error}</span>
             </div>
           )}
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Invitation Code
-            </label>
-            <input
-              type="text"
+            <Label variant="editorial" htmlFor="password">
+              Invitation Code{" "}
+              <span className="text-[color:var(--status-error)]">*</span>
+            </Label>
+            <Input
+              variant="boxed"
               id="password"
+              type="text"
               {...register("password")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               placeholder="Enter your invitation code"
               autoComplete="off"
+              aria-invalid={errors.password ? true : undefined}
             />
             {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+              <p className="mt-2 type-caption text-[color:var(--status-error)]">
+                {errors.password.message}
+              </p>
             )}
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Verifying..." : "Continue"}
-            </button>
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isLoading ? "Verifying…" : "Continue"}
+            </Button>
           </div>
         </form>
       </div>
     </Modal>
   );
-} 
+}

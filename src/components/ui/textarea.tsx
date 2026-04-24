@@ -1,22 +1,32 @@
-import * as React from "react"
+import * as React from "react";
+import { type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { textareaVariants } from "./textarea-variants";
 
-import { cn } from "@/lib/utils"
+/**
+ * Textarea — Musical Lumina
+ *
+ * Matches Input's dual-variant approach: editorial underline by default,
+ * boxed outline for admin forms. Minimum 3-line height by default so the
+ * writing surface feels generous, per DESIGN.md's "breathable" principle.
+ * The cva definition lives in `./textarea-variants`.
+ */
 
-const Textarea = React.forwardRef<
-  HTMLTextAreaElement,
-  React.ComponentProps<"textarea">
->(({ className, ...props }, ref) => {
-  return (
-    <textarea
-      className={cn(
-        "flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        className
-      )}
-      ref={ref}
-      {...props}
-    />
-  )
-})
-Textarea.displayName = "Textarea"
+export interface TextareaProps
+  extends React.ComponentProps<"textarea">,
+    VariantProps<typeof textareaVariants> {}
 
-export { Textarea }
+const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ className, variant, ...props }, ref) => {
+    return (
+      <textarea
+        className={cn(textareaVariants({ variant }), className)}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+Textarea.displayName = "Textarea";
+
+export { Textarea };

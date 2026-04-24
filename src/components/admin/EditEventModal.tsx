@@ -1,16 +1,30 @@
+import * as React from "react";
+import Modal from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Editor } from "@tinymce/tinymce-react";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { cn } from "@/lib/utils";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
+
+/**
+ * EditEventModal — admin edits an existing event.
+ *
+ * Moved from the bespoke black-scrim modal to the shared editorial Modal for
+ * consistency. Schema, Supabase update, poster signed-URL upload, and event
+ * date / duration arrays preserved 1:1. The inline duplicate-validation block
+ * is removed — react-hook-form's Zod resolver handles it natively now.
+ */
 
 const eventDateSchema = z.object({
   datetime: z.string().min(1, "Date and time are required"),
@@ -53,15 +67,46 @@ interface EditEventModalProps {
   event: Event | null;
 }
 
+const TINYMCE_INIT = {
+  height: 280,
+  menubar: false,
+  plugins: [
+    "advlist",
+    "autolink",
+    "lists",
+    "link",
+    "image",
+    "charmap",
+    "preview",
+    "anchor",
+    "searchreplace",
+    "visualblocks",
+    "code",
+    "fullscreen",
+    "insertdatetime",
+    "media",
+    "table",
+    "code",
+    "help",
+    "wordcount",
+  ],
+  toolbar:
+    "undo redo | blocks | " +
+    "bold italic forecolor | alignleft aligncenter " +
+    "alignright alignjustify | bullist numlist outdent indent | " +
+    "removeformat | help",
+  content_style:
+    "body { font-family: 'Manrope', sans-serif; font-size: 14px; color: #2B2B2B }",
+};
+
 export function EditEventModal({
   isOpen,
   onClose,
   onEventUpdated,
   event,
 }: EditEventModalProps) {
-  console.log("EditEventModal rendered with event:", event);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [eventDates, setEventDates] = useState<Array<{ datetime: string }>>([
     { datetime: "" },
@@ -80,6 +125,7 @@ export function EditEventModal({
   } = useForm<EventFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      title: "",
       type: "competition",
       description: { en: "", id: "" },
       terms_and_conditions: { en: "", id: "" },
@@ -97,24 +143,20 @@ export function EditEventModal({
     },
   });
 
-  // Watch form values for the editors
   const description = watch("description");
   const termsAndConditions = watch("terms_and_conditions");
   const posterImageValue = watch("poster_image");
 
-  // Sync eventDates with form when they change
   useEffect(() => {
     setValue("event_date", eventDates);
   }, [eventDates, setValue]);
 
-  // Keep poster preview in sync with form value / selected file
   useEffect(() => {
     if (posterFile) {
       const objectUrl = URL.createObjectURL(posterFile);
       setPosterPreview(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
     }
-
     setPosterPreview(posterImageValue || null);
     return undefined;
   }, [posterFile, posterImageValue]);
@@ -129,67 +171,64 @@ export function EditEventModal({
     )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
-  // Initialize event dates when event prop changes
   useEffect(() => {
-    if (event) {
-      if (
-        event.event_date &&
-        Array.isArray(event.event_date) &&
-        event.event_date.length > 0
-      ) {
-        // Handle new format (string array)
-        const dates = event.event_date.map((date) => ({
-          datetime: formatDateTimeForInput(date),
-        }));
-        setEventDates(dates);
-      } else {
-        // Fallback to start_date if event_date is not available
-        setEventDates([{ datetime: formatDateTimeForInput(event.start_date) }]);
-      }
-
-      // Reset form with event data
-      reset({
-        title: event.title,
-        type: event.type,
-        description: event.description || { en: "", id: "" },
-        terms_and_conditions: event.terms_and_conditions || { en: "", id: "" },
-        start_date: new Date(event.start_date).toISOString().split("T")[0],
-        event_date: [{ datetime: "" }], // Initialize with empty event date
-        registration_deadline: formatDateTimeForInput(
-          event.registration_deadline
-        ),
-        location: event.location,
-        venue_details: event.venue_details || "",
-        poster_image: event.poster_image || "",
-        status: event.status,
-        max_quota: event.max_quota || undefined,
-        lark_base: event.lark_base || "",
-        lark_table: event.lark_table || "",
-        event_duration: (event as any).event_duration || [],
-      });
-
-      if (
-        (event as any).event_duration &&
-        Array.isArray((event as any).event_duration)
-      ) {
-        setDurations((event as any).event_duration as number[]);
-      } else {
-        setDurations([]);
-      }
-    }
-  }, [event, reset]);
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!event) return;
 
-    console.log("Form submitted with values:", values);
-    console.log("Event dates:", eventDates);
+    if (
+      event.event_date &&
+      Array.isArray(event.event_date) &&
+      event.event_date.length > 0
+    ) {
+      const dates = event.event_date.map((date) => ({
+        datetime: formatDateTimeForInput(date),
+      }));
+      setEventDates(dates);
+    } else {
+      setEventDates([
+        { datetime: formatDateTimeForInput(event.start_date) },
+      ]);
+    }
 
-    // Manual validation check
-    if (!values.title || !values.start_date || !values.location) {
+    reset({
+      title: event.title,
+      type: event.type,
+      description: event.description || { en: "", id: "" },
+      terms_and_conditions: event.terms_and_conditions || { en: "", id: "" },
+      start_date: new Date(event.start_date).toISOString().split("T")[0],
+      event_date: [{ datetime: "" }],
+      registration_deadline: formatDateTimeForInput(
+        event.registration_deadline
+      ),
+      location: event.location,
+      venue_details: event.venue_details || "",
+      poster_image: event.poster_image || "",
+      status: event.status,
+      max_quota: event.max_quota || undefined,
+      lark_base: event.lark_base || "",
+      lark_table: event.lark_table || "",
+      event_duration: (event as unknown as { event_duration?: number[] })
+        .event_duration || [],
+    });
+
+    const durationField = (event as unknown as { event_duration?: number[] })
+      .event_duration;
+    if (Array.isArray(durationField)) {
+      setDurations(durationField);
+    } else {
+      setDurations([]);
+    }
+    setSubmitError(null);
+  }, [event, reset]);
+
+  const onSubmit = async (values: EventFormData) => {
+    if (!event) return;
+    setSubmitError(null);
+
+    const validEventDates = eventDates.filter((ed) => ed.datetime);
+    if (validEventDates.length === 0) {
       toast({
-        title: "Missing information",
-        description: "Please fill in all required fields before saving.",
+        title: "Add an event date",
+        description: "Please add at least one event date and time.",
         variant: "destructive",
       });
       return;
@@ -198,28 +237,22 @@ export function EditEventModal({
     try {
       setIsSubmitting(true);
 
-      // Convert event dates to ISO strings
-      const convertedEventDates = eventDates
-        .filter((ed) => ed.datetime)
-        .map((ed) => new Date(ed.datetime).toISOString());
-
+      const convertedEventDates = validEventDates.map((ed) =>
+        new Date(ed.datetime).toISOString()
+      );
       const registrationDeadlineIso = values.registration_deadline
         ? new Date(values.registration_deadline).toISOString()
         : null;
-
-      console.log("Converted event dates:", convertedEventDates);
-
-      // Handle max_quota - convert empty string to null
-      const maxQuota = values.max_quota === "" ? null : values.max_quota;
-
-      const eventData = {
-        ...values,
-        event_date: convertedEventDates,
-        max_quota: maxQuota,
-        lark_base: values.lark_base,
-        lark_table: values.lark_table,
-        event_duration: durations.length ? durations : null,
-      };
+      // `valueAsNumber: true` turns an empty input into NaN (not ""), so the
+      // original `=== ""` check was unreachable and we were forwarding NaN to
+      // Supabase. Normalize against both.
+      const maxQuota =
+        values.max_quota === "" ||
+        values.max_quota === undefined ||
+        (typeof values.max_quota === "number" &&
+          Number.isNaN(values.max_quota))
+          ? null
+          : values.max_quota;
 
       let posterUrl = values.poster_image;
       if (posterFile) {
@@ -230,18 +263,15 @@ export function EditEventModal({
         const { error: uploadError } = await supabase.storage
           .from("event-photos")
           .upload(filePath, posterFile, { upsert: true });
-
         if (uploadError) throw uploadError;
 
         const { data, error: urlError } = await supabase.storage
           .from("event-photos")
           .createSignedUrl(filePath, 99 * 365 * 24 * 60 * 60);
-
         if (urlError) throw urlError;
-
         if (!data?.signedUrl) throw new Error("Failed to generate signed URL");
 
-        posterUrl = data?.signedUrl;
+        posterUrl = data.signedUrl;
       }
 
       const updateData = {
@@ -251,39 +281,41 @@ export function EditEventModal({
           en: values.description.en || "",
           id: values.description.id || "",
         },
-        terms_and_conditions: values.terms_and_conditions || { en: "", id: "" },
+        terms_and_conditions: values.terms_and_conditions || {
+          en: "",
+          id: "",
+        },
         start_date: values.start_date,
         event_date: convertedEventDates,
-        event_duration: eventData.event_duration,
+        event_duration: durations.length ? durations : null,
         registration_deadline: registrationDeadlineIso,
         location: values.location,
         venue_details: values.venue_details,
         poster_image: posterUrl,
         status: values.status,
         max_quota: maxQuota,
-        lark_base: eventData.lark_base,
-        lark_table: eventData.lark_table,
+        lark_base: values.lark_base,
+        lark_table: values.lark_table,
         updated_at: new Date().toISOString(),
       };
-
-      console.log("Updating event with data:", updateData);
-      console.log("Event ID:", event.id);
 
       const { error } = await supabase
         .from("events")
         .update(updateData)
         .eq("id", event.id);
+      if (error) throw error;
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
-
-      console.log("Event updated successfully");
       onEventUpdated();
       onClose();
+      toast({
+        title: "Updated",
+        description: "Event saved successfully.",
+      });
     } catch (error) {
       console.error("Error updating event:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to update event.";
+      setSubmitError(message);
       toast({
         title: "Failed to update event",
         description: "Something went wrong. Please try again.",
@@ -310,103 +342,223 @@ export function EditEventModal({
     setEventDates(updated);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Edit Event</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ×
-          </button>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={event?.title ? `Edit · ${event.title}` : "Edit event"}
+      eyebrow="Events · Edit"
+      maxWidth="3xl"
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-7">
+        {submitError && (
+          <div className="flex items-start gap-3 border-l-2 border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] px-4 py-3">
+            <AlertCircle
+              className="h-4 w-4 mt-0.5 text-[color:var(--status-error)] flex-shrink-0"
+              aria-hidden
+            />
+            <p className="type-body-sm text-[color:var(--status-error)]">
+              {submitError}
+            </p>
+          </div>
+        )}
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            console.log("Form submitted manually");
-            console.log("Form errors:", errors);
-            console.log("Form values:", watch());
-
-            // Check if event dates are valid
-            const validEventDates = eventDates.filter((ed) => ed.datetime);
-            if (validEventDates.length === 0) {
-              toast({
-                title: "Add an event date",
-                description: "Please add at least one event date and time.",
-                variant: "destructive",
-              });
-              return;
-            }
-
-            // Check required fields
-            const formValues = watch();
-            if (
-              !formValues.title ||
-              !formValues.start_date ||
-              !formValues.location
-            ) {
-              toast({
-                title: "Missing information",
-                description: "Please fill in Title, Start Date, and Location.",
-                variant: "destructive",
-              });
-              return;
-            }
-
-            // If all validations pass, call the onSubmit function directly
-            onSubmit(watch());
-          }}
-          className="p-6 space-y-6"
-        >
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title
-              </label>
-              <Input {...register("title")} />
+        {/* Identity */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Identity</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-title">Title</Label>
+              <Input
+                id="edit-title"
+                variant="boxed"
+                aria-invalid={!!errors.title}
+                {...register("title")}
+              />
               {errors.title && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.title.message}
-                </p>
+                <FieldError>{errors.title.message}</FieldError>
               )}
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Type
-              </label>
-              <select
-                {...register("type")}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-type">Type</Label>
+              <AdminSelect id="edit-type" {...register("type")}>
                 <option value="festival">Festival</option>
                 <option value="competition">Competition</option>
                 <option value="masterclass">Masterclass</option>
                 <option value="group class">Group Class</option>
-              </select>
-              {errors.type && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.type.message}
-                </p>
+              </AdminSelect>
+            </div>
+          </div>
+        </section>
+
+        {/* Descriptions */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Description · optional</Eyebrow>
+          <div className="flex flex-col gap-5">
+            <EditorBlock label="English">
+              <Editor
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                value={description.en}
+                init={TINYMCE_INIT}
+                onEditorChange={(content: string) =>
+                  setValue("description.en", content)
+                }
+              />
+            </EditorBlock>
+            <EditorBlock label="Indonesian">
+              <Editor
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                value={description.id}
+                init={TINYMCE_INIT}
+                onEditorChange={(content: string) =>
+                  setValue("description.id", content)
+                }
+              />
+            </EditorBlock>
+          </div>
+        </section>
+
+        {/* Terms & conditions */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Terms & conditions · optional</Eyebrow>
+          <div className="flex flex-col gap-5">
+            <EditorBlock label="English">
+              <Editor
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                value={termsAndConditions?.en || ""}
+                init={TINYMCE_INIT}
+                onEditorChange={(content: string) =>
+                  setValue("terms_and_conditions.en", content)
+                }
+              />
+            </EditorBlock>
+            <EditorBlock label="Indonesian">
+              <Editor
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                value={termsAndConditions?.id || ""}
+                init={TINYMCE_INIT}
+                onEditorChange={(content: string) =>
+                  setValue("terms_and_conditions.id", content)
+                }
+              />
+            </EditorBlock>
+          </div>
+        </section>
+
+        {/* Schedule */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Schedule</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-start">Start date</Label>
+              <Input
+                id="edit-start"
+                type="date"
+                variant="boxed"
+                aria-invalid={!!errors.start_date}
+                {...register("start_date")}
+              />
+              {errors.start_date && (
+                <FieldError>{errors.start_date.message}</FieldError>
               )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-deadline">
+                Registration deadline{" "}
+                <span className="type-caption text-ink-muted font-normal">
+                  — optional
+                </span>
+              </Label>
+              <Input
+                id="edit-deadline"
+                type="datetime-local"
+                variant="boxed"
+                {...register("registration_deadline")}
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Durations (minutes)
-            </label>
-            <div className="space-y-2">
+          {/* Event dates array */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-end justify-between gap-3 flex-wrap">
+              <Label className="mb-0">Event dates &amp; times</Label>
+              <Eyebrow tone="muted">
+                {eventDates.length}{" "}
+                {eventDates.length === 1 ? "session" : "sessions"}
+              </Eyebrow>
+            </div>
+            <div className="flex flex-col gap-2">
+              {eventDates.map((eventDate, index) => (
+                <div
+                  key={index}
+                  className="flex gap-2 items-center bg-surface-canvas-warm border border-rule-hairline px-3 py-2"
+                >
+                  <input
+                    type="datetime-local"
+                    value={eventDate.datetime}
+                    onChange={(e) => updateEventDate(index, e.target.value)}
+                    className={cn(
+                      "flex-1 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
+                      "text-body-sm text-ink-body",
+                      "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
+                      "transition-colors"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeEventDate(index)}
+                    disabled={eventDates.length === 1}
+                    aria-label="Remove date"
+                    className={cn(
+                      "h-9 w-9 flex items-center justify-center rounded-sm",
+                      "text-ink-muted hover:text-[color:var(--status-error)]",
+                      "hover:bg-[color:var(--status-error-bg)] transition-colors",
+                      "disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-muted"
+                    )}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addEventDate}
+                className="self-start"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add date
+              </Button>
+            </div>
+          </div>
+
+          {/* Durations */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-end justify-between gap-3 flex-wrap">
+              <div className="flex flex-col gap-1">
+                <Label className="mb-0">Durations (minutes)</Label>
+                <p className="type-caption text-ink-muted">
+                  Per-category performance lengths, if relevant.
+                </p>
+              </div>
+              {durations.length > 0 && (
+                <Eyebrow tone="muted">
+                  {durations.length}{" "}
+                  {durations.length === 1 ? "entry" : "entries"}
+                </Eyebrow>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
               {durations.map((d, idx) => (
-                <div key={idx} className="flex items-end gap-2">
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 bg-surface-canvas-warm border border-rule-hairline px-3 py-2"
+                >
                   <Input
+                    variant="boxed"
                     type="number"
-                    min="1"
+                    min={1}
                     value={d}
                     onChange={(e) => {
                       const v = parseInt(e.target.value || "0", 10);
@@ -414,353 +566,231 @@ export function EditEventModal({
                         prev.map((val, i) => (i === idx ? v : val))
                       );
                     }}
+                    className="flex-1"
                   />
+                  <span className="type-caption text-ink-muted flex-shrink-0">
+                    minutes
+                  </span>
                   <button
                     type="button"
                     onClick={() =>
                       setDurations((prev) => prev.filter((_, i) => i !== idx))
                     }
-                    className="px-3 py-2 text-red-600 hover:text-red-800"
+                    aria-label="Remove duration"
+                    className={cn(
+                      "h-9 w-9 flex items-center justify-center rounded-sm",
+                      "text-ink-muted hover:text-[color:var(--status-error)]",
+                      "hover:bg-[color:var(--status-error-bg)] transition-colors"
+                    )}
                   >
-                    Remove
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ))}
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setDurations((prev) => [...prev, 10])}
-                className="text-marigold hover:text-marigold/80 text-sm"
+                className="self-start"
               >
-                + Add Duration
-              </button>
+                <Plus className="h-3.5 w-3.5" />
+                Add duration
+              </Button>
             </div>
           </div>
+        </section>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              English Description - Optional
-            </label>
-            <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={description.en}
-              onEditorChange={(content: string) =>
-                setValue("description.en", content)
-              }
-              init={{
-                height: 300,
-                menubar: false,
-                plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
-                ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-              }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Indonesian Description - Optional
-            </label>
-            <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={description.id}
-              onEditorChange={(content: string) =>
-                setValue("description.id", content)
-              }
-              init={{
-                height: 300,
-                menubar: false,
-                plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
-                ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-              }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Terms and Conditions (English) - Optional
-            </label>
-            <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={termsAndConditions?.en || ""}
-              onEditorChange={(content: string) =>
-                setValue("terms_and_conditions.en", content)
-              }
-              init={{
-                height: 300,
-                menubar: false,
-                plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
-                ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-              }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Terms and Conditions (Indonesian) - Optional
-            </label>
-            <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-              value={termsAndConditions?.id || ""}
-              onEditorChange={(content: string) =>
-                setValue("terms_and_conditions.id", content)
-              }
-              init={{
-                height: 300,
-                menubar: false,
-                plugins: [
-                  "advlist",
-                  "autolink",
-                  "lists",
-                  "link",
-                  "image",
-                  "charmap",
-                  "preview",
-                  "anchor",
-                  "searchreplace",
-                  "visualblocks",
-                  "code",
-                  "fullscreen",
-                  "insertdatetime",
-                  "media",
-                  "table",
-                  "code",
-                  "help",
-                  "wordcount",
-                ],
-                toolbar:
-                  "undo redo | blocks | " +
-                  "bold italic forecolor | alignleft aligncenter " +
-                  "alignright alignjustify | bullist numlist outdent indent | " +
-                  "removeformat | help",
-                content_style:
-                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-              }}
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
-              <Input type="date" {...register("start_date")} />
-              {errors.start_date && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.start_date.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Dates & Times
-            </label>
-            <div className="space-y-4">
-              {eventDates.map((eventDate, index) => (
-                <div key={index} className="flex gap-2 items-end">
-                  <input
-                    type="datetime-local"
-                    value={eventDate.datetime}
-                    onChange={(e) => updateEventDate(index, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marigold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeEventDate(index)}
-                    disabled={eventDates.length === 1}
-                    className="px-3 py-2 text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addEventDate}
-                className="text-marigold hover:text-marigold/80 text-sm"
-              >
-                + Add Another Date
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Registration Deadline
-            </label>
-            <Input
-              type="datetime-local"
-              {...register("registration_deadline")}
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
-              </label>
-              <Input {...register("location")} />
-              {errors.location && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.location.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Registration Quota - Optional
-              </label>
+        {/* Venue + quota */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Venue & quota</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-location">Location</Label>
               <Input
+                id="edit-location"
+                variant="boxed"
+                aria-invalid={!!errors.location}
+                {...register("location")}
+              />
+              {errors.location && (
+                <FieldError>{errors.location.message}</FieldError>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-quota">
+                Max quota{" "}
+                <span className="type-caption text-ink-muted font-normal">
+                  — optional
+                </span>
+              </Label>
+              <Input
+                id="edit-quota"
                 type="number"
+                variant="boxed"
                 {...register("max_quota", { valueAsNumber: true })}
               />
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Venue Details
-            </label>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-venue-details">Venue details</Label>
             <textarea
+              id="edit-venue-details"
               {...register("venue_details")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[60px]"
+              className={cn(
+                "w-full min-h-[80px] px-3 py-2 rounded-sm",
+                "bg-surface-elevated border border-burgundy/20",
+                "text-body-sm text-ink-body",
+                "hover:border-burgundy/40",
+                "focus-visible:outline-none focus-visible:border-marigold focus-visible:ring-2 focus-visible:ring-marigold/20",
+                "transition-colors"
+              )}
             />
           </div>
+        </section>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Poster
-            </label>
-            <div className="mb-3">
-              {posterPreview ? (
+        {/* Publication */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Publication</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <AdminSelect id="edit-status" {...register("status")}>
+                <option value="upcoming">Upcoming</option>
+                <option value="ongoing">Ongoing</option>
+                <option value="completed">Completed</option>
+              </AdminSelect>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-poster">Event poster</Label>
+              <input
+                id="edit-poster"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPosterFile(e.target.files?.[0] || null)}
+                className={cn(
+                  "w-full h-10 px-3 py-2 bg-surface-elevated border border-burgundy/20 rounded-sm",
+                  "text-body-sm text-ink-body",
+                  "file:mr-3 file:py-1 file:px-3 file:border-0 file:text-body-sm file:font-medium",
+                  "file:bg-burgundy/[0.06] file:text-burgundy hover:file:bg-burgundy/[0.12]",
+                  "focus-visible:outline-none focus-visible:border-marigold",
+                  "transition-colors"
+                )}
+              />
+              {posterFile && (
+                <p className="type-caption text-ink-muted">
+                  New file: {posterFile.name}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {posterPreview && (
+            <div className="flex flex-col gap-2">
+              <Eyebrow tone="muted">Current poster</Eyebrow>
+              <div className="bg-surface-canvas-warm border border-rule-hairline p-3">
                 <img
                   src={posterPreview}
                   alt="Event poster"
-                  className="w-full max-h-64 rounded-md border object-contain"
+                  className="w-full max-h-64 object-contain"
                 />
-              ) : (
-                <div className="w-full max-h-64 flex items-center justify-center rounded-md border border-dashed text-sm text-gray-500 py-6">
-                  No poster uploaded
-                </div>
-              )}
+              </div>
             </div>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setPosterFile(e.target.files?.[0] || null)}
-            />
-          </div>
+          )}
+        </section>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              {...register("status")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="upcoming">Upcoming</option>
-              <option value="ongoing">Ongoing</option>
-              <option value="completed">Completed</option>
-            </select>
+        {/* Integrations */}
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <Eyebrow withRule>Integrations · optional</Eyebrow>
+            <p className="type-caption text-ink-muted">
+              Lark Base wiring for this event. Leave blank to skip.
+            </p>
           </div>
-
-          <div className="flex gap-4 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              variant="default"
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              {isSubmitting ? "Updating..." : "Update Event"}
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-lark-base">Lark base ID</Label>
+              <Input
+                id="edit-lark-base"
+                variant="boxed"
+                placeholder="e.g. bascnXXXXXX"
+                {...register("lark_base")}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-lark-table">Lark table ID</Label>
+              <Input
+                id="edit-lark-table"
+                variant="boxed"
+                placeholder="e.g. tblXXXXXX"
+                {...register("lark_table")}
+              />
+            </div>
           </div>
-        </form>
+        </section>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 pt-2 border-t border-rule-hairline">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Updating…" : "Save changes"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Shared primitives                                                   */
+/* ------------------------------------------------------------------ */
+
+function FieldError({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="type-caption text-[color:var(--status-error)]">{children}</p>
+  );
+}
+
+const AdminSelect = React.forwardRef<
+  HTMLSelectElement,
+  React.SelectHTMLAttributes<HTMLSelectElement>
+>(({ className, children, ...props }, ref) => (
+  <select
+    ref={ref}
+    {...props}
+    className={cn(
+      "h-11 px-3 py-2 rounded-sm bg-surface-elevated border border-burgundy/20",
+      "text-body-sm text-ink-body",
+      "hover:border-burgundy/40",
+      "focus-visible:outline-none focus-visible:border-marigold focus-visible:ring-2 focus-visible:ring-marigold/20",
+      "transition-colors cursor-pointer",
+      className
+    )}
+  >
+    {children}
+  </select>
+));
+AdminSelect.displayName = "AdminSelect";
+
+function EditorBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Eyebrow tone="muted">{label}</Eyebrow>
+      <div className="border border-rule-hairline overflow-hidden">
+        {children}
       </div>
     </div>
   );

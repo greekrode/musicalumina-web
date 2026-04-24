@@ -8,6 +8,13 @@ type Event = {
   type: string;
 };
 
+/**
+ * Fetch the "now booking" hero pill for the homepage — the most recent
+ * upcoming event. Fires once on mount; no params, no refetch.
+ *
+ * @returns `{ events, loading, error }`. `events` is a lightweight shape
+ *          ({@link Event}) with just enough fields for the hero card.
+ */
 export const useLatestEvent = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);

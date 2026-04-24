@@ -1,5 +1,7 @@
 import Modal from "./Modal";
 import { useLanguage } from "../lib/LanguageContext";
+import { Button } from "@/components/ui/button";
+import { NoteGlyph } from "@/components/ui/wireframe-wave";
 
 interface ThankYouModalProps {
   isOpen: boolean;
@@ -8,6 +10,11 @@ interface ThankYouModalProps {
   referenceNumber: string;
 }
 
+/**
+ * ThankYouModal — celebratory confirmation after a successful registration.
+ * Editorial composition: small mark, headline name, prominent reference
+ * number as the page's main object, supporting copy, then close action.
+ */
 function ThankYouModal({
   isOpen,
   onClose,
@@ -20,34 +27,49 @@ function ThankYouModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      eyebrow="Confirmed"
       title={t("thankYou.title")}
       maxWidth="2xl"
     >
-      <div className="space-y-6">
-        <h2 className="text-3xl font-serif text-center">
-          {t("thankYou.message")} {participantName}
-        </h2>
+      <div className="flex flex-col items-center text-center gap-7">
+        {/* Decorative mark */}
+        <span
+          aria-hidden
+          className="flex items-center justify-center"
+        >
+          <NoteGlyph size={40} className="text-marigold" />
+        </span>
 
-        <div className="text-center">
-          <p className="text-2xl font-medium mb-2 text-burgundy">
-            {t("thankYou.referenceNumber")}: {referenceNumber}
+        <div className="flex flex-col gap-2">
+          <span className="type-label text-ink-accent">
+            {t("thankYou.message")}
+          </span>
+          <h4 className="type-headline-lg text-burgundy text-balance">
+            {participantName}
+          </h4>
+        </div>
+
+        {/* Reference number — the main object on this card */}
+        <div className="w-full max-w-md flex flex-col gap-2 pt-6 pb-7 border-y border-rule-hairline">
+          <span className="type-label text-ink-muted">
+            {t("thankYou.referenceNumber")}
+          </span>
+          <p className="type-display-md font-serif text-burgundy tracking-[-0.01em] break-all">
+            {referenceNumber}
           </p>
         </div>
 
-        <p className="text-gray-700 text-center">{t("thankYou.accepted")}</p>
+        <p className="type-body-md text-ink-body max-w-prose">
+          {t("thankYou.accepted")}
+        </p>
 
-        <p className="text-sm text-gray-600 italic font-semibold text-center">
+        <p className="type-caption text-ink-accent italic font-medium">
           {t("thankYou.screenshotReminder")}
         </p>
 
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 transition-colors"
-          >
-            {t("thankYou.close")}
-          </button>
-        </div>
+        <Button onClick={onClose} size="lg">
+          {t("thankYou.close")}
+        </Button>
       </div>
     </Modal>
   );

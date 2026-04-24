@@ -105,7 +105,7 @@ export function DataTable<T>({
                       >
                         {column.cell
                           ? column.cell(item)
-                          : (item as any)[column.accessorKey]}
+                          : (item as Record<string, unknown>)[column.accessorKey] as React.ReactNode}
                       </td>
                     ))}
                   </tr>

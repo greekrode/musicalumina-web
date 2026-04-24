@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Image } from "@/components/ui/image";
+import { NoteGlyph } from "@/components/ui/wireframe-wave";
 import { JuryModal } from "./JuryModal";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -14,6 +19,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+
+/**
+ * JuryPage — admin management for event jury members.
+ *
+ * Groups jury members by event. Each event is a bordered block with an
+ * editorial heading + Add Member button, and a responsive grid of juror
+ * cards below. Delete requires confirmation via AlertDialog.
+ *
+ * All Supabase wiring + toast feedback preserved.
+ */
 
 type Event = {
   id: string;
@@ -41,32 +57,22 @@ export default function JuryPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      // First fetch all events
       const { data: eventsData, error: eventsError } = await supabase
         .from("events")
-        .select(
-          `
-          id,
-          title
-        `
-        )
+        .select(`id, title`)
         .order("start_date", { ascending: false });
-
       if (eventsError) throw eventsError;
 
-      // Then fetch all jury members
       const { data: juryData, error: juryError } = await supabase
         .from("event_jury")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (juryError) throw juryError;
 
-      // Combine the data
       const eventsWithJury = eventsData.map((event) => ({
         id: event.id,
         title: event.title,
-        jury: juryData.filter((jury) => jury.event_id === event.id) || [],
+        jury: juryData.filter((j) => j.event_id === event.id) || [],
       }));
 
       setEvents(eventsWithJury);
@@ -95,26 +101,22 @@ export default function JuryPage() {
 
   const confirmDelete = async () => {
     if (!juryToDelete) return;
-
     try {
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from("event_jury")
         .delete()
         .eq("id", juryToDelete.id);
-
-      if (error) throw error;
-
+      if (deleteError) throw deleteError;
       toast({
-        title: "Success",
-        description: "Jury member deleted successfully",
+        title: "Deleted",
+        description: "Jury member removed successfully.",
       });
-
       fetchEvents();
     } catch (err) {
       console.error("Error deleting jury member:", err);
       toast({
         title: "Error",
-        description: "Failed to delete jury member",
+        description: "Failed to delete jury member.",
         variant: "destructive",
       });
     } finally {
@@ -125,105 +127,89 @@ export default function JuryPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <NoteGlyph size={32} className="text-marigold animate-pulse" />
+          <p className="type-caption text-ink-muted">Loading jury panels…</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500">Error: {error}</div>
+      <div className="border-l-2 border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] px-6 py-5 max-w-prose">
+        <Eyebrow tone="muted">Error</Eyebrow>
+        <p className="type-body-md text-[color:var(--status-error)] mt-2">
+          {error}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Event Jury Management</h1>
-      </div>
+    <div className="flex flex-col gap-8">
+      {/* Header */}
+      <header className="flex flex-col gap-2">
+        <Eyebrow withRule>Manage · Jury</Eyebrow>
+        <h1 className="type-display-md text-burgundy">Event jury</h1>
+        <p className="type-body-sm text-ink-muted">
+          {events.length} {events.length === 1 ? "event" : "events"} across the
+          calendar.
+        </p>
+      </header>
 
-      {events.map((event) => (
-        <div key={event.id} className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">{event.title}</h2>
-            <Button onClick={() => handleAddJury(event.id)}>
-              Add Jury Member
-            </Button>
-          </div>
-          {event.jury.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {event.jury.map((jury) => (
-                <div
-                  key={jury.id}
-                  className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-center space-x-4">
-                    {jury.avatar_url && (
-                      <img
-                        src={jury.avatar_url}
-                        alt={jury.name}
-                        className="w-16 h-16 rounded-full object-cover"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{jury.name}</h3>
-                      <p className="text-sm text-gray-600">{jury.title}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditJury(jury)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteJury(jury)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                  {jury.description && (
-                    <p
-                      className="mt-2 text-sm text-gray-600"
-                      dangerouslySetInnerHTML={{
-                        __html: jury.description,
-                      }}
-                    ></p>
-                  )}
-                  {jury.credentials && (
-                    <div className="mt-2">
-                      <h4 className="text-sm font-semibold">Credentials:</h4>
-                      <ul className="text-sm text-gray-600">
-                        {Object.entries(
-                          jury.credentials as Record<string, string>
-                        ).map(([key, value]) => (
-                          <li key={key}>
-                            {key}: {value}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+      {/* One block per event */}
+      <div className="flex flex-col gap-6">
+        {events.map((event) => (
+          <section
+            key={event.id}
+            className="bg-surface-elevated border border-rule-hairline"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-5 lg:p-6 border-b border-rule-hairline">
+              <div className="flex flex-col gap-1">
+                <Eyebrow>Event</Eyebrow>
+                <h2 className="type-headline-sm text-burgundy">
+                  {event.title}
+                </h2>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddJury(event.id)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add member
+              </Button>
+            </div>
+
+            <div className="p-5 lg:p-6">
+              {event.jury.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {event.jury.map((jury) => (
+                    <JurorCard
+                      key={jury.id}
+                      jury={jury}
+                      onEdit={() => handleEditJury(jury)}
+                      onDelete={() => handleDeleteJury(jury)}
+                    />
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <Users className="h-6 w-6 text-ink-subtle" aria-hidden />
+                  <p className="type-body-sm text-ink-muted">
+                    No jury members yet.
+                  </p>
+                  <p className="type-caption text-ink-muted">
+                    Use <strong>Add member</strong> to invite one.
+                  </p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="bg-gray-50 rounded-lg p-8 text-center">
-              <p className="text-gray-600">No jury members added yet.</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Click the "Add Jury Member" button to add one.
-              </p>
-            </div>
-          )}
-        </div>
-      ))}
+          </section>
+        ))}
+      </div>
 
       <JuryModal
         isOpen={isModalOpen}
@@ -243,10 +229,10 @@ export default function JuryPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this jury member?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              jury member.
+              This action cannot be undone. The member will be removed from the
+              event permanently.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -258,5 +244,102 @@ export default function JuryPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/* ============================================================================
+   JurorCard
+   ============================================================================ */
+
+function JurorCard({
+  jury,
+  onEdit,
+  onDelete,
+}: {
+  jury: EventJury;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const credentialsEntries =
+    jury.credentials && typeof jury.credentials === "object"
+      ? Object.entries(jury.credentials as Record<string, string>)
+      : [];
+
+  return (
+    <article className="bg-surface-canvas-warm border border-rule-hairline p-4 flex flex-col gap-3">
+      <div className="flex items-start gap-3">
+        {jury.avatar_url ? (
+          <Image
+            src={jury.avatar_url}
+            alt={jury.name}
+            aspect="1/1"
+            containerClassName="w-14 h-14 flex-shrink-0"
+            fit="cover"
+            hideSkeleton
+          />
+        ) : (
+          <div className="w-14 h-14 flex items-center justify-center bg-surface-canvas border border-rule-hairline flex-shrink-0">
+            <NoteGlyph size={20} className="text-marigold/40" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <h3 className="type-title-md text-burgundy truncate">{jury.name}</h3>
+          <p className="type-caption text-ink-accent">{jury.title}</p>
+        </div>
+      </div>
+
+      {jury.description && (
+        <div
+          className="type-caption text-ink-muted line-clamp-3"
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(jury.description) }}
+        />
+      )}
+
+      {credentialsEntries.length > 0 && (
+        <div className="pt-2 border-t border-rule-hairline">
+          <Eyebrow className="mb-1.5 text-[10px]">Credentials</Eyebrow>
+          <ul className="type-caption text-ink-muted space-y-0.5">
+            {credentialsEntries.slice(0, 3).map(([key, value]) => (
+              <li key={key} className="truncate">
+                <span className="text-ink-accent not-italic">{key}:</span>{" "}
+                {String(value)}
+              </li>
+            ))}
+            {credentialsEntries.length > 3 && (
+              <li className="italic">
+                +{credentialsEntries.length - 3} more
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-3 border-t border-rule-hairline">
+        <button
+          type="button"
+          onClick={onEdit}
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-1.5 h-8 type-label",
+            "text-burgundy hover:bg-burgundy/[0.06] transition-colors rounded-sm",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2"
+          )}
+        >
+          <Pencil className="h-3 w-3" />
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-1.5 h-8 type-label",
+            "text-ink-muted hover:text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)] transition-colors rounded-sm",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2"
+          )}
+        >
+          <Trash2 className="h-3 w-3" />
+          Delete
+        </button>
+      </div>
+    </article>
   );
 }

@@ -560,8 +560,7 @@ export class EmailService {
         throw new Error(`Failed to send email: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log("Email sent successfully:", result);
+      await response.json();
     } catch (error) {
       console.error("Error sending email:", error);
       throw error;
@@ -596,8 +595,7 @@ export class EmailService {
         throw new Error(`Failed to send email: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log("Email sent successfully:", result);
+      await response.json();
     } catch (error) {
       console.error("Error sending email:", error);
       throw error;
@@ -632,8 +630,7 @@ export class EmailService {
         throw new Error(`Failed to send email: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log("Email sent successfully:", result);
+      await response.json();
     } catch (error) {
       console.error("Error sending email:", error);
       throw error;

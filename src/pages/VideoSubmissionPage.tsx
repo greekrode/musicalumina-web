@@ -1,10 +1,36 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Loader2,
+  X,
+} from "lucide-react";
 import { useLanguage } from "../lib/LanguageContext";
 import PageTransition from "../components/PageTransition";
 import { LarkService } from "../lib/lark";
+import { Section, Container } from "@/components/ui/section";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { WireframeWave } from "@/components/ui/wireframe-wave";
+import {
+  PageHeader,
+  PageHeaderEyebrow,
+  PageHeaderLede,
+  PageHeaderTitle,
+} from "@/components/ui/page-header";
+import { cn } from "@/lib/utils";
+import { usePageTitle } from "../hooks/usePageTitle";
+
+/* ============================================================================
+   Schema + types — preserved 1:1 from original implementation.
+   ============================================================================ */
 
 function createVideoSubmissionSchema(t: (key: string) => string) {
   return z.object({
@@ -35,8 +61,37 @@ interface ParticipantData {
   recordId: string;
 }
 
+/* ============================================================================
+   Motion primitives — same cadence as the rest of the editorial system.
+   ============================================================================ */
+
+const EASE = [0.19, 1, 0.22, 1] as const;
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } },
+};
+
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.08 },
+  },
+};
+
+
+/* ============================================================================
+   Page
+   ============================================================================ */
+
 export default function VideoSubmissionPage() {
   const { t } = useLanguage();
+  const reduceMotion = useReducedMotion();
+  const initial = reduceMotion ? false : "hidden";
+
+  usePageTitle(t("videoSubmissionForm.title"));
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [participantData, setParticipantData] =
@@ -65,7 +120,7 @@ export default function VideoSubmissionPage() {
 
   const registrationReference = watch("registration_reference");
 
-  // Reset participant data when registration reference changes
+  // Reset participant data when reference changes — preserved.
   useEffect(() => {
     if (!registrationReference || registrationReference.trim() === "") {
       setParticipantData(null);
@@ -106,11 +161,6 @@ export default function VideoSubmissionPage() {
     try {
       setIsSubmitting(true);
 
-      // Debug logging
-      console.log("Submitting with recordId:", participantData.recordId);
-      console.log("Participant data:", participantData);
-
-      // Update video URL in Lark
       await LarkService.updateParticipantVideo(
         participantData.recordId,
         data.video_url,
@@ -123,7 +173,6 @@ export default function VideoSubmissionPage() {
       reset();
       setParticipantData(null);
 
-      // Reset success message after 3 seconds
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (error) {
       console.error("Video submission failed:", error);
@@ -139,352 +188,359 @@ export default function VideoSubmissionPage() {
     }
   };
 
+  const showVideoStep =
+    participantData !== null && !participantData.hasVideoSubmitted;
+  const alreadySubmitted =
+    participantData !== null && participantData.hasVideoSubmitted;
+  const hasReference =
+    registrationReference !== undefined &&
+    registrationReference.trim() !== "";
+
   return (
     <PageTransition>
-      <div className="min-h-screen bg-offWhite pt-32 pb-16 px-6 sm:px-8 lg:px-12">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white shadow-xl rounded-lg p-10 sm:p-16">
-            <div className="text-center mb-10">
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                {t("videoSubmissionForm.title")}
-              </h1>
-              <p className="text-gray-600 text-lg">
-                {t("videoSubmissionForm.description")}
-              </p>
-            </div>
-
-            {submitSuccess && (
-              <div className="rounded-md bg-green-50 p-4 mb-8">
-                <div className="flex">
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">
-                      {t("videoSubmissionForm.successMessage")}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="space-y-8 relative"
+      <div className="bg-surface-canvas">
+        {/* ============================================================
+            HEADER
+            ============================================================ */}
+        <section className="relative overflow-hidden pt-28 md:pt-32 lg:pt-36 pb-10 md:pb-12 lg:pb-16">
+          <WireframeWave opacity={0.04} amplitude={0.7} lines={6} />
+          <Container className="relative">
+            <motion.div
+              variants={reduceMotion ? undefined : stagger}
+              initial={initial}
+              animate="visible"
             >
-              {/* Loading Overlay */}
-              {(isLoadingParticipant || isSubmitting) && (
-                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
-                  <div className="flex flex-col items-center">
-                    <svg
-                      className="animate-spin h-8 w-8 text-marigold mb-2"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    <p className="text-gray-600 text-sm">
-                      {isLoadingParticipant
-                        ? t("videoSubmissionForm.loadingParticipantData")
-                        : t("videoSubmissionForm.submitting")}
+              <PageHeader align="start" className="max-w-3xl">
+                <motion.div variants={fadeUp}>
+                  <PageHeaderEyebrow>{t("pageCopy.videoSubmission.eyebrow")}</PageHeaderEyebrow>
+                </motion.div>
+                <motion.div variants={fadeUp}>
+                  <PageHeaderTitle size="xl">
+                    {t("videoSubmissionForm.title")}
+                  </PageHeaderTitle>
+                </motion.div>
+                <motion.div variants={fadeUp}>
+                  <PageHeaderLede>
+                    {t("videoSubmissionForm.description")}
+                  </PageHeaderLede>
+                </motion.div>
+              </PageHeader>
+            </motion.div>
+          </Container>
+        </section>
+
+        {/* ============================================================
+            FORM
+            ============================================================ */}
+        <Section tone="canvas" pause="md" rule="top">
+          <Container>
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="max-w-2xl mx-auto"
+            >
+              {/* Success banner — appears for 3s after submission */}
+              {submitSuccess && (
+                <StatusBanner kind="success" className="mb-8">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                  {t("videoSubmissionForm.successMessage")}
+                </StatusBanner>
+              )}
+
+              <form
+                onSubmit={handleSubmit(onSubmit)}
+                noValidate
+                className="flex flex-col gap-10"
+              >
+                {/* ─── Step 1: Reference code ─── */}
+                <FormStep label={t("pageCopy.videoSubmission.step1")}>
+                  <div>
+                    <Label variant="editorial" htmlFor="registration_reference">
+                      {t("videoSubmissionForm.referenceCode")}{" "}
+                      <span className="text-[color:var(--status-error)]">
+                        *
+                      </span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        variant="boxed"
+                        id="registration_reference"
+                        type="text"
+                        {...register("registration_reference")}
+                        placeholder={t(
+                          "videoSubmissionForm.referenceCodePlaceholder"
+                        )}
+                        className="pr-10"
+                        required
+                        aria-invalid={
+                          errors.registration_reference ? true : undefined
+                        }
+                      />
+                      {hasReference && (
+                        <button
+                          type="button"
+                          aria-label="Clear reference code"
+                          onClick={() => {
+                            reset({
+                              registration_reference: "",
+                              video_url: "",
+                            });
+                            setParticipantData(null);
+                            setLoadParticipantError(null);
+                          }}
+                          className={cn(
+                            "absolute inset-y-0 right-0 flex items-center pr-3",
+                            "text-ink-muted hover:text-burgundy transition-colors duration-fast",
+                            "focus-visible:outline-none focus-visible:text-burgundy"
+                          )}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {errors.registration_reference && (
+                      <p className="mt-2 type-caption text-[color:var(--status-error)]">
+                        {errors.registration_reference.message}
+                      </p>
+                    )}
+                    <p className="mt-2 type-caption text-ink-muted">
+                      {t("videoSubmissionForm.referenceCodeHelp")}
                     </p>
                   </div>
-                </div>
-              )}
 
-              {errors.root && (
-                <div className="rounded-md bg-red-50 p-4">
-                  <div className="flex">
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">
-                        {errors.root.message}
-                      </h3>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {loadParticipantError && (
-                <div className="rounded-md bg-red-50 p-4">
-                  <div className="flex">
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">
-                        {loadParticipantError}
-                      </h3>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Registration Reference Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  {t("videoSubmissionForm.referenceCode")}{" "}
-                  <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    {...register("registration_reference")}
-                    placeholder={t(
-                      "videoSubmissionForm.referenceCodePlaceholder"
-                    )}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50 py-3 px-4 pr-10 text-base"
-                    required
-                  />
-                  {registrationReference &&
-                    registrationReference.trim() !== "" && (
-                      <button
+                  {/* Load participant button — only when reference entered AND no participant loaded */}
+                  {hasReference && !participantData && (
+                    <div>
+                      <Button
                         type="button"
-                        onClick={() => {
-                          reset({ registration_reference: "", video_url: "" });
-                          setParticipantData(null);
-                          setLoadParticipantError(null);
-                        }}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
-                      >
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                </div>
-                {errors.registration_reference && (
-                  <p className="mt-2 text-sm text-red-600">
-                    {errors.registration_reference.message}
-                  </p>
-                )}
-                <p className="mt-2 text-xs text-gray-500">
-                  {t("videoSubmissionForm.referenceCodeHelp")}
-                </p>
-
-                {/* Load Participant Data Button */}
-                {registrationReference &&
-                  registrationReference.trim() !== "" &&
-                  !participantData && (
-                    <div className="mt-4">
-                      <button
-                        type="button"
+                        variant="elegant"
                         onClick={loadParticipantData}
                         disabled={isLoadingParticipant}
-                        className="flex justify-center items-center py-2 px-4 border border-marigold rounded-md shadow-sm text-sm font-medium text-marigold bg-white hover:bg-marigold hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-marigold disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isLoadingParticipant && (
-                          <svg
-                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         )}
                         {isLoadingParticipant
                           ? t("videoSubmissionForm.loadingParticipantData")
                           : t("videoSubmissionForm.loadParticipantData")}
-                      </button>
+                      </Button>
                     </div>
                   )}
-              </div>
 
-              {/* Participant Data Fields - shown only when data is loaded */}
-              {participantData && (
-                <div className="space-y-6 border-t border-gray-200 pt-8">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Participant Information
-                  </h3>
-
-                  {/* Participant Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      {t("videoSubmissionForm.participantName")}
-                    </label>
-                    <input
-                      type="text"
-                      value={participantData.participantName}
-                      disabled
-                      className="block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 py-3 px-4 text-base text-gray-500"
-                    />
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      {t("videoSubmissionForm.category")}
-                    </label>
-                    <input
-                      type="text"
-                      value={participantData.category}
-                      disabled
-                      className="block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 py-3 px-4 text-base text-gray-500"
-                    />
-                  </div>
-
-                  {/* Sub Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      {t("videoSubmissionForm.subCategory")}
-                    </label>
-                    <input
-                      type="text"
-                      value={participantData.subCategory}
-                      disabled
-                      className="block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 py-3 px-4 text-base text-gray-500"
-                    />
-                  </div>
-
-                  {/* Song Title */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      {t("videoSubmissionForm.songTitle")}
-                    </label>
-                    <input
-                      type="text"
-                      value={participantData.songTitle}
-                      disabled
-                      className="block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 py-3 px-4 text-base text-gray-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Video Already Submitted Warning - shown when video is already submitted */}
-              {participantData && participantData.hasVideoSubmitted && (
-                <div className="rounded-md bg-red-50 p-4 border border-red-200">
-                  <div className="flex">
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800 mb-2">
-                        ⚠️ {t("videoSubmissionForm.unableToSubmit")}
-                      </h3>
-                      <div className="text-sm text-red-700">
-                        <strong>
-                          {t("videoSubmissionForm.existingVideoUrl")}:
-                        </strong>
-                        <br />
-                        <a
-                          href={participantData.existingVideoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline break-all"
-                        >
-                          {participantData.existingVideoUrl}
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Video URL - shown only when participant data is loaded and no video submitted */}
-              {participantData && !participantData.hasVideoSubmitted && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    {t("videoSubmissionForm.videoUrl")}{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    {...register("video_url")}
-                    placeholder={t("videoSubmissionForm.videoUrlPlaceholder")}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50 py-3 px-4 text-base"
-                    required
-                  />
-                  {errors.video_url && (
-                    <p className="mt-2 text-sm text-red-600">
-                      {errors.video_url.message}
-                    </p>
+                  {loadParticipantError && (
+                    <StatusBanner kind="error">
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                      {loadParticipantError}
+                    </StatusBanner>
                   )}
-                  <p className="mt-2 text-xs text-gray-500">
-                    {t("videoSubmissionForm.videoUrlHelp")}
-                  </p>
-                </div>
-              )}
+                </FormStep>
 
-              {/* Warning Box - shown only when participant data is loaded and no video submitted */}
-              {participantData && !participantData.hasVideoSubmitted && (
-                <div className="rounded-md bg-red-50 p-4 border border-red-200">
-                  <div className="flex">
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">
-                        ⚠️ {t("videoSubmissionForm.warningMessage")}
-                      </h3>
+                {/* ─── Step 2: Confirm participant (read-only fields) ─── */}
+                {participantData && (
+                  <FormStep label={t("pageCopy.videoSubmission.step2")}>
+                    <div className="bg-surface-canvas-warm border border-rule-hairline p-6 lg:p-7">
+                      <Eyebrow className="mb-5">
+                        {t("pageCopy.videoSubmission.participantInfoHeading")}
+                      </Eyebrow>
+                      <dl className="flex flex-col gap-4">
+                        <ReadOnlyRow
+                          label={t("videoSubmissionForm.participantName")}
+                          value={participantData.participantName}
+                        />
+                        <ReadOnlyRow
+                          label={t("videoSubmissionForm.category")}
+                          value={participantData.category}
+                        />
+                        <ReadOnlyRow
+                          label={t("videoSubmissionForm.subCategory")}
+                          value={participantData.subCategory}
+                        />
+                        <ReadOnlyRow
+                          label={t("videoSubmissionForm.songTitle")}
+                          value={participantData.songTitle}
+                        />
+                      </dl>
                     </div>
-                  </div>
-                </div>
-              )}
+                  </FormStep>
+                )}
 
-              {/* Submit Button - shown only when participant data is loaded and no video submitted */}
-              {participantData && !participantData.hasVideoSubmitted && (
-                <div className="pt-6">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full flex justify-center items-center py-4 px-6 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-marigold hover:bg-marigold/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-marigold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting && (
-                      <svg
-                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
+                {/* ─── Already submitted state ─── */}
+                {alreadySubmitted && (
+                  <StatusBanner kind="error">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-2">
+                      <span className="type-body-md font-semibold">
+                        {t("videoSubmissionForm.unableToSubmit")}
+                      </span>
+                      {participantData?.existingVideoUrl && (
+                        <div className="flex flex-col gap-1">
+                          <span className="type-label opacity-80">
+                            {t("videoSubmissionForm.existingVideoUrl")}
+                          </span>
+                          <a
+                            href={participantData.existingVideoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                              "type-body-sm underline underline-offset-2 break-all",
+                              "hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current rounded-sm",
+                              "inline-flex items-start gap-1.5"
+                            )}
+                          >
+                            <span className="break-all">
+                              {participantData.existingVideoUrl}
+                            </span>
+                            <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </StatusBanner>
+                )}
+
+                {/* ─── Step 3: Video URL + submit (only when not already submitted) ─── */}
+                {showVideoStep && (
+                  <FormStep label={t("pageCopy.videoSubmission.step3")}>
+                    <div>
+                      <Label variant="editorial" htmlFor="video_url">
+                        {t("videoSubmissionForm.videoUrl")}{" "}
+                        <span className="text-[color:var(--status-error)]">
+                          *
+                        </span>
+                      </Label>
+                      <Input
+                        variant="boxed"
+                        id="video_url"
+                        type="url"
+                        {...register("video_url")}
+                        placeholder={t(
+                          "videoSubmissionForm.videoUrlPlaceholder"
+                        )}
+                        required
+                        aria-invalid={errors.video_url ? true : undefined}
+                      />
+                      {errors.video_url && (
+                        <p className="mt-2 type-caption text-[color:var(--status-error)]">
+                          {errors.video_url.message}
+                        </p>
+                      )}
+                      <p className="mt-2 type-caption text-ink-muted">
+                        {t("videoSubmissionForm.videoUrlHelp")}
+                      </p>
+                    </div>
+
+                    <StatusBanner kind="warn">
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <span className="type-body-sm">
+                        {t("videoSubmissionForm.warningMessage")}
+                      </span>
+                    </StatusBanner>
+
+                    {errors.root && (
+                      <StatusBanner kind="error">
+                        <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                        {errors.root.message}
+                      </StatusBanner>
                     )}
-                    {isSubmitting
-                      ? t("videoSubmissionForm.submitting")
-                      : t("videoSubmissionForm.submit")}
-                  </button>
-                </div>
-              )}
-            </form>
-          </div>
-        </div>
+
+                    <Button
+                      type="submit"
+                      size="lg"
+                      disabled={isSubmitting}
+                      className="w-full"
+                    >
+                      {isSubmitting && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+                      {isSubmitting
+                        ? t("videoSubmissionForm.submitting")
+                        : t("videoSubmissionForm.submit")}
+                    </Button>
+                  </FormStep>
+                )}
+              </form>
+            </motion.div>
+          </Container>
+        </Section>
       </div>
     </PageTransition>
+  );
+}
+
+/* ============================================================================
+   FormStep — wraps each step in an eyebrow-labelled block. Cascades in with
+   a soft fade so newly-revealed steps feel intentional.
+   ============================================================================ */
+
+function FormStep({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: EASE }}
+      className="flex flex-col gap-5"
+    >
+      <Eyebrow withRule>{label}</Eyebrow>
+      {children}
+    </motion.div>
+  );
+}
+
+/* ============================================================================
+   ReadOnlyRow — displays loaded participant data as a definition row.
+   ============================================================================ */
+
+function ReadOnlyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1 sm:gap-4 items-baseline">
+      <dt className="type-label text-ink-muted">{label}</dt>
+      <dd className="type-body-md text-burgundy">{value || "—"}</dd>
+    </div>
+  );
+}
+
+/* ============================================================================
+   StatusBanner — semantic status block (success / error / warn) using the
+   design system's status tokens. Replaces the original `bg-red-50` /
+   `bg-green-50` ad-hoc utility classes.
+   ============================================================================ */
+
+function StatusBanner({
+  kind,
+  children,
+  className,
+}: {
+  kind: "success" | "error" | "warn";
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const palette =
+    kind === "success"
+      ? "border-[color:var(--status-open)] bg-[color:var(--status-open-bg)] text-[color:var(--status-open)]"
+      : kind === "warn"
+        ? "border-[color:var(--status-upcoming)] bg-[color:var(--status-upcoming-bg)] text-[color:var(--status-upcoming)]"
+        : "border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)]";
+
+  return (
+    <div
+      role="status"
+      className={cn(
+        "border-l-2 px-5 py-4",
+        "flex items-start gap-3",
+        "type-body-sm",
+        palette,
+        className
+      )}
+    >
+      {children}
+    </div>
   );
 }

@@ -1,5 +1,10 @@
+import { useCallback, useEffect, useState } from "react";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { CheckCircle2, Eye, FileText, XCircle } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
+import { Badge, type BadgeStatus } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,9 +16,12 @@ import {
 } from "@/components/ui/sheet";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { cn } from "@/lib/utils";
+
+/* ============================================================================
+   Types — preserved 1:1.
+   ============================================================================ */
 
 type Registration = {
   id: string;
@@ -38,21 +46,31 @@ type Registration = {
   created_at: string;
 };
 
-type Event = {
-  id: string;
-  title: string;
-};
-
+type Event = { id: string; title: string };
+type Subcategory = { id: string; name: string };
 type Category = {
   id: string;
   name: string;
   event_subcategories: Subcategory[];
 };
 
-type Subcategory = {
-  id: string;
-  name: string;
-};
+/* ============================================================================
+   Shared editorial classes
+   ============================================================================ */
+
+const SELECT_CLASSES = [
+  "w-full h-11 px-3 py-2 rounded-sm border border-burgundy/20 bg-surface-elevated",
+  "font-sans text-body-sm text-ink-body",
+  "transition-[border-color,background-color,box-shadow] duration-fast ease-out-quart",
+  "hover:border-burgundy/40",
+  "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
+  "appearance-none bg-no-repeat bg-[right_0.75rem_center] pr-10",
+  "bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 12 12%22 fill=%22none%22 stroke=%22%23491822%22 stroke-width=%221.5%22><path d=%22M3 5l3 3 3-3%22/></svg>')]",
+].join(" ");
+
+/* ============================================================================
+   Page
+   ============================================================================ */
 
 export default function AdminRegistrations() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -60,8 +78,7 @@ export default function AdminRegistrations() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  const [selectedSubcategoryId, setSelectedSubcategoryId] =
-    useState<string>("");
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRegistration, setSelectedRegistration] =
     useState<Registration | null>(null);
@@ -71,42 +88,23 @@ export default function AdminRegistrations() {
   } | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    if (selectedEventId) {
-      fetchCategories();
-      setSelectedCategoryId("");
-      setSelectedSubcategoryId("");
-    } else {
-      setCategories([]);
-    }
-  }, [selectedEventId]);
-
-  useEffect(() => {
-    fetchRegistrations();
-  }, [selectedEventId, selectedCategoryId, selectedSubcategoryId]);
-
-  async function fetchEvents() {
+  const fetchEvents = useCallback(async () => {
     try {
-      const { data: eventsData, error: eventsError } = await supabase
+      const { data, error } = await supabase
         .from("events")
         .select("id, title")
         .order("created_at", { ascending: false });
-
-      if (eventsError) throw eventsError;
-      setEvents(eventsData || []);
+      if (error) throw error;
+      setEvents(data || []);
     } catch (error) {
       console.error("Error fetching events:", error);
       toast.error("Failed to load events");
     }
-  }
+  }, []);
 
-  async function fetchCategories() {
+  const fetchCategories = useCallback(async () => {
     try {
-      const { data: categoriesData, error: categoriesError } = await supabase
+      const { data, error } = await supabase
         .from("event_categories")
         .select(
           `
@@ -120,20 +118,17 @@ export default function AdminRegistrations() {
         )
         .eq("event_id", selectedEventId)
         .order("name");
-
-      if (categoriesError) throw categoriesError;
-      setCategories(categoriesData || []);
+      if (error) throw error;
+      setCategories(data || []);
     } catch (error) {
       console.error("Error fetching categories:", error);
       toast.error("Failed to load categories");
     }
-  }
+  }, [selectedEventId]);
 
-  async function fetchRegistrations() {
+  const fetchRegistrations = useCallback(async () => {
     try {
       setIsLoading(true);
-
-      // Don't fetch if no event is selected
       if (!selectedEventId) {
         setRegistrations([]);
         return;
@@ -145,15 +140,9 @@ export default function AdminRegistrations() {
           `
           id,
           event_id,
-          events!inner (
-            title
-          ),
-          event_categories!inner (
-            name
-          ),
-          event_subcategories!inner (
-            name
-          ),
+          events!inner ( title ),
+          event_categories!inner ( name ),
+          event_subcategories!inner ( name ),
           registrant_name,
           registrant_whatsapp,
           registrant_email,
@@ -174,24 +163,20 @@ export default function AdminRegistrations() {
         .eq("event_id", selectedEventId)
         .order("created_at", { ascending: false });
 
-      if (selectedCategoryId) {
-        query = query.eq("category_id", selectedCategoryId);
-      }
-
-      if (selectedSubcategoryId) {
+      if (selectedCategoryId) query = query.eq("category_id", selectedCategoryId);
+      if (selectedSubcategoryId)
         query = query.eq("subcategory_id", selectedSubcategoryId);
-      }
 
-      const { data: eventsData, error: eventsError } = await query;
+      const { data, error } = await query;
+      if (error) throw error;
 
-      if (eventsError) throw eventsError;
-
-      if (!eventsData) {
+      if (!data) {
         setRegistrations([]);
         return;
       }
 
-      const formattedData: Registration[] = eventsData.map((reg: any) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase nested join response; properly typing the shape is a separate refactor
+      const formatted: Registration[] = data.map((reg: any) => ({
         id: reg.id,
         event_id: reg.event_id,
         event_title: reg.events.title,
@@ -214,14 +199,32 @@ export default function AdminRegistrations() {
         created_at: reg.created_at,
       }));
 
-      setRegistrations(formattedData);
+      setRegistrations(formatted);
     } catch (error) {
       console.error("Error fetching registrations:", error);
       toast.error("Failed to load registrations");
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [selectedEventId, selectedCategoryId, selectedSubcategoryId]);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      fetchCategories();
+      setSelectedCategoryId("");
+      setSelectedSubcategoryId("");
+    } else {
+      setCategories([]);
+    }
+  }, [selectedEventId, fetchCategories]);
+
+  useEffect(() => {
+    fetchRegistrations();
+  }, [fetchRegistrations]);
 
   async function handleStatusChange(
     id: string,
@@ -232,13 +235,10 @@ export default function AdminRegistrations() {
         .from("registrations")
         .update({ status: newStatus })
         .eq("id", id);
-
       if (error) throw error;
-
       setRegistrations((prev) =>
         prev.map((reg) => (reg.id === id ? { ...reg, status: newStatus } : reg))
       );
-
       toast.success(`Registration ${newStatus} successfully`);
     } catch (error) {
       console.error("Error updating registration:", error);
@@ -251,18 +251,33 @@ export default function AdminRegistrations() {
     setSelectedDocument({ url, type: fileType });
   };
 
+  /* ───── Columns ───── */
+
   const columns = [
     {
       header: "Category",
       accessorKey: "category_name",
+      cell: (row: Registration) => (
+        <span className="type-body-sm text-ink-body">{row.category_name}</span>
+      ),
     },
     {
       header: "Subcategory",
       accessorKey: "subcategory_name",
+      cell: (row: Registration) => (
+        <span className="type-body-sm text-ink-muted">
+          {row.subcategory_name}
+        </span>
+      ),
     },
     {
       header: "Participant",
       accessorKey: "participant_name",
+      cell: (row: Registration) => (
+        <span className="type-body-sm text-burgundy font-medium">
+          {row.participant_name}
+        </span>
+      ),
     },
     ...(!isMobile
       ? [
@@ -270,76 +285,65 @@ export default function AdminRegistrations() {
             header: "Registrant",
             accessorKey: "registrant_name",
             cell: (row: Registration) => (
-              <div>
-                <div className="font-medium">{row.registrant_name}</div>
-                <div className="text-sm text-gray-500">
+              <div className="flex flex-col gap-0.5">
+                <span className="type-body-sm text-burgundy">
+                  {row.registrant_name}
+                </span>
+                <span className="type-caption text-ink-muted">
                   {row.registrant_whatsapp}
-                </div>
+                </span>
               </div>
             ),
           },
           {
             header: "Status",
             accessorKey: "status",
-            cell: (row: Registration) => (
-              <div
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  row.status === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : row.status === "approved"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {row.status}
-              </div>
-            ),
+            cell: (row: Registration) => <StatusBadge status={row.status} />,
           },
           {
             header: "Actions",
             accessorKey: "id",
             cell: (row: Registration) => (
-              <div className="flex space-x-2">
-                <Button
-                  variant="elegant"
-                  size="sm"
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="View details"
                   onClick={() => setSelectedRegistration(row)}
+                  className="h-8 w-8 flex items-center justify-center rounded-sm text-ink-muted hover:text-burgundy hover:bg-surface-canvas-warm transition-colors"
                 >
-                  View Details
-                </Button>
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
                 {row.status === "pending" && (
                   <>
-                    <Button
-                      variant="elegant"
-                      size="sm"
+                    <button
+                      type="button"
+                      aria-label="Approve"
                       onClick={() => handleStatusChange(row.id, "approved")}
-                      className="!border-green-600 !text-green-600 hover:!bg-green-600 hover:!text-white"
+                      className="h-8 w-8 flex items-center justify-center rounded-sm text-ink-muted hover:text-[color:var(--status-open)] hover:bg-[color:var(--status-open-bg)] transition-colors"
                     >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="elegant"
-                      size="sm"
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Reject"
                       onClick={() => handleStatusChange(row.id, "rejected")}
-                      className="!border-red-600 !text-red-600 hover:!bg-red-600 hover:!text-white"
+                      className="h-8 w-8 flex items-center justify-center rounded-sm text-ink-muted hover:text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)] transition-colors"
                     >
-                      Reject
-                    </Button>
+                      <XCircle className="h-3.5 w-3.5" />
+                    </button>
                   </>
                 )}
               </div>
             ),
           },
         ]
-      : []),
-    ...(isMobile
-      ? [
+      : [
           {
             header: "Actions",
             accessorKey: "id",
             cell: (row: Registration) => (
               <Button
-                variant="elegant"
+                variant="outline"
                 size="sm"
                 onClick={() => setSelectedRegistration(row)}
               >
@@ -347,27 +351,36 @@ export default function AdminRegistrations() {
               </Button>
             ),
           },
-        ]
-      : []),
+        ]),
   ].filter(Boolean);
+
+  const selectedCategory = categories.find(
+    (cat) => cat.id === selectedCategoryId
+  );
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Registrations
-          </h1>
-        </div>
+      <div className="flex flex-col gap-8">
+        {/* Header */}
+        <header className="flex flex-col gap-2">
+          <Eyebrow withRule>Manage · Registrations</Eyebrow>
+          <h1 className="type-display-md text-burgundy">Registrations</h1>
+          <p className="type-body-sm text-ink-muted">
+            Review and approve participant submissions per event.
+          </p>
+        </header>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {/* Filters */}
+        <div className="flex flex-col gap-4 p-5 lg:p-6 bg-surface-elevated border border-rule-hairline">
+          <Eyebrow withRule>Filters</Eyebrow>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marigold focus:border-marigold"
+              className={SELECT_CLASSES}
+              aria-label="Filter by event"
             >
-              <option value="">Select Event</option>
+              <option value="">Select event</option>
               {events.map((event) => (
                 <option key={event.id} value={event.id}>
                   {event.title}
@@ -376,48 +389,52 @@ export default function AdminRegistrations() {
             </select>
 
             {selectedEventId && (
-              <>
-                <select
-                  value={selectedCategoryId}
-                  onChange={(e) => {
-                    setSelectedCategoryId(e.target.value);
-                    setSelectedSubcategoryId("");
-                  }}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marigold focus:border-marigold"
-                >
-                  <option value="">All Categories</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+              <select
+                value={selectedCategoryId}
+                onChange={(e) => {
+                  setSelectedCategoryId(e.target.value);
+                  setSelectedSubcategoryId("");
+                }}
+                className={SELECT_CLASSES}
+                aria-label="Filter by category"
+              >
+                <option value="">All categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            )}
 
-                {selectedCategoryId && (
-                  <select
-                    value={selectedSubcategoryId}
-                    onChange={(e) => setSelectedSubcategoryId(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marigold focus:border-marigold"
-                  >
-                    <option value="">All Subcategories</option>
-                    {categories
-                      .find((cat) => cat.id === selectedCategoryId)
-                      ?.event_subcategories.map((subcategory) => (
-                        <option key={subcategory.id} value={subcategory.id}>
-                          {subcategory.name}
-                        </option>
-                      ))}
-                  </select>
-                )}
-              </>
+            {selectedCategoryId && selectedCategory && (
+              <select
+                value={selectedSubcategoryId}
+                onChange={(e) => setSelectedSubcategoryId(e.target.value)}
+                className={SELECT_CLASSES}
+                aria-label="Filter by subcategory"
+              >
+                <option value="">All subcategories</option>
+                {selectedCategory.event_subcategories.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
+        </div>
 
-          {!selectedEventId ? (
-            <div className="text-center py-12 text-gray-500">
-              Please select an event to view registrations
-            </div>
-          ) : (
+        {/* Table / empty state */}
+        {!selectedEventId ? (
+          <div className="bg-surface-elevated border border-rule-hairline p-10 text-center">
+            <Eyebrow className="mb-2">Start here</Eyebrow>
+            <p className="type-body-md text-ink-muted">
+              Select an event above to view its registrations.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-surface-elevated border border-rule-hairline overflow-hidden">
             <DataTable
               data={registrations}
               columns={columns}
@@ -425,30 +442,34 @@ export default function AdminRegistrations() {
               searchKey="participant_name"
               pageSize={10}
             />
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Registration Details View - Desktop Slider */}
+        {/* Desktop detail sheet */}
         {!isMobile && (
           <Sheet
             open={!!selectedRegistration}
             onOpenChange={() => setSelectedRegistration(null)}
           >
-            <SheetContent className="w-[600px] sm:max-w-[600px] bg-white border-l shadow-2xl animate-slide-in">
+            <SheetContent className="w-[600px] sm:max-w-[600px] bg-surface-elevated border-l border-rule-hairline p-0">
               {selectedRegistration && (
                 <>
-                  <SheetHeader>
-                    <SheetTitle>Registration Details</SheetTitle>
+                  <SheetHeader className="px-6 py-5 border-b border-rule-hairline">
+                    <SheetTitle className="type-headline-md text-burgundy">
+                      Registration details
+                    </SheetTitle>
                   </SheetHeader>
-                  <ScrollArea className="h-[calc(100vh-80px)] pr-4">
-                    <RegistrationDetails
-                      registration={selectedRegistration}
-                      onStatusChange={(status) => {
-                        handleStatusChange(selectedRegistration.id, status);
-                        setSelectedRegistration(null);
-                      }}
-                      handleDocumentView={handleDocumentView}
-                    />
+                  <ScrollArea className="h-[calc(100vh-80px)]">
+                    <div className="px-6 py-6">
+                      <RegistrationDetails
+                        registration={selectedRegistration}
+                        onStatusChange={(status) => {
+                          handleStatusChange(selectedRegistration.id, status);
+                          setSelectedRegistration(null);
+                        }}
+                        handleDocumentView={handleDocumentView}
+                      />
+                    </div>
                   </ScrollArea>
                 </>
               )}
@@ -456,16 +477,18 @@ export default function AdminRegistrations() {
           </Sheet>
         )}
 
-        {/* Registration Details View - Mobile Modal */}
+        {/* Mobile detail dialog */}
         {isMobile && (
           <Dialog
             open={!!selectedRegistration}
             onOpenChange={() => setSelectedRegistration(null)}
           >
-            <DialogContent className="w-[95vw] max-h-[90vh] overflow-auto p-6 bg-white">
+            <DialogContent className="w-[95vw] max-h-[90vh] overflow-auto p-6 bg-surface-elevated border border-rule-hairline">
               {selectedRegistration && (
                 <>
-                  <DialogTitle>Registration Details</DialogTitle>
+                  <DialogTitle className="type-headline-md text-burgundy mb-4">
+                    Registration details
+                  </DialogTitle>
                   <RegistrationDetails
                     registration={selectedRegistration}
                     onStatusChange={(status) => {
@@ -480,19 +503,20 @@ export default function AdminRegistrations() {
           </Dialog>
         )}
 
+        {/* Document viewer */}
         <Dialog
           open={!!selectedDocument}
           onOpenChange={() => setSelectedDocument(null)}
         >
-          <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-0 overflow-hidden">
+          <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-0 overflow-hidden border border-rule-hairline">
             {selectedDocument?.type === "pdf" ? (
               <iframe
                 src={selectedDocument.url}
                 className="w-full h-full"
-                title="Document Viewer"
+                title="Document viewer"
               />
             ) : (
-              <div className="w-full h-full overflow-auto">
+              <div className="w-full h-full overflow-auto bg-surface-canvas-warm">
                 <img
                   src={selectedDocument?.url}
                   alt="Document"
@@ -507,6 +531,28 @@ export default function AdminRegistrations() {
   );
 }
 
+/* ============================================================================
+   StatusBadge — wraps the design-system Badge with registration-specific
+   status mapping.
+   ============================================================================ */
+
+function StatusBadge({ status }: { status: Registration["status"] }) {
+  const mapping: Record<Registration["status"], BadgeStatus> = {
+    pending: "upcoming",
+    approved: "open",
+    rejected: "error",
+  };
+  return (
+    <Badge status={mapping[status]} dot size="sm">
+      {status}
+    </Badge>
+  );
+}
+
+/* ============================================================================
+   RegistrationDetails — editorial definition-list layout.
+   ============================================================================ */
+
 interface RegistrationDetailsProps {
   registration: Registration;
   onStatusChange: (status: Registration["status"]) => void;
@@ -519,163 +565,164 @@ function RegistrationDetails({
   handleDocumentView,
 }: RegistrationDetailsProps) {
   return (
-    <div className="space-y-6 py-6">
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Event Information</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-500">Event</div>
-            <div>{registration.event_title}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">Category</div>
-            <div>{registration.category_name}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">Subcategory</div>
-            <div>{registration.subcategory_name}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">
-              Registration Date
-            </div>
-            <div>{format(new Date(registration.created_at), "PPP")}</div>
-          </div>
-        </div>
+    <div className="flex flex-col gap-7">
+      <DetailSection label="Event">
+        <DetailRow label="Event" value={registration.event_title} />
+        <DetailRow label="Category" value={registration.category_name} />
+        <DetailRow label="Subcategory" value={registration.subcategory_name} />
+        <DetailRow
+          label="Registered"
+          value={format(new Date(registration.created_at), "PPP")}
+        />
+      </DetailSection>
+
+      <DetailSection label="Registrant">
+        <DetailRow label="Name" value={registration.registrant_name} />
+        <DetailRow
+          label="Status"
+          value={
+            <span className="capitalize">{registration.registrant_status}</span>
+          }
+        />
+        <DetailRow label="WhatsApp" value={registration.registrant_whatsapp} />
+        <DetailRow label="Email" value={registration.registrant_email} />
+      </DetailSection>
+
+      <DetailSection label="Participant">
+        <DetailRow label="Name" value={registration.participant_name} />
+        {registration.song_title && (
+          <DetailRow label="Song title" value={registration.song_title} />
+        )}
+        {registration.song_duration && (
+          <DetailRow label="Duration" value={registration.song_duration} />
+        )}
+      </DetailSection>
+
+      <DetailSection label="Documents">
+        <DocumentRow
+          label="Birth certificate"
+          onClick={() => handleDocumentView(registration.birth_certificate_url)}
+        />
+        {registration.song_pdf_url && (
+          <DocumentRow
+            label="Song PDF"
+            onClick={() =>
+              handleDocumentView(registration.song_pdf_url as string)
+            }
+          />
+        )}
+      </DetailSection>
+
+      <DetailSection label="Payment">
+        <DetailRow label="Bank" value={registration.bank_name} />
+        <DetailRow label="Account name" value={registration.bank_account_name} />
+        <DetailRow
+          label="Account number"
+          value={registration.bank_account_number}
+        />
+        <DocumentRow
+          label="Payment receipt"
+          onClick={() => handleDocumentView(registration.payment_receipt_url)}
+        />
+      </DetailSection>
+
+      {/* Status marker */}
+      <div className="flex items-center justify-between pt-5 border-t border-rule-hairline">
+        <Eyebrow>Current status</Eyebrow>
+        <StatusBadge status={registration.status} />
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Registrant Information</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-500">Name</div>
-            <div>{registration.registrant_name}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">Status</div>
-            <div className="capitalize">{registration.registrant_status}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">WhatsApp</div>
-            <div>{registration.registrant_whatsapp}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">Email</div>
-            <div>{registration.registrant_email}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Participant Information</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-500">Name</div>
-            <div>{registration.participant_name}</div>
-          </div>
-          {registration.song_title && (
-            <div>
-              <div className="text-sm font-medium text-gray-500">
-                Song Title
-              </div>
-              <div>{registration.song_title}</div>
-            </div>
-          )}
-          {registration.song_duration && (
-            <div>
-              <div className="text-sm font-medium text-gray-500">Duration</div>
-              <div>{registration.song_duration}</div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Documents</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-500">
-              Birth Certificate
-            </div>
-            <Button
-              variant="link"
-              className="p-0 h-auto"
-              onClick={() =>
-                handleDocumentView(registration.birth_certificate_url)
-              }
-            >
-              View Document
-            </Button>
-          </div>
-          {registration.song_pdf_url && (
-            <div>
-              <div className="text-sm font-medium text-gray-500">Song PDF</div>
-              <Button
-                variant="link"
-                className="p-0 h-auto"
-                onClick={() => handleDocumentView(registration.song_pdf_url!)}
-              >
-                View Document
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Payment Information</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-500">Bank Name</div>
-            <div>{registration.bank_name}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">
-              Account Name
-            </div>
-            <div>{registration.bank_account_name}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">
-              Account Number
-            </div>
-            <div>{registration.bank_account_number}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-500">
-              Payment Receipt
-            </div>
-            <Button
-              variant="link"
-              className="p-0 h-auto"
-              onClick={() =>
-                handleDocumentView(registration.payment_receipt_url)
-              }
-            >
-              View Receipt
-            </Button>
-          </div>
-        </div>
-      </div>
-
+      {/* Actions */}
       {registration.status === "pending" && (
-        <div className="flex space-x-2 pt-4">
-          <Button
-            variant="elegant"
-            className="!border-green-600 !text-green-600 hover:!bg-green-600 hover:!text-white"
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
             onClick={() => onStatusChange("approved")}
+            className={cn(
+              "flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-sm",
+              "bg-[color:var(--status-open-bg)] text-[color:var(--status-open)] border border-[color:var(--status-open)]/30",
+              "hover:bg-[color:var(--status-open)] hover:text-offWhite transition-colors",
+              "type-label"
+            )}
           >
-            Approve Registration
-          </Button>
-          <Button
-            variant="elegant"
-            className="!border-red-600 !text-red-600 hover:!bg-red-600 hover:!text-white"
+            <CheckCircle2 className="h-4 w-4" />
+            Approve
+          </button>
+          <button
+            type="button"
             onClick={() => onStatusChange("rejected")}
+            className={cn(
+              "flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-sm",
+              "bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border border-[color:var(--status-error)]/30",
+              "hover:bg-[color:var(--status-error)] hover:text-offWhite transition-colors",
+              "type-label"
+            )}
           >
-            Reject Registration
-          </Button>
+            <XCircle className="h-4 w-4" />
+            Reject
+          </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function DetailSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <Eyebrow withRule>{label}</Eyebrow>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+        {children}
+      </dl>
+    </section>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <dt className="type-label text-ink-muted">{label}</dt>
+      <dd className="type-body-sm text-burgundy break-words">{value}</dd>
+    </div>
+  );
+}
+
+function DocumentRow({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <dt className="type-label text-ink-muted">{label}</dt>
+      <dd>
+        <button
+          type="button"
+          onClick={onClick}
+          className={cn(
+            "inline-flex items-center gap-2 type-body-sm text-burgundy",
+            "hover:text-marigold transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold rounded-sm"
+          )}
+        >
+          <FileText className="h-3.5 w-3.5" />
+          View document
+        </button>
+      </dd>
     </div>
   );
 }

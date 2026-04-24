@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Mail, Phone, Youtube } from "lucide-react";
+import { Instagram, Mail, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/ML-LogoColor.png";
 import lomlOneLogo from "../assets/loml_1.png";
@@ -6,6 +6,51 @@ import lomlTwoLogo from "../assets/loml_2.png";
 import gopcLogo from "../assets/gopc.png";
 import vipcfLogo from "../assets/vipcf.png";
 import { useLanguage } from "../lib/LanguageContext";
+import { WireframeWave } from "@/components/ui/wireframe-wave";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { cn } from "@/lib/utils";
+
+/**
+ * Footer — Musical Lumina
+ *
+ * Edge-to-edge layout with no inner container cap. Tightened vertical rhythm
+ * (~half the height of the previous pass), centered copyright, "Musica Lumina"
+ * rendered as the proper two-word brand mark. The "Crafted with care · Jakarta"
+ * colophon was removed.
+ */
+
+interface PartnerLogo {
+  key: string;
+  src: string;
+  alt: string;
+  href?: string;
+}
+
+const PARTNERS: readonly PartnerLogo[] = [
+  {
+    key: "loml-1",
+    src: lomlOneLogo,
+    alt: "London Overseas Musician League",
+    href: "http://loml.org.uk/",
+  },
+  {
+    key: "loml-2",
+    src: lomlTwoLogo,
+    alt: "London Overseas Musician League",
+    href: "http://loml.org.uk/",
+  },
+  {
+    key: "gopc",
+    src: gopcLogo,
+    alt: "Grand Opus International Piano Competition",
+    href: "https://gopc.vn/en",
+  },
+  {
+    key: "vipcf",
+    src: vipcfLogo,
+    alt: "Vietnam International Piano Competition & Festival",
+  },
+];
 
 function Footer() {
   const navigate = useNavigate();
@@ -16,155 +61,185 @@ function Footer() {
     navigate(path);
   };
 
+  const quickLinks = [
+    { path: "/", key: "footer.home" },
+    { path: "/events", key: "footer.events" },
+    { path: "/about", key: "footer.about" },
+    { path: "/contact", key: "footer.contact" },
+  ];
+
   return (
-    <footer className="bg-charcoal text-offWhite py-12 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-3 gap-8">
-          <div>
-            <div className="flex items-center space-x-2 mb-4 hover-scale">
-              <img src={logo} alt="MusicaLumina Logo" className="h-12 w-auto" />
+    <footer className="relative bg-[color:var(--surface-inverse)] text-offWhite overflow-hidden mt-auto">
+      {/* Atmospheric wave backdrop */}
+      <WireframeWave color="#E2A225" opacity={0.04} amplitude={0.6} lines={5} />
+
+      {/* Top hairline accent — marigold gradient line */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-marigold/40 to-transparent"
+      />
+
+      {/* Edge-to-edge container — no max-w cap, just direct viewport padding */}
+      <div className="relative px-6 sm:px-10 lg:px-16 pt-12 lg:pt-14 pb-6">
+        {/* ============ Top row — brand + quick links + contact ============ */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-y-10 md:gap-x-12 lg:gap-x-16 mb-10 lg:mb-12">
+          {/* Brand column — logo asset already contains the wordmark.
+              `items-start` opts children out of the flex container's default
+              `stretch` so the wide MUSICA · harp · LUMINA mark renders at
+              its natural aspect instead of getting stretched to column width. */}
+          <div className="md:col-span-5 flex flex-col items-start gap-4">
+            <img
+              src={logo}
+              alt="Musica Lumina"
+              loading="lazy"
+              decoding="async"
+              className="block h-12 w-auto max-w-[260px] brightness-0 invert"
+            />
+            <p className="type-body-sm text-offWhite/65 max-w-md text-pretty">
+              An editorial home for musical events, masterclasses, and group
+              classes — curated for musicians who care about craft.
+            </p>
+            <div className="pt-1">
+              <LanguageSwitcher inverse />
             </div>
-            <p className="text-sm text-offWhite/80 font-light"></p>
           </div>
-          <div>
-            <h2 className="text-2xl font-playfair mb-4 text-offWhite/90">
+
+          {/* Quick links */}
+          <nav aria-label="Footer navigation" className="md:col-span-3">
+            <span className="type-label text-marigold flex items-center gap-3 mb-4">
+              <span aria-hidden className="inline-block h-px w-5 bg-marigold" />
               {t("footer.quickLinks")}
-            </h2>
-            <ul className="space-y-2">
+            </span>
+            <ul className="flex flex-col gap-2.5">
+              {quickLinks.map(({ path, key }) => (
+                <li key={path}>
+                  <a
+                    href="#"
+                    onClick={handleNavigation(path)}
+                    className={cn(
+                      "font-serif text-body-md text-offWhite/85",
+                      "transition-colors duration-fast ease-out-quart hover:text-marigold",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold rounded-sm"
+                    )}
+                  >
+                    {t(key)}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Contact */}
+          <div className="md:col-span-4">
+            <span className="type-label text-marigold flex items-center gap-3 mb-4">
+              <span aria-hidden className="inline-block h-px w-5 bg-marigold" />
+              {t("footer.contactUs")}
+            </span>
+            <ul className="flex flex-col gap-2.5">
               <li>
                 <a
-                  href="#"
-                  onClick={handleNavigation("/")}
-                  className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
+                  href="mailto:contact@musicalumina.com"
+                  className={cn(
+                    "inline-flex items-center gap-2.5 font-sans text-body-sm text-offWhite/85",
+                    "transition-colors duration-fast ease-out-quart hover:text-marigold",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold rounded-sm"
+                  )}
                 >
-                  {t("footer.home")}
+                  <Mail className="h-3.5 w-3.5 flex-shrink-0 text-marigold/80" />
+                  contact@musicalumina.com
                 </a>
               </li>
               <li>
                 <a
-                  href="#"
-                  onClick={handleNavigation("/events")}
-                  className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
+                  href="https://wa.me/628211720765"
+                  className={cn(
+                    "inline-flex items-center gap-2.5 font-sans text-body-sm text-offWhite/85",
+                    "transition-colors duration-fast ease-out-quart hover:text-marigold",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold rounded-sm"
+                  )}
                 >
-                  {t("footer.events")}
+                  <Phone className="h-3.5 w-3.5 flex-shrink-0 text-marigold/80" />
+                  +62 821 1720 765
                 </a>
               </li>
               <li>
                 <a
-                  href="#"
-                  onClick={handleNavigation("/about")}
-                  className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
+                  href="https://www.instagram.com/musicalumina/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "inline-flex items-center gap-2.5 font-sans text-body-sm text-offWhite/85",
+                    "transition-colors duration-fast ease-out-quart hover:text-marigold",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold rounded-sm"
+                  )}
                 >
-                  {t("footer.about")}
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  onClick={handleNavigation("/contact")}
-                  className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
-                >
-                  {t("footer.contact")}
+                  <Instagram className="h-3.5 w-3.5 flex-shrink-0 text-marigold/80" />
+                  @musicalumina
                 </a>
               </li>
             </ul>
           </div>
-          <div>
-            <h3 className="text-2xl font-playfair mb-4 text-offWhite/80">
-              {t("footer.contactUs")}
-            </h3>
-            <div className="flex space-x-6">
-              <a
-                href="https://www.instagram.com/musicalumina/"
-                className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
-                aria-label="Instagram"
-              >
-                <Instagram className="h-6 w-6" />
-              </a>
-              <a
-                href="https://wa.me/628211720765"
-                className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
-                aria-label="WhatsApp"
-              >
-                <Phone className="h-6 w-6" />
-              </a>
-              <a
-                href="mailto:contact@musicalumina.com"
-                className="text-offWhite/80 hover:text-marigold transition-colors duration-300"
-                aria-label="Email"
-              >
-                <Mail className="h-6 w-6" />
-              </a>
+        </div>
+
+        {/* ============ Partners row — centered, stacked ============ */}
+        <div className="border-t border-offWhite/10 pt-7 pb-7">
+          <div className="flex flex-col items-center gap-6">
+            <span className="type-label text-marigold flex items-center gap-3">
+              <span aria-hidden className="inline-block h-px w-6 bg-marigold" />
+              {t("footer.partners")}
+              <span aria-hidden className="inline-block h-px w-6 bg-marigold" />
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-7 lg:gap-10">
+              {PARTNERS.map((partner) => {
+                const tile = (
+                  <div
+                    className={cn(
+                      "h-12 lg:h-14 flex items-center justify-center px-2",
+                      "opacity-70 transition-opacity duration-fast ease-out-quart",
+                      partner.href && "group-hover:opacity-100"
+                    )}
+                  >
+                    <img
+                      src={partner.src}
+                      alt={partner.alt}
+                      className="max-h-full w-auto max-w-[110px] lg:max-w-[140px] object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                );
+
+                return partner.href ? (
+                  <a
+                    key={partner.key}
+                    href={partner.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "group block",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-inverse)]"
+                    )}
+                  >
+                    {tile}
+                  </a>
+                ) : (
+                  <div key={partner.key} className="group">
+                    {tile}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
-      </div>
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="border-t border-offWhite/20 pt-10 mb-8 mt-10">
-          <h3 className="text-2xl font-playfair mb-6 text-center text-offWhite/90">
-            {t("footer.partners")}
-          </h3>
-          <div className="flex flex-row flex-wrap md:flex-nowrap items-center justify-center gap-4 lg:gap-8">
-            <a
-              href="http://loml.org.uk/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group focus-visible:outline-none"
-            >
-              <div className="flex h-20 w-20 cursor-pointer md:h-24 md:w-24 lg:h-28 lg:w-28 items-center justify-center rounded-lg bg-white/10 p-3 md:p-4 transition-[transform,box-shadow] motion-reduce:transition-none duration-300 hover:bg-white/20 motion-safe:hover:scale-110 motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold group-focus-visible:ring-2 group-focus-visible:ring-marigold group-focus-visible:outline-none">
-                <img
-                  src={lomlOneLogo}
-                  alt="Legacy of Music Learning logo"
-                  className="h-full w-full object-contain"
-                  loading="lazy"
-                />
-              </div>
-            </a>
-            <a
-              href="http://loml.org.uk/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group focus-visible:outline-none"
-            >
-              <div className="flex h-20 w-20 cursor-pointer md:h-24 md:w-24 lg:h-28 lg:w-28 items-center justify-center rounded-lg bg-white/10 p-3 md:p-4 transition-[transform,box-shadow] motion-reduce:transition-none duration-300 hover:bg-white/20 motion-safe:hover:scale-110 motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold group-focus-visible:ring-2 group-focus-visible:ring-marigold group-focus-visible:outline-none">
-                <img
-                  src={lomlTwoLogo}
-                  alt="Legacy of Music Learning emblem"
-                  className="h-full w-full object-contain"
-                  loading="lazy"
-                />
-              </div>
-            </a>
-            <a
-              href="https://gopc.vn/en"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group focus-visible:outline-none"
-            >
-              <div className="flex h-20 md:h-24 lg:h-28 w-auto max-w-[14rem] cursor-pointer md:max-w-[14rem] lg:max-w-[18rem] items-center justify-center rounded-lg bg-white/10 p-4 md:p-5 transition-[transform,box-shadow] motion-reduce:transition-none duration-300 hover:bg-white/20 motion-safe:hover:scale-105 motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold group-focus-visible:ring-2 group-focus-visible:ring-marigold group-focus-visible:outline-none">
-                <img
-                  src={gopcLogo}
-                  alt="Gathering of Pastors and Churches logo"
-                  className="h-full w-full object-contain"
-                  loading="lazy"
-                />
-              </div>
-            </a>
-            <div className="flex h-20 md:h-24 lg:h-28 w-auto max-w-[14rem] md:max-w-[14rem] lg:max-w-[18rem] items-center justify-center rounded-lg bg-white/10 p-4 md:p-5 transition-[transform,box-shadow] motion-reduce:transition-none duration-300 hover:bg-white/20 motion-safe:hover:scale-[1.02]">
-              <img
-                src={vipcfLogo}
-                alt="Valley International Pastors Christian Fellowship logo"
-                className="h-full w-full object-contain"
-                loading="lazy"
-              />
-            </div>
-          </div>
+
+        {/* ============ Centered copyright ============ */}
+        <div className="border-t border-offWhite/10 pt-6">
+          <p className="type-caption text-offWhite/55 text-center">
+            {t("footer.copyright").replace(
+              "{year}",
+              new Date().getFullYear().toString()
+            )}
+          </p>
         </div>
-      </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <p className="text-sm text-offWhite/80 font-light text-center">
-          {t("footer.copyright").replace("{year}", new Date().getFullYear().toString())}
-        </p>
       </div>
     </footer>
   );

@@ -156,8 +156,7 @@ export class WhatsAppService {
         );
       }
 
-      const result = await response.json();
-      console.log("WhatsApp message sent successfully:", result);
+      await response.json();
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
       throw error;
@@ -190,8 +189,7 @@ export class WhatsAppService {
         );
       }
 
-      const result = await response.json();
-      console.log("WhatsApp message sent successfully:", result);
+      await response.json();
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
       throw error;
@@ -224,8 +222,7 @@ export class WhatsAppService {
         );
       }
 
-      const result = await response.json();
-      console.log("WhatsApp message sent successfully:", result);
+      await response.json();
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
       throw error;

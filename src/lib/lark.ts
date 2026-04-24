@@ -172,10 +172,6 @@ export class LarkService {
       const item = data.data.items[0];
       const fields = item.fields;
 
-      // Debug logging
-      console.log("Search response item:", item);
-      console.log("Record ID from response:", item.record_id);
-
       return {
         participantName: fields["Participant's Name"]?.[0]?.text || "",
         category: fields["Category"] || "",
@@ -224,10 +220,6 @@ export class LarkService {
         },
       };
 
-      // Debug logging
-      console.log("Update request body:", JSON.stringify(requestBody, null, 2));
-      console.log("Record ID being sent:", recordId);
-
       const response = await fetch(
         "https://n8n.kangritel.com/webhook/update-lark-record",
         {
@@ -246,8 +238,7 @@ export class LarkService {
         );
       }
 
-      const data = await response.json();
-      console.log("Video URL updated successfully:", data);
+      await response.json();
     } catch (error) {
       console.error("Error updating participant video:", error);
       throw error;
@@ -281,7 +272,7 @@ export class LarkService {
   private static formatLarkData(
     data: LarkRegistrationData,
     event: { type: string }
-  ): any {
+  ): Record<string, unknown> {
     const { registration } = data;
     const whatsappNumber = this.formatWhatsAppNumber(
       registration.registrant_whatsapp
@@ -382,7 +373,6 @@ export class LarkService {
       const { event } = data;
       // Skip if no Lark configuration
       if (!event.lark_base || !event.lark_table) {
-        console.log("No Lark configuration found, skipping...");
         return;
       }
 
@@ -407,8 +397,7 @@ export class LarkService {
         throw new Error(`Failed to send data to Lark: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log("Data sent to Lark successfully:", result);
+      await response.json();
     } catch (error) {
       console.error("Error sending data to Lark:", error);
       throw error;

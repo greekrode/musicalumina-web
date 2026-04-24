@@ -1,6 +1,16 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+/**
+ * Format an ISO date string for display, localised to `en` or `id`.
+ *
+ * English output uses `toLocaleDateString("en-US", …)` → `"March 20, 2025"`.
+ * Indonesian output uses an explicit month table → `"20 Maret 2025"`.
+ *
+ * @param dateString — ISO-8601 date string. An empty string returns `"TBA"`.
+ * @param language — `"en"` or `"id"` (any other value falls through to English).
+ * @returns A localised, human-readable date, or `"TBA"` for empty input.
+ */
 export function formatDateWithLocale(
   dateString: string,
   language: string
@@ -34,6 +44,15 @@ export function formatDateWithLocale(
   });
 }
 
+/**
+ * Like {@link formatDateWithLocale} but appends the time of day.
+ *
+ * English uses 12-hour AM/PM; Indonesian uses 24-hour HH:mm.
+ *
+ * @param dateString — ISO-8601 date-time. Empty string returns `"TBA"`.
+ * @param language — `"en"` or `"id"`.
+ * @param includeTime — pass `false` to suppress the time portion.
+ */
 export function formatDateTimeWithLocale(
   dateString: string,
   language: string,
@@ -90,6 +109,17 @@ export function formatDateTimeWithLocale(
   return dateStr;
 }
 
+/**
+ * Format an array of event dates as a bulleted list, sorted chronologically.
+ *
+ * Each entry is rendered as `"• <date>, <time>"` and joined with `"\n"`.
+ * Handles both the legacy `{ start, end }` shape and the current bare-string
+ * shape.
+ *
+ * @param eventDates — array of ISO strings or `{start, end}` objects, or `null`.
+ * @param language — `"en"` or `"id"`.
+ * @returns One bulleted line per date, or `"TBD"` for empty/null input.
+ */
 export function formatMultipleDatesWithLocale(
   eventDates: Array<{ start: string; end: string }> | string[] | null,
   language: string
@@ -143,6 +173,13 @@ export function formatMultipleDatesWithLocale(
   return formattedDates.map(date => `• ${date}`).join('\n');
 }
 
+/**
+ * Format a single ISO date using `Intl.DateTimeFormat("en-US", …)`. Thin
+ * convenience around the Intl API; prefer {@link formatDateWithLocale}
+ * unless you specifically need Intl locale fallback behaviour.
+ *
+ * @param dateString — ISO-8601 date. Empty input returns `""`.
+ */
 export function formatDateWithIntl(dateString: string): string {
   if (!dateString) return "";
 
@@ -154,6 +191,14 @@ export function formatDateWithIntl(dateString: string): string {
   }).format(date);
 }
 
+/**
+ * Format a list of ISO dates as an English-prose sentence:
+ *   - 1 date  → `"March 20, 2025"`
+ *   - 2 dates → `"March 20, 2025 and March 21, 2025"`
+ *   - 3+      → `"A, B, and C"` (Oxford comma)
+ *
+ * For a bullet list, use {@link formatMultipleDatesWithLocale} instead.
+ */
 export function formatMultipleDatesWithIntl(
   eventDates: string[] | null
 ): string {
@@ -188,6 +233,15 @@ export function formatMultipleDatesWithIntl(
   return `${formattedDates.join(', ')}, and ${lastDate}`;
 }
 
+/**
+ * Translate a performance-duration string (stored in English in the DB)
+ * into Indonesian when `language === "id"`. Expected DB shape is
+ * `"{Maximum|Minimum} {number} minutes"` — anything else passes through
+ * untouched.
+ *
+ * @example
+ *   translateDuration("Maximum 10 minutes", "id") // "Maksimal 10 menit"
+ */
 export function translateDuration(duration: string, language: string): string {
   if (!duration) return duration;
 
@@ -206,6 +260,17 @@ export function translateDuration(duration: string, language: string): string {
   return duration;
 }
 
+/**
+ * Translate an age-requirement string into Indonesian. Recognised English
+ * shapes (case-insensitive):
+ *
+ *   - `"All ages"`              → `"Semua usia"`
+ *   - `"6-8 years old"`         → `"6-8 tahun"`
+ *   - `"18 years old & above"`  → `"di atas 18 tahun"`
+ *   - `"10 years old & below"`  → `"di bawah 10 tahun"`
+ *
+ * Anything else — or `language === "en"` — returns the input unchanged.
+ */
 export function translateAgeRequirement(
   ageRequirement: string,
   language: string
@@ -243,6 +308,17 @@ export function translateAgeRequirement(
   return ageRequirement;
 }
 
+/**
+ * Merge class name inputs and resolve Tailwind conflicts.
+ *
+ * Built on `clsx` for conditional/array support and `tailwind-merge` for
+ * last-write-wins behaviour when two Tailwind utilities target the same
+ * property.
+ *
+ * @example
+ *   cn("block", condition && "hidden", props.className)
+ *   cn("p-4", "p-2") // → "p-2"
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

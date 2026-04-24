@@ -186,7 +186,6 @@ function parseTemplate(template: string, data: TemplateData): string {
 }
 
 export function loadEmailTemplate(language: 'en' | 'id', data: TemplateData): string {
-  console.log('Loading template for language:', language);
   const template = language === 'id' ? idTemplate : enTemplate;
   return parseTemplate(template, data);
 }
