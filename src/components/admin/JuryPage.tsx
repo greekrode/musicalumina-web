@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
@@ -290,7 +291,7 @@ function JurorCard({
       {jury.description && (
         <div
           className="type-caption text-ink-muted line-clamp-3"
-          dangerouslySetInnerHTML={{ __html: jury.description }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(jury.description) }}
         />
       )}
 

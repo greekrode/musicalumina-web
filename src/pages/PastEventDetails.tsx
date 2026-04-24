@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -216,10 +217,11 @@ function PastEventDetails() {
               transition={{ duration: 0.8, ease: EASE }}
               className="max-w-prose mx-auto type-body-lg text-ink-body prose prose-sm"
               dangerouslySetInnerHTML={{
-                __html:
+                __html: sanitizeHtml(
                   event.description?.[language] ||
-                  event.description?.en ||
-                  "",
+                    event.description?.en ||
+                    ""
+                ),
               }}
             />
           </Container>
@@ -306,7 +308,7 @@ function PastEventDetails() {
                       <div
                         className="type-body-sm text-ink-body prose prose-sm max-w-none mt-2"
                         dangerouslySetInnerHTML={{
-                          __html: juror.description,
+                          __html: sanitizeHtml(juror.description),
                         }}
                       />
                     )}

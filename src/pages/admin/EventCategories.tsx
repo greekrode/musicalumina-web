@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -153,7 +154,7 @@ export default function AdminEventCategories() {
           console.error("Category update error:", error);
           throw new Error(error.message);
         }
-        console.log("Updated category data:", updatedData);
+        void updatedData;
       } else {
         const { error } = await supabase.from("event_categories").insert({
           ...data,
@@ -511,7 +512,7 @@ function CategoryRow({
           {category.description ? (
             <div
               className="type-body-sm text-ink-muted prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: category.description }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(category.description) }}
             />
           ) : (
             <p className="type-caption text-ink-subtle italic">No description</p>

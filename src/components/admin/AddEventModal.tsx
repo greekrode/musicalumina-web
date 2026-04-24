@@ -292,7 +292,7 @@ export function AddEventModal({
           <div className="flex flex-col gap-5">
             <EditorBlock label="English" error={errors.description?.en?.message}>
               <Editor
-                apiKey="no-api-key"
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
                 initialValue=""
                 init={TINYMCE_INIT}
                 onEditorChange={(content: string) =>
@@ -305,7 +305,7 @@ export function AddEventModal({
               error={errors.description?.id?.message}
             >
               <Editor
-                apiKey="no-api-key"
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
                 initialValue=""
                 init={TINYMCE_INIT}
                 onEditorChange={(content: string) =>
@@ -322,7 +322,7 @@ export function AddEventModal({
           <div className="flex flex-col gap-5">
             <EditorBlock label="English">
               <Editor
-                apiKey="no-api-key"
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
                 value={termsAndConditions?.en || ""}
                 init={TINYMCE_INIT}
                 onEditorChange={(content: string) =>
@@ -332,7 +332,7 @@ export function AddEventModal({
             </EditorBlock>
             <EditorBlock label="Indonesian">
               <Editor
-                apiKey="no-api-key"
+                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
                 value={termsAndConditions?.id || ""}
                 init={TINYMCE_INIT}
                 onEditorChange={(content: string) =>

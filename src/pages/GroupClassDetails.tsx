@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
@@ -225,10 +226,11 @@ function GroupClassDetails() {
                   variants={fadeUpSoft}
                   className="type-body-lg text-ink-body prose prose-sm max-w-prose"
                   dangerouslySetInnerHTML={{
-                    __html:
+                    __html: sanitizeHtml(
                       event.description[language] ||
-                      event.description.en ||
-                      "",
+                        event.description.en ||
+                        ""
+                    ),
                   }}
                 />
               )}

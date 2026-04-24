@@ -1,4 +1,5 @@
 import Modal from "./Modal";
+import { sanitizeHtml } from "@/lib/sanitize";
 import type { Database } from "../lib/database.types";
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
@@ -69,7 +70,7 @@ export default function JuryModal({ isOpen, onClose, juror }: JuryModalProps) {
         {juror.description && (
           <div
             className="type-body-md text-ink-body prose prose-sm max-w-none border-t border-rule-hairline pt-5"
-            dangerouslySetInnerHTML={{ __html: juror.description }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(juror.description) }}
           />
         )}
 

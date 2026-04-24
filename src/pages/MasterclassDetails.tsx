@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
@@ -227,10 +228,11 @@ function MasterclassDetails() {
                   variants={fadeUpSoft}
                   className="type-body-lg text-ink-body prose prose-sm max-w-prose"
                   dangerouslySetInnerHTML={{
-                    __html:
+                    __html: sanitizeHtml(
                       event.description[language] ||
-                      event.description.en ||
-                      "",
+                        event.description.en ||
+                        ""
+                    ),
                   }}
                 />
               )}
@@ -475,7 +477,7 @@ function InstructorCard({
         {instructor.description && (
           <div
             className="type-body-md text-ink-body prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: instructor.description }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructor.description) }}
           />
         )}
       </div>

@@ -1,4 +1,5 @@
 import Modal from "./Modal";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useLanguage } from "../lib/LanguageContext";
 
 interface TermsModalProps {
@@ -20,7 +21,7 @@ function TermsModal({ isOpen, onClose, terms }: TermsModalProps) {
     >
       {terms ? (
         <div
-          dangerouslySetInnerHTML={{ __html: terms }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(terms) }}
           className={[
             // Base prose treatment
             "prose prose-sm max-w-none type-body-md text-ink-body",

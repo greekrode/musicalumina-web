@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { CheckCircle2, Eye, FileText, XCircle } from "lucide-react";
@@ -88,25 +88,7 @@ export default function AdminRegistrations() {
   } | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    if (selectedEventId) {
-      fetchCategories();
-      setSelectedCategoryId("");
-      setSelectedSubcategoryId("");
-    } else {
-      setCategories([]);
-    }
-  }, [selectedEventId]);
-
-  useEffect(() => {
-    fetchRegistrations();
-  }, [selectedEventId, selectedCategoryId, selectedSubcategoryId]);
-
-  async function fetchEvents() {
+  const fetchEvents = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("events")
@@ -118,9 +100,9 @@ export default function AdminRegistrations() {
       console.error("Error fetching events:", error);
       toast.error("Failed to load events");
     }
-  }
+  }, []);
 
-  async function fetchCategories() {
+  const fetchCategories = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("event_categories")
@@ -142,9 +124,9 @@ export default function AdminRegistrations() {
       console.error("Error fetching categories:", error);
       toast.error("Failed to load categories");
     }
-  }
+  }, [selectedEventId]);
 
-  async function fetchRegistrations() {
+  const fetchRegistrations = useCallback(async () => {
     try {
       setIsLoading(true);
       if (!selectedEventId) {
@@ -224,7 +206,25 @@ export default function AdminRegistrations() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [selectedEventId, selectedCategoryId, selectedSubcategoryId]);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      fetchCategories();
+      setSelectedCategoryId("");
+      setSelectedSubcategoryId("");
+    } else {
+      setCategories([]);
+    }
+  }, [selectedEventId, fetchCategories]);
+
+  useEffect(() => {
+    fetchRegistrations();
+  }, [fetchRegistrations]);
 
   async function handleStatusChange(
     id: string,

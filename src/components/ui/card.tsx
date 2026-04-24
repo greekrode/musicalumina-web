@@ -1,6 +1,7 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { cardVariants } from "./card-variants";
 
 /**
  * Card — Musical Lumina
@@ -11,45 +12,8 @@ import { cn } from "@/lib/utils";
  *
  * All sub-components (CardHeader, CardTitle, CardDescription, CardContent,
  * CardFooter) preserve their original API. Existing call sites work unchanged.
+ * The cva definition lives in `./card-variants`.
  */
-
-const cardVariants = cva(
-  "group relative bg-surface-elevated border border-rule-hairline transition-colors duration-base ease-out-quart",
-  {
-    variants: {
-      variant: {
-        default: "",
-        // Recessed — sits on a warmer surface tint, reads as inset content.
-        inset: "bg-surface-canvas-warm border-rule-subtle/40",
-        // Editorial — no border, just a left marigold rule. For long-form cards.
-        editorial: "border-0 border-l-2 border-l-marigold rounded-none bg-transparent",
-        // Quiet — outline only on hover. For dense grids.
-        quiet: "border-transparent hover:border-rule-hairline",
-      },
-      interactive: {
-        true: "cursor-pointer hover:border-burgundy/25 hover:-translate-y-0.5",
-        false: "",
-      },
-      accent: {
-        none: "",
-        event: "before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-burgundy before:content-['']",
-        masterclass: "before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-marigold before:content-['']",
-        group: "before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-charcoal before:content-['']",
-        past: "before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-ink-subtle before:content-['']",
-      },
-      radius: {
-        sharp: "rounded-none",
-        soft: "rounded-sm",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      interactive: false,
-      accent: "none",
-      radius: "sharp",
-    },
-  }
-);
 
 export interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -150,5 +114,4 @@ export {
   CardDescription,
   CardContent,
   CardEyebrow,
-  cardVariants,
 };

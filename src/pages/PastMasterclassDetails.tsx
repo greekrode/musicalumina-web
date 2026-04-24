@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -241,10 +242,11 @@ function PastMasterclassDetails() {
               transition={{ duration: 0.8, ease: EASE }}
               className="max-w-prose mx-auto type-body-lg text-ink-body prose prose-sm"
               dangerouslySetInnerHTML={{
-                __html:
+                __html: sanitizeHtml(
                   event.description?.[language] ||
-                  event.description?.en ||
-                  "",
+                    event.description?.en ||
+                    ""
+                ),
               }}
             />
           </Container>
@@ -307,7 +309,7 @@ function PastMasterclassDetails() {
                 {instructor.description && (
                   <div
                     className="type-body-md text-ink-body prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: instructor.description }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructor.description) }}
                   />
                 )}
               </div>
