@@ -127,6 +127,8 @@ export const translations = {
       personal: "Personal",
       parents: "Parents",
       teacher: "Teacher",
+      quotaExceeded:
+        "Registration quota has been reached. Registration is now closed.",
       participantAge: "Participant Age",
       errorSubmitting: "Error submitting registration. Please try again.",
     },

@@ -16,6 +16,15 @@ interface UseEventsOptions {
   limit?: number;
 }
 
+/**
+ * Fetch a paginated list of events filtered by status, joined with
+ * categories / subcategories / jury / prizes.
+ *
+ * @param status — `"upcoming"` or `"completed"`. Omit to include all.
+ * @param page   — 1-indexed page number (default `1`).
+ * @param limit  — page size (default `10`).
+ * @returns `{ events, loading, error, total }`.
+ */
 export function useEvents({ status, page = 1, limit = 10 }: UseEventsOptions = {}) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);

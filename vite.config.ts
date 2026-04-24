@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import compression from 'vite-plugin-compression';
@@ -14,6 +15,31 @@ export default defineConfig({
       deleteOriginFile: false, // Keep the original files
     }),
   ],
+  test: {
+    // happy-dom over jsdom: faster + ships WebCrypto subtle natively, which
+    // our invitation-code PBKDF2 hashing depends on.
+    environment: 'happy-dom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    css: false,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: [
+        'src/lib/**/*.ts',
+        'src/hooks/**/*.ts',
+        'src/components/ui/**/*.{ts,tsx}',
+      ],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
+        'src/test/**',
+        'src/lib/database.types.ts',
+        'src/lib/translations.ts',
+      ],
+    },
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },

@@ -1,6 +1,17 @@
-// Crypto utilities for invitation codes
-// Using Web Crypto API for secure hashing
-
+/**
+ * Invitation-code hashing — PBKDF2 over SHA-256 with a random 128-bit salt,
+ * 100 000 iterations. Runs entirely in the browser via the Web Crypto
+ * Subtle API so the plaintext invitation code never leaves the client.
+ *
+ * Storage format: `"<saltHex>:<hashHex>"` in a single column. Verification
+ * re-hashes the candidate with the stored salt and compares the hash part.
+ *
+ * Security note: this protects the stored hash from offline guessing if
+ * the `invitation_codes` table is leaked; it does NOT protect against
+ * online guessing by a user who can call the registration endpoint at
+ * will. Pair with rate-limiting at the API edge if high-value codes are
+ * a concern.
+ */
 export class InvitationCodeCrypto {
   private static async getTextEncoder(): Promise<TextEncoder> {
     return new TextEncoder();
@@ -11,7 +22,14 @@ export class InvitationCodeCrypto {
   }
 
   /**
-   * Hash an invitation code using PBKDF2
+   * Hash an invitation code. When `salt` is omitted, a fresh 128-bit salt
+   * is generated and returned alongside the hash so the caller can persist
+   * both. When `salt` is provided (as hex), the result is deterministic —
+   * {@link verifyCode} relies on that to re-derive and compare.
+   *
+   * @param code  — plaintext invitation code.
+   * @param salt  — optional hex-encoded salt (16 bytes, 32 hex chars).
+   * @returns     — `{ hash: "<saltHex>:<hashHex>", salt: "<saltHex>" }`.
    */
   static async hashCode(code: string, salt?: string): Promise<{ hash: string; salt: string }> {
     const encoder = await this.getTextEncoder();
@@ -69,7 +87,9 @@ export class InvitationCodeCrypto {
   }
 
   /**
-   * Verify an invitation code against its hash
+   * Verify an invitation code against a stored `"<salt>:<hash>"` entry.
+   * Returns `false` for a wrong code, an empty string, or a malformed
+   * stored value — never throws.
    */
   static async verifyCode(code: string, storedHash: string): Promise<boolean> {
     try {

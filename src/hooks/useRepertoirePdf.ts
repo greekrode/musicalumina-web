@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
+/**
+ * Resolve the downloadable repertoire PDF for a category.
+ *
+ * Lists `categories-repertoires/<categoryId>/` in Supabase Storage, picks
+ * the first `.pdf`, and returns a signed URL valid until the event's start
+ * date (or ~forever if `eventStartDate` is omitted). Returns
+ * `{ pdfUrl: null }` silently when the folder is empty or has no PDF —
+ * callers render "no PDF available" copy in that case instead of an error.
+ *
+ * @param categoryId     — `event_categories.id`.
+ * @param eventStartDate — ISO date the URL should remain valid until.
+ */
 export function useRepertoirePdf(categoryId: string, eventStartDate?: string) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
