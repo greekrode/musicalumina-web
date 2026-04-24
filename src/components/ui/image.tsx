@@ -80,9 +80,35 @@ const Image = React.forwardRef<HTMLImageElement, ImageProps>(
       "loading"
     );
 
-    // Reset status when src changes (e.g. carousel switching slides).
+    // Local ref so we can inspect the underlying <img> after mount. Forwarded
+    // ref still works — we fan out through setRefs below.
+    const innerRef = React.useRef<HTMLImageElement | null>(null);
+    const setRefs = React.useCallback(
+      (node: HTMLImageElement | null) => {
+        innerRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          (ref as React.MutableRefObject<HTMLImageElement | null>).current =
+            node;
+        }
+      },
+      [ref]
+    );
+
+    // Reset status when src changes (e.g. carousel switching slides), then
+    // sync from the DOM. When an image is served from the HTTP cache (or
+    // reused on re-mount), the browser can fire `load` BEFORE React has
+    // attached our handler — leaving `status` stuck at "loading" and the
+    // <img> permanently at opacity-0. Read `img.complete` / `naturalWidth`
+    // right after the commit to recover.
     React.useEffect(() => {
       setStatus("loading");
+      const node = innerRef.current;
+      if (!node) return;
+      if (node.complete) {
+        setStatus(node.naturalWidth > 0 ? "loaded" : "error");
+      }
     }, [src]);
 
     const handleLoad: React.ReactEventHandler<HTMLImageElement> = (e) => {
@@ -131,7 +157,7 @@ const Image = React.forwardRef<HTMLImageElement, ImageProps>(
 
         {/* The image itself — hidden until loaded so we don't flash partial bytes */}
         <img
-          ref={ref}
+          ref={setRefs}
           src={src}
           alt={alt}
           loading={priority ? "eager" : "lazy"}

@@ -243,7 +243,16 @@ export function EditEventModal({
       const registrationDeadlineIso = values.registration_deadline
         ? new Date(values.registration_deadline).toISOString()
         : null;
-      const maxQuota = values.max_quota === "" ? null : values.max_quota;
+      // `valueAsNumber: true` turns an empty input into NaN (not ""), so the
+      // original `=== ""` check was unreachable and we were forwarding NaN to
+      // Supabase. Normalize against both.
+      const maxQuota =
+        values.max_quota === "" ||
+        values.max_quota === undefined ||
+        (typeof values.max_quota === "number" &&
+          Number.isNaN(values.max_quota))
+          ? null
+          : values.max_quota;
 
       let posterUrl = values.poster_image;
       if (posterFile) {

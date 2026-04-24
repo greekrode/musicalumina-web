@@ -90,23 +90,24 @@ function AboutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
             {/* Left column — headline + prose, continuous flow */}
             <div className="lg:col-span-8 flex flex-col gap-12 lg:gap-16">
-              {/* Headline */}
+              {/* Headline — PageHeaderTitle must sit inside PageHeader so it
+                  picks up the composition's flex layout, alignment, and
+                  max-width tokens. Each part still gets its own motion wrapper. */}
               <motion.div
                 variants={reduceMotion ? undefined : staggerIn}
                 initial={initial}
                 animate="visible"
-                className="flex flex-col gap-5"
               >
-                <motion.div variants={fadeUpSoft}>
-                  <PageHeader align="start" className="max-w-3xl">
+                <PageHeader align="start" className="max-w-3xl">
+                  <motion.div variants={fadeUpSoft}>
                     <PageHeaderEyebrow>{t("about.title")}</PageHeaderEyebrow>
-                  </PageHeader>
-                </motion.div>
-                <motion.div variants={fadeUp}>
-                  <PageHeaderTitle size="xl">
-                    {t("about.subtitle")}
-                  </PageHeaderTitle>
-                </motion.div>
+                  </motion.div>
+                  <motion.div variants={fadeUp}>
+                    <PageHeaderTitle size="xl">
+                      {t("about.subtitle")}
+                    </PageHeaderTitle>
+                  </motion.div>
+                </PageHeader>
               </motion.div>
 
               {/* Prose */}

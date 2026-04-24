@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Menu, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../assets/ML-LogoColor.png";
@@ -40,6 +40,12 @@ function Navigation() {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
+  // Refs for focus management. The drawer declares role="dialog"
+  // aria-modal="true", which promises keyboard users that Escape closes
+  // and focus is handled — these refs back that promise.
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     handleScroll();
@@ -61,6 +67,27 @@ function Navigation() {
     return () => {
       document.body.style.overflow = "";
     };
+  }, [isMenuOpen]);
+
+  // Drawer keyboard semantics: Escape closes, focus moves into the drawer
+  // on open and returns to the hamburger on close.
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    // Move focus into the drawer panel so keyboard users land inside.
+    drawerRef.current?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setIsMenuOpen(false);
+        // Return focus to the invoker so keyboard users know where they
+        // are after the drawer closes.
+        menuButtonRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [isMenuOpen]);
 
   const isHomePage = location.pathname === "/";
@@ -158,6 +185,7 @@ function Navigation() {
             <div className="md:hidden flex items-center gap-4">
               <LanguageSwitcher inverse={isInverse} />
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={() => setIsMenuOpen((v) => !v)}
                 aria-label={isMenuOpen ? "Close menu" : "Open menu"}
@@ -206,11 +234,14 @@ function Navigation() {
         />
         {/* Panel */}
         <div
+          ref={drawerRef}
+          tabIndex={-1}
           className={cn(
             "absolute top-0 right-0 h-full w-full max-w-sm bg-surface-canvas",
             "border-l border-rule-hairline shadow-none",
             "flex flex-col pt-24 pb-8 px-8",
             "transition-transform duration-slow ease-out-quart",
+            "focus:outline-none",
             isMenuOpen ? "translate-x-0" : "translate-x-full"
           )}
         >

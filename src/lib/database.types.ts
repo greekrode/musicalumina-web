@@ -437,7 +437,12 @@ export interface Database {
           event_id: string;
           code_hash: string;
           max_uses: number;
-          uses: number | null;
+          /**
+           * Actual DB column is `current_uses`. Non-nullable: the registration
+           * flow reads it and increments (`current_uses + 1`) without a
+           * null-check, so the DB default must be 0.
+           */
+          current_uses: number;
           expires_at: string | null;
           created_at: string;
         };
@@ -446,7 +451,7 @@ export interface Database {
           event_id: string;
           code_hash: string;
           max_uses: number;
-          uses?: number | null;
+          current_uses?: number;
           expires_at?: string | null;
           created_at?: string;
         };
@@ -455,7 +460,7 @@ export interface Database {
           event_id?: string;
           code_hash?: string;
           max_uses?: number;
-          uses?: number | null;
+          current_uses?: number;
           expires_at?: string | null;
           created_at?: string;
         };

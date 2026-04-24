@@ -165,6 +165,15 @@ export function AddEventModal({
         ? new Date(values.registration_deadline).toISOString()
         : null;
 
+      // `valueAsNumber: true` turns an empty input into NaN — normalize so we
+      // never forward NaN to the `max_quota` column.
+      const maxQuota =
+        values.max_quota === undefined ||
+        (typeof values.max_quota === "number" &&
+          Number.isNaN(values.max_quota))
+          ? null
+          : values.max_quota;
+
       let posterUrl: string | null = null;
       if (posterFile) {
         const fileExt = posterFile.name.split(".").pop();
@@ -194,7 +203,7 @@ export function AddEventModal({
           location: values.location,
           venue_details: values.venue_details,
           poster_image: posterUrl,
-          max_quota: values.max_quota,
+          max_quota: maxQuota,
           status: values.status,
           lark_base: values.lark_base || null,
           lark_table: values.lark_table || null,
