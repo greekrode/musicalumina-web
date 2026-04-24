@@ -1,9 +1,4 @@
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
-import { AdminDashboard } from "@/pages/admin/Dashboard";
-import { AdminEvents } from "@/pages/admin/Events";
-import { AdminLogin } from "@/pages/admin/Login";
-import { AdminMasterclass } from "@/pages/admin/Masterclass";
-import { AdminJury } from "@/pages/admin/Jury";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { AnimatePresence } from "framer-motion";
 import { lazy, Suspense } from "react";
@@ -17,17 +12,15 @@ import Footer from "./components/Footer";
 import LoadingSpinner from "./components/LoadingSpinner";
 import Navigation from "./components/Navigation";
 import PageTransition from "./components/PageTransition";
+import ScrollToTop from "./components/ScrollToTop";
 import { LanguageProvider } from "./lib/LanguageContext";
-import AdminRegistrations from "./pages/admin/Registrations";
-import GroupClassDetails from "./pages/GroupClassDetails";
-import AdminEventCategories from "@/pages/admin/EventCategories";
 import { Toaster } from "@/components/ui/toaster";
 
 if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
   throw new Error("Missing Clerk publishable key");
 }
 
-// Lazy load pages
+/* Public routes — lazy-loaded. */
 const HomePage = lazy(() => import("./pages/HomePage"));
 const EventsPage = lazy(() => import("./pages/EventsPage"));
 const EventDetails = lazy(() => import("./pages/EventDetails"));
@@ -36,10 +29,37 @@ const MasterclassDetails = lazy(() => import("./pages/MasterclassDetails"));
 const PastMasterclassDetails = lazy(
   () => import("./pages/PastMasterclassDetails")
 );
+const GroupClassDetails = lazy(() => import("./pages/GroupClassDetails"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
 const VideoSubmissionPage = lazy(() => import("./pages/VideoSubmissionPage"));
+
+/* Admin routes — lazy-loaded so their TinyMCE / dense-form weight never
+   reaches the public bundle. Every admin page is behind a Clerk-guarded
+   Suspense boundary, and TinyMCE (~500KB) only loads when an admin opens a
+   modal that uses it. */
+const AdminLogin = lazy(() =>
+  import("./pages/admin/Login").then((m) => ({ default: m.AdminLogin }))
+);
+const AdminDashboard = lazy(() =>
+  import("./pages/admin/Dashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const AdminEvents = lazy(() =>
+  import("./pages/admin/Events").then((m) => ({ default: m.AdminEvents }))
+);
+const AdminMasterclass = lazy(() =>
+  import("./pages/admin/Masterclass").then((m) => ({
+    default: m.AdminMasterclass,
+  }))
+);
+const AdminJury = lazy(() =>
+  import("./pages/admin/Jury").then((m) => ({ default: m.AdminJury }))
+);
+const AdminRegistrations = lazy(() => import("./pages/admin/Registrations"));
+const AdminEventCategories = lazy(
+  () => import("./pages/admin/EventCategories")
+);
 
 function FooterWrapper() {
   const location = useLocation();
@@ -222,53 +242,86 @@ function AnimatedRoutes() {
             </Suspense>
           }
         />
-        <Route path="/admin" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <AdminLogin />
+            </Suspense>
+          }
+        />
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            </Suspense>
           }
         />
         <Route
           path="/admin/events"
           element={
-            <ProtectedRoute>
-              <AdminEvents />
-            </ProtectedRoute>
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminEvents />
+              </ProtectedRoute>
+            </Suspense>
           }
         />
         <Route
           path="/admin/event-categories"
           element={
-            <ProtectedRoute>
-              <AdminEventCategories />
-            </ProtectedRoute>
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminEventCategories />
+              </ProtectedRoute>
+            </Suspense>
           }
         />
         <Route
           path="/admin/jury"
           element={
-            <ProtectedRoute>
-              <AdminJury />
-            </ProtectedRoute>
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminJury />
+              </ProtectedRoute>
+            </Suspense>
           }
         />
         <Route
           path="/admin/registrations"
           element={
-            <ProtectedRoute>
-              <AdminRegistrations />
-            </ProtectedRoute>
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminRegistrations />
+              </ProtectedRoute>
+            </Suspense>
           }
         />
         <Route
           path="/admin/masterclass"
           element={
-            <ProtectedRoute>
-              <AdminMasterclass />
-            </ProtectedRoute>
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminMasterclass />
+              </ProtectedRoute>
+            </Suspense>
           }
         />
       </Routes>
@@ -285,6 +338,7 @@ function AppContent() {
       publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
     >
       <LanguageProvider>
+        <ScrollToTop />
         <div className="min-h-screen flex flex-col bg-offWhite">
           {!isAdminRoute && <Navigation />}
           <main className="flex-1">

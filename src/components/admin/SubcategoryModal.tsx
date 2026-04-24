@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import Modal from "@/components/Modal";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { NoteGlyph } from "@/components/ui/wireframe-wave";
 import * as z from "zod";
 import { Editor } from "@tinymce/tinymce-react";
-import { X, GripVertical, Pencil } from "lucide-react";
+import { X, GripVertical, Pencil, AlertCircle, Plus } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -22,20 +25,40 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { cn } from "@/lib/utils";
+
+/**
+ * SubcategoryModal — admin create / edit for an event subcategory.
+ *
+ * The heaviest admin form: name, age band, IDR fee pair, two independent
+ * foreign-fee lists (preliminary + final), repertoire list, TinyMCE
+ * requirements. All CRUD + DnD wiring preserved 1:1; only the chrome changes.
+ */
 
 const subcategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
   age_requirement: z.string().min(1, "Age requirement is required"),
   registration_fee: z.coerce.number().min(0, "Fee is required"),
-  final_registration_fee: z.coerce.number().min(0, "Final fee is required").nullable(),
-  foreign_registration_fee: z.array(z.object({
-    country: z.string().min(1, "Country is required"),
-    fee: z.string().min(1, "Fee is required")
-  })).nullable(),
-  foreign_final_registration_fee: z.array(z.object({
-    country: z.string().min(1, "Country is required"),
-    fee: z.string().min(1, "Fee is required")
-  })).nullable(),
+  final_registration_fee: z.coerce
+    .number()
+    .min(0, "Final fee is required")
+    .nullable(),
+  foreign_registration_fee: z
+    .array(
+      z.object({
+        country: z.string().min(1, "Country is required"),
+        fee: z.string().min(1, "Fee is required"),
+      })
+    )
+    .nullable(),
+  foreign_final_registration_fee: z
+    .array(
+      z.object({
+        country: z.string().min(1, "Country is required"),
+        fee: z.string().min(1, "Fee is required"),
+      })
+    )
+    .nullable(),
   repertoire: z.array(z.string()).nullable(),
   performance_duration: z.string().nullable(),
   requirements: z.string().nullable(),
@@ -49,7 +72,52 @@ interface SubcategoryModalProps {
   onClose: () => void;
   onSubmit: (data: SubcategoryFormData, isEdit: boolean) => Promise<void>;
   initialData?: SubcategoryFormData | null;
+  /** Reserved for future scoped-create flows. Not read directly. */
   categoryId: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sortable row primitives                                            */
+/* ------------------------------------------------------------------ */
+
+function sortableRowClasses(isDragging: boolean) {
+  return cn(
+    "flex items-center gap-3 bg-surface-canvas-warm border border-rule-hairline px-3 py-2.5",
+    "transition-colors duration-fast ease-out-quart",
+    isDragging ? "opacity-50" : "hover:border-burgundy/30"
+  );
+}
+
+const grabHandleClasses =
+  "cursor-grab text-ink-subtle hover:text-burgundy active:cursor-grabbing";
+
+function RowActions({
+  onEdit,
+  onRemove,
+}: {
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label="Edit"
+        className="h-7 w-7 flex items-center justify-center rounded-sm text-ink-muted hover:text-burgundy hover:bg-burgundy/[0.06] transition-colors"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove"
+        className="h-7 w-7 flex items-center justify-center rounded-sm text-ink-muted hover:text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)] transition-colors"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </>
+  );
 }
 
 interface SortableItemProps {
@@ -76,36 +144,19 @@ function SortableItem({ id, item, onRemove, onEdit }: SortableItemProps) {
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-2 bg-gray-50 p-2 rounded-md ${
-        isDragging ? "opacity-50" : ""
-      }`}
-    >
+    <div ref={setNodeRef} style={style} className={sortableRowClasses(isDragging)}>
       <button
         type="button"
-        className="cursor-grab text-gray-400 hover:text-gray-600"
+        aria-label="Drag to reorder"
+        className={grabHandleClasses}
         {...attributes}
         {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="flex-1 text-sm">{item}</span>
-      <button
-        type="button"
-        onClick={onEdit}
-        className="text-gray-500 hover:text-blue-500"
-      >
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-gray-500 hover:text-red-500"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <NoteGlyph size={12} className="text-marigold flex-shrink-0" />
+      <span className="flex-1 type-body-sm text-ink-body truncate">{item}</span>
+      <RowActions onEdit={onEdit} onRemove={onRemove} />
     </div>
   );
 }
@@ -139,49 +190,41 @@ function SortableForeignFee({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-2 bg-gray-50 p-2 rounded-md ${
-        isDragging ? "opacity-50" : ""
-      }`}
-    >
+    <div ref={setNodeRef} style={style} className={sortableRowClasses(isDragging)}>
       <button
         type="button"
-        className="cursor-grab text-gray-400 hover:text-gray-600"
+        aria-label="Drag to reorder"
+        className={grabHandleClasses}
         {...attributes}
         {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="flex-1 text-sm">
-        {item.country}: {item.fee}
-      </span>
-      <button
-        type="button"
-        onClick={onEdit}
-        className="text-gray-500 hover:text-blue-500"
-      >
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-gray-500 hover:text-red-500"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <div className="flex-1 flex items-baseline gap-2 min-w-0">
+        <span className="type-body-sm text-burgundy truncate">
+          {item.country}
+        </span>
+        <span className="type-caption text-ink-muted">·</span>
+        <span className="type-body-sm text-ink-body truncate">{item.fee}</span>
+      </div>
+      <RowActions onEdit={onEdit} onRemove={onRemove} />
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Modal                                                              */
+/* ------------------------------------------------------------------ */
 
 export function SubcategoryModal({
   isOpen,
   onClose,
   onSubmit,
   initialData,
-  categoryId,
+  categoryId: _categoryId,
 }: SubcategoryModalProps) {
+  void _categoryId; // reserved for future scoping
+
   const isEdit = !!initialData;
   const [form, setForm] = useState<SubcategoryFormData>({
     name: initialData?.name || "",
@@ -189,7 +232,8 @@ export function SubcategoryModal({
     registration_fee: initialData?.registration_fee ?? 0,
     final_registration_fee: initialData?.final_registration_fee ?? null,
     foreign_registration_fee: initialData?.foreign_registration_fee || [],
-    foreign_final_registration_fee: initialData?.foreign_final_registration_fee || [],
+    foreign_final_registration_fee:
+      initialData?.foreign_final_registration_fee || [],
     repertoire: initialData?.repertoire || [],
     performance_duration: initialData?.performance_duration || "",
     requirements: initialData?.requirements || "",
@@ -198,9 +242,16 @@ export function SubcategoryModal({
   const [newRepertoireItem, setNewRepertoireItem] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newForeignFee, setNewForeignFee] = useState({ country: "", fee: "" });
-  const [editingForeignIndex, setEditingForeignIndex] = useState<number | null>(null);
-  const [newForeignFinalFee, setNewForeignFinalFee] = useState({ country: "", fee: "" });
-  const [editingForeignFinalIndex, setEditingForeignFinalIndex] = useState<number | null>(null);
+  const [editingForeignIndex, setEditingForeignIndex] = useState<number | null>(
+    null
+  );
+  const [newForeignFinalFee, setNewForeignFinalFee] = useState({
+    country: "",
+    fee: "",
+  });
+  const [editingForeignFinalIndex, setEditingForeignFinalIndex] = useState<
+    number | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -218,7 +269,8 @@ export function SubcategoryModal({
       registration_fee: initialData?.registration_fee ?? 0,
       final_registration_fee: initialData?.final_registration_fee ?? null,
       foreign_registration_fee: initialData?.foreign_registration_fee || [],
-      foreign_final_registration_fee: initialData?.foreign_final_registration_fee || [],
+      foreign_final_registration_fee:
+        initialData?.foreign_final_registration_fee || [],
       repertoire: initialData?.repertoire || [],
       performance_duration: initialData?.performance_duration || "",
       requirements: initialData?.requirements || "",
@@ -230,6 +282,7 @@ export function SubcategoryModal({
     setEditingForeignIndex(null);
     setNewForeignFinalFee({ country: "", fee: "" });
     setEditingForeignFinalIndex(null);
+    setError(null);
   }, [initialData, isOpen]);
 
   const handleChange = (
@@ -237,8 +290,7 @@ export function SubcategoryModal({
   ) => {
     const { name, value, type } = e.target;
     let processedValue: string | number | null = value;
-    
-    // Handle number fields
+
     if (type === "number") {
       if (name === "final_registration_fee") {
         processedValue = value === "" ? null : Number(value);
@@ -246,7 +298,7 @@ export function SubcategoryModal({
         processedValue = value === "" ? 0 : Number(value);
       }
     }
-    
+
     setForm({ ...form, [name]: processedValue });
   };
 
@@ -254,20 +306,17 @@ export function SubcategoryModal({
     setForm({ ...form, requirements: content });
   };
 
+  /* -------- Repertoire handlers -------- */
+
   const handleAddRepertoireItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (newRepertoireItem.trim()) {
       if (editingIndex !== null) {
-        // Update existing item
         const newRepertoire = [...(form.repertoire || [])];
         newRepertoire[editingIndex] = newRepertoireItem.trim();
-        setForm({
-          ...form,
-          repertoire: newRepertoire,
-        });
+        setForm({ ...form, repertoire: newRepertoire });
         setEditingIndex(null);
       } else {
-        // Add new item
         setForm({
           ...form,
           repertoire: [...(form.repertoire || []), newRepertoireItem.trim()],
@@ -295,57 +344,44 @@ export function SubcategoryModal({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
-      setForm((form) => {
+      setForm((prev) => {
         const oldIndex = parseInt(active.id as string);
         const newIndex = parseInt(over.id as string);
-
         return {
-          ...form,
-          repertoire: arrayMove(form.repertoire || [], oldIndex, newIndex),
+          ...prev,
+          repertoire: arrayMove(prev.repertoire || [], oldIndex, newIndex),
         };
       });
     }
   };
 
+  /* -------- Foreign fees (preliminary) -------- */
+
   const handleAddForeignFee = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Adding foreign fee:", newForeignFee);
-    console.log("Current form.foreign_registration_fee:", form.foreign_registration_fee);
-    
     if (newForeignFee.country.trim() && newForeignFee.fee.trim()) {
       if (editingForeignIndex !== null) {
-        // Update existing item
         const newForeignFees = [...(form.foreign_registration_fee || [])];
         newForeignFees[editingForeignIndex] = {
           country: newForeignFee.country.trim(),
           fee: newForeignFee.fee.trim(),
         };
-        console.log("Updating foreign fees:", newForeignFees);
-        setForm({
-          ...form,
-          foreign_registration_fee: newForeignFees,
-        });
+        setForm({ ...form, foreign_registration_fee: newForeignFees });
         setEditingForeignIndex(null);
       } else {
-        // Add new item
-        const updatedFees = [
-          ...(form.foreign_registration_fee || []),
-          {
-            country: newForeignFee.country.trim(),
-            fee: newForeignFee.fee.trim(),
-          },
-        ];
-        console.log("Adding new foreign fee, updated array:", updatedFees);
         setForm({
           ...form,
-          foreign_registration_fee: updatedFees,
+          foreign_registration_fee: [
+            ...(form.foreign_registration_fee || []),
+            {
+              country: newForeignFee.country.trim(),
+              fee: newForeignFee.fee.trim(),
+            },
+          ],
         });
       }
       setNewForeignFee({ country: "", fee: "" });
-    } else {
-      console.log("Cannot add foreign fee - missing country or fee");
     }
   };
 
@@ -372,16 +408,14 @@ export function SubcategoryModal({
 
   const handleForeignFeeDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
-      setForm((form) => {
+      setForm((prev) => {
         const oldIndex = parseInt(active.id as string);
         const newIndex = parseInt(over.id as string);
-
         return {
-          ...form,
+          ...prev,
           foreign_registration_fee: arrayMove(
-            form.foreign_registration_fee || [],
+            prev.foreign_registration_fee || [],
             oldIndex,
             newIndex
           ),
@@ -390,43 +424,37 @@ export function SubcategoryModal({
     }
   };
 
+  /* -------- Foreign fees (final) -------- */
+
   const handleAddForeignFinalFee = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Adding foreign final fee:", newForeignFinalFee);
-    console.log("Current form.foreign_final_registration_fee:", form.foreign_final_registration_fee);
-    
     if (newForeignFinalFee.country.trim() && newForeignFinalFee.fee.trim()) {
       if (editingForeignFinalIndex !== null) {
-        // Update existing item
-        const newForeignFinalFees = [...(form.foreign_final_registration_fee || [])];
+        const newForeignFinalFees = [
+          ...(form.foreign_final_registration_fee || []),
+        ];
         newForeignFinalFees[editingForeignFinalIndex] = {
           country: newForeignFinalFee.country.trim(),
           fee: newForeignFinalFee.fee.trim(),
         };
-        console.log("Updating foreign final fees:", newForeignFinalFees);
         setForm({
           ...form,
           foreign_final_registration_fee: newForeignFinalFees,
         });
         setEditingForeignFinalIndex(null);
       } else {
-        // Add new item
-        const updatedFinalFees = [
-          ...(form.foreign_final_registration_fee || []),
-          {
-            country: newForeignFinalFee.country.trim(),
-            fee: newForeignFinalFee.fee.trim(),
-          },
-        ];
-        console.log("Adding new foreign final fee, updated array:", updatedFinalFees);
         setForm({
           ...form,
-          foreign_final_registration_fee: updatedFinalFees,
+          foreign_final_registration_fee: [
+            ...(form.foreign_final_registration_fee || []),
+            {
+              country: newForeignFinalFee.country.trim(),
+              fee: newForeignFinalFee.fee.trim(),
+            },
+          ],
         });
       }
       setNewForeignFinalFee({ country: "", fee: "" });
-    } else {
-      console.log("Cannot add foreign final fee - missing country or fee");
     }
   };
 
@@ -441,9 +469,9 @@ export function SubcategoryModal({
   const handleRemoveForeignFinalFee = (index: number) => {
     setForm({
       ...form,
-      foreign_final_registration_fee: (form.foreign_final_registration_fee || []).filter(
-        (_, i) => i !== index
-      ),
+      foreign_final_registration_fee: (
+        form.foreign_final_registration_fee || []
+      ).filter((_, i) => i !== index),
     });
     if (editingForeignFinalIndex === index) {
       setEditingForeignFinalIndex(null);
@@ -453,16 +481,14 @@ export function SubcategoryModal({
 
   const handleForeignFinalFeeDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
-      setForm((form) => {
+      setForm((prev) => {
         const oldIndex = parseInt(active.id as string);
         const newIndex = parseInt(over.id as string);
-
         return {
-          ...form,
+          ...prev,
           foreign_final_registration_fee: arrayMove(
-            form.foreign_final_registration_fee || [],
+            prev.foreign_final_registration_fee || [],
             oldIndex,
             newIndex
           ),
@@ -471,32 +497,32 @@ export function SubcategoryModal({
     }
   };
 
+  /* -------- Submit -------- */
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
-    // Process the form data - only use what's already in the form arrays
+
     const processedData = {
       ...form,
-      foreign_registration_fee: form.foreign_registration_fee && form.foreign_registration_fee.length > 0 
-        ? form.foreign_registration_fee 
-        : null,
-      foreign_final_registration_fee: form.foreign_final_registration_fee && form.foreign_final_registration_fee.length > 0 
-        ? form.foreign_final_registration_fee 
-        : null,
+      foreign_registration_fee:
+        form.foreign_registration_fee &&
+        form.foreign_registration_fee.length > 0
+          ? form.foreign_registration_fee
+          : null,
+      foreign_final_registration_fee:
+        form.foreign_final_registration_fee &&
+        form.foreign_final_registration_fee.length > 0
+          ? form.foreign_final_registration_fee
+          : null,
     };
-    
-    console.log("Form data before validation:", processedData);
-    
+
     const parsed = subcategorySchema.safeParse(processedData);
     if (!parsed.success) {
-      console.error("Validation errors:", parsed.error.errors);
       setError(parsed.error.errors[0].message);
       return;
     }
-    
-    console.log("Parsed data to submit:", parsed.data);
-    
+
     setIsSubmitting(true);
     try {
       await onSubmit(parsed.data, isEdit);
@@ -513,132 +539,211 @@ export function SubcategoryModal({
     }
   };
 
+  const repertoire = form.repertoire || [];
+  const foreignFees = form.foreign_registration_fee || [];
+  const foreignFinalFees = form.foreign_final_registration_fee || [];
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? "Edit Subcategory" : "Add Subcategory"}
-      maxWidth="md"
+      title={isEdit ? "Edit subcategory" : "New subcategory"}
+      eyebrow={isEdit ? "Subcategories · Edit" : "Subcategories · New"}
+      maxWidth="3xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name</label>
-          <Input name="name" value={form.name} onChange={handleChange} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Age Requirement
-          </label>
-          <Input
-            name="age_requirement"
-            value={form.age_requirement}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Registration Fee
-          </label>
-          <Input
-            name="registration_fee"
-            type="number"
-            value={form.registration_fee}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Final Registration Fee
-          </label>
-          <Input
-            name="final_registration_fee"
-            type="number"
-            value={form.final_registration_fee || ""}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Foreign Registration Fees
-          </label>
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-7">
+        {error && (
+          <div className="flex items-start gap-3 border-l-2 border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] px-4 py-3">
+            <AlertCircle
+              className="h-4 w-4 mt-0.5 text-[color:var(--status-error)] flex-shrink-0"
+              aria-hidden
+            />
+            <p className="type-body-sm text-[color:var(--status-error)]">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {/* Identity */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Identity</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_240px_120px] gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="sub-name">Name</Label>
               <Input
-                value={newForeignFee.country}
-                onChange={(e) => {
-                  console.log("Country input changed:", e.target.value);
-                  setNewForeignFee({ ...newForeignFee, country: e.target.value });
-                }}
-                placeholder="Country"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddForeignFee(e);
-                  }
-                }}
-              />
-              <Input
-                value={newForeignFee.fee}
-                onChange={(e) => {
-                  console.log("Fee input changed:", e.target.value);
-                  setNewForeignFee({ ...newForeignFee, fee: e.target.value });
-                }}
-                placeholder="Fee amount"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddForeignFee(e);
-                  }
-                }}
+                id="sub-name"
+                name="name"
+                variant="boxed"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="e.g. Group A · 6 – 8 years"
               />
             </div>
-            <Button
-              type="button"
-              onClick={(e) => {
-                console.log("Button clicked!");
-                handleAddForeignFee(e);
-              }}
-              variant="outline"
-              className="w-full"
-            >
-              {editingForeignIndex !== null ? "Update Fee" : "Add Foreign Fee"}
-            </Button>
-            <div className="space-y-2 mt-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="sub-age">Age requirement</Label>
+              <Input
+                id="sub-age"
+                name="age_requirement"
+                variant="boxed"
+                value={form.age_requirement}
+                onChange={handleChange}
+                placeholder="e.g. 6 – 8 years"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="sub-order">Order</Label>
+              <Input
+                id="sub-order"
+                name="order_index"
+                type="number"
+                variant="boxed"
+                value={form.order_index}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* IDR fees */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Fees · IDR</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="sub-fee">Registration fee</Label>
+              <Input
+                id="sub-fee"
+                name="registration_fee"
+                type="number"
+                variant="boxed"
+                value={form.registration_fee}
+                onChange={handleChange}
+              />
+              <p className="type-caption text-ink-muted">
+                Preliminary round fee in IDR.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="sub-final-fee">Final fee</Label>
+              <Input
+                id="sub-final-fee"
+                name="final_registration_fee"
+                type="number"
+                variant="boxed"
+                value={form.final_registration_fee ?? ""}
+                onChange={handleChange}
+              />
+              <p className="type-caption text-ink-muted">
+                Leave blank for a single-round category.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Foreign preliminary fees */}
+        <section className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <Eyebrow withRule>Foreign fees · preliminary</Eyebrow>
+            {foreignFees.length > 0 && (
+              <Eyebrow tone="muted">
+                {foreignFees.length}{" "}
+                {foreignFees.length === 1 ? "country" : "countries"}
+              </Eyebrow>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+              <Input
+                variant="boxed"
+                value={newForeignFee.country}
+                onChange={(e) =>
+                  setNewForeignFee({
+                    ...newForeignFee,
+                    country: e.target.value,
+                  })
+                }
+                placeholder="Country (e.g. Singapore)"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddForeignFee(e);
+                  }
+                }}
+              />
+              <Input
+                variant="boxed"
+                value={newForeignFee.fee}
+                onChange={(e) =>
+                  setNewForeignFee({ ...newForeignFee, fee: e.target.value })
+                }
+                placeholder="Fee (e.g. SGD 150)"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddForeignFee(e);
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={handleAddForeignFee}
+                variant="outline"
+                className="sm:w-auto w-full"
+              >
+                {editingForeignIndex !== null ? "Update" : "Add fee"}
+              </Button>
+            </div>
+            <div className="flex flex-col gap-1.5">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleForeignFeeDragEnd}
               >
                 <SortableContext
-                  items={(form.foreign_registration_fee || []).map((_, i) =>
-                    i.toString()
-                  )}
+                  items={foreignFees.map((_, i) => i.toString())}
                   strategy={verticalListSortingStrategy}
                 >
-                  {(form.foreign_registration_fee || []).map((item, index) => (
-                    <SortableForeignFee
-                      key={index}
-                      id={index.toString()}
-                      item={item}
-                      onRemove={() => handleRemoveForeignFee(index)}
-                      onEdit={() => handleEditForeignFee(index)}
-                    />
-                  ))}
+                  {foreignFees.length === 0 ? (
+                    <p className="type-caption text-ink-muted italic px-1 py-2">
+                      No foreign preliminary fees configured.
+                    </p>
+                  ) : (
+                    foreignFees.map((item, index) => (
+                      <SortableForeignFee
+                        key={index}
+                        id={index.toString()}
+                        item={item}
+                        onRemove={() => handleRemoveForeignFee(index)}
+                        onEdit={() => handleEditForeignFee(index)}
+                      />
+                    ))
+                  )}
                 </SortableContext>
               </DndContext>
             </div>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Foreign Final Registration Fees
-          </label>
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+        </section>
+
+        {/* Foreign final fees */}
+        <section className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <Eyebrow withRule>Foreign fees · final</Eyebrow>
+            {foreignFinalFees.length > 0 && (
+              <Eyebrow tone="muted">
+                {foreignFinalFees.length}{" "}
+                {foreignFinalFees.length === 1 ? "country" : "countries"}
+              </Eyebrow>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
               <Input
+                variant="boxed"
                 value={newForeignFinalFee.country}
                 onChange={(e) =>
-                  setNewForeignFinalFee({ ...newForeignFinalFee, country: e.target.value })
+                  setNewForeignFinalFee({
+                    ...newForeignFinalFee,
+                    country: e.target.value,
+                  })
                 }
                 placeholder="Country"
                 onKeyDown={(e) => {
@@ -649,11 +754,15 @@ export function SubcategoryModal({
                 }}
               />
               <Input
+                variant="boxed"
                 value={newForeignFinalFee.fee}
                 onChange={(e) =>
-                  setNewForeignFinalFee({ ...newForeignFinalFee, fee: e.target.value })
+                  setNewForeignFinalFee({
+                    ...newForeignFinalFee,
+                    fee: e.target.value,
+                  })
                 }
-                placeholder="Fee amount"
+                placeholder="Fee"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -661,51 +770,69 @@ export function SubcategoryModal({
                   }
                 }}
               />
+              <Button
+                type="button"
+                onClick={handleAddForeignFinalFee}
+                variant="outline"
+                className="sm:w-auto w-full"
+              >
+                {editingForeignFinalIndex !== null ? "Update" : "Add fee"}
+              </Button>
             </div>
-            <Button
-              type="button"
-              onClick={handleAddForeignFinalFee}
-              variant="outline"
-              className="w-full"
-            >
-              {editingForeignFinalIndex !== null ? "Update Final Fee" : "Add Foreign Final Fee"}
-            </Button>
-            <div className="space-y-2 mt-2">
+            <div className="flex flex-col gap-1.5">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleForeignFinalFeeDragEnd}
               >
                 <SortableContext
-                  items={(form.foreign_final_registration_fee || []).map((_, i) =>
-                    i.toString()
-                  )}
+                  items={foreignFinalFees.map((_, i) => i.toString())}
                   strategy={verticalListSortingStrategy}
                 >
-                  {(form.foreign_final_registration_fee || []).map((item, index) => (
-                    <SortableForeignFee
-                      key={index}
-                      id={index.toString()}
-                      item={item}
-                      onRemove={() => handleRemoveForeignFinalFee(index)}
-                      onEdit={() => handleEditForeignFinalFee(index)}
-                    />
-                  ))}
+                  {foreignFinalFees.length === 0 ? (
+                    <p className="type-caption text-ink-muted italic px-1 py-2">
+                      No foreign final fees configured.
+                    </p>
+                  ) : (
+                    foreignFinalFees.map((item, index) => (
+                      <SortableForeignFee
+                        key={index}
+                        id={index.toString()}
+                        item={item}
+                        onRemove={() => handleRemoveForeignFinalFee(index)}
+                        onEdit={() => handleEditForeignFinalFee(index)}
+                      />
+                    ))
+                  )}
                 </SortableContext>
               </DndContext>
             </div>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Repertoire List
-          </label>
-          <div className="space-y-2">
-            <div className="flex gap-2">
+        </section>
+
+        {/* Repertoire */}
+        <section className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <Eyebrow withRule>Repertoire</Eyebrow>
+              <p className="type-caption text-ink-muted">
+                Drag to reorder. Edit or remove per row.
+              </p>
+            </div>
+            {repertoire.length > 0 && (
+              <Eyebrow tone="muted">
+                {repertoire.length}{" "}
+                {repertoire.length === 1 ? "piece" : "pieces"}
+              </Eyebrow>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input
+                variant="boxed"
                 value={newRepertoireItem}
                 onChange={(e) => setNewRepertoireItem(e.target.value)}
-                placeholder="Enter repertoire item"
+                placeholder="e.g. Bach — Prelude in C major, BWV 846"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -717,103 +844,122 @@ export function SubcategoryModal({
                 type="button"
                 onClick={handleAddRepertoireItem}
                 variant="outline"
+                className="sm:w-auto w-full"
               >
-                {editingIndex !== null ? "Update" : "Add"}
+                {editingIndex !== null ? "Update" : "Add piece"}
               </Button>
             </div>
-            <div className="space-y-2 mt-2">
+            <div className="flex flex-col gap-1.5">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={(form.repertoire || []).map((_, i) => i.toString())}
+                  items={repertoire.map((_, i) => i.toString())}
                   strategy={verticalListSortingStrategy}
                 >
-                  {(form.repertoire || []).map((item, index) => (
-                    <SortableItem
-                      key={index}
-                      id={index.toString()}
-                      item={item}
-                      onRemove={() => handleRemoveRepertoireItem(index)}
-                      onEdit={() => handleEditRepertoireItem(index)}
-                    />
-                  ))}
+                  {repertoire.length === 0 ? (
+                    <p className="type-caption text-ink-muted italic px-1 py-2">
+                      No pieces yet. Add one above.
+                    </p>
+                  ) : (
+                    repertoire.map((item, index) => (
+                      <SortableItem
+                        key={index}
+                        id={index.toString()}
+                        item={item}
+                        onRemove={() => handleRemoveRepertoireItem(index)}
+                        onEdit={() => handleEditRepertoireItem(index)}
+                      />
+                    ))
+                  )}
                 </SortableContext>
               </DndContext>
             </div>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Performance Duration
-          </label>
-          <Input
-            name="performance_duration"
-            value={form.performance_duration || ""}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Requirements</label>
-          <Editor
-            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-            value={form.requirements}
-            onEditorChange={handleEditorChange}
-            init={{
-              height: 500,
-              menubar: false,
-              plugins: [
-                "advlist",
-                "autolink",
-                "lists",
-                "link",
-                "image",
-                "charmap",
-                "preview",
-                "anchor",
-                "searchreplace",
-                "visualblocks",
-                "code",
-                "fullscreen",
-                "insertdatetime",
-                "media",
-                "table",
-                "code",
-                "help",
-                "wordcount",
-              ],
-              toolbar:
-                "undo redo | blocks | " +
-                "bold italic forecolor | alignleft aligncenter " +
-                "alignright alignjustify | bullist numlist outdent indent | " +
-                "removeformat | help",
-              content_style:
-                "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-            }}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Order Index</label>
-          <Input
-            name="order_index"
-            type="number"
-            value={form.order_index}
-            onChange={handleChange}
-          />
-        </div>
-        {error && <div className="text-red-600 text-sm">{error}</div>}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+        </section>
+
+        {/* Performance duration */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Performance</Eyebrow>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="sub-duration">Performance duration</Label>
+            <Input
+              id="sub-duration"
+              name="performance_duration"
+              variant="boxed"
+              value={form.performance_duration || ""}
+              onChange={handleChange}
+              placeholder="e.g. Up to 5 minutes"
+            />
+          </div>
+        </section>
+
+        {/* Requirements */}
+        <section className="flex flex-col gap-3">
+          <Eyebrow withRule>Requirements</Eyebrow>
+          <div className="border border-rule-hairline overflow-hidden">
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+              value={form.requirements || ""}
+              onEditorChange={handleEditorChange}
+              init={{
+                height: 360,
+                menubar: false,
+                plugins: [
+                  "advlist",
+                  "autolink",
+                  "lists",
+                  "link",
+                  "image",
+                  "charmap",
+                  "preview",
+                  "anchor",
+                  "searchreplace",
+                  "visualblocks",
+                  "code",
+                  "fullscreen",
+                  "insertdatetime",
+                  "media",
+                  "table",
+                  "code",
+                  "help",
+                  "wordcount",
+                ],
+                toolbar:
+                  "undo redo | blocks | " +
+                  "bold italic forecolor | alignleft aligncenter " +
+                  "alignright alignjustify | bullist numlist outdent indent | " +
+                  "removeformat | help",
+                content_style:
+                  "body { font-family: 'Manrope', sans-serif; font-size: 14px; color: #2B2B2B }",
+              }}
+            />
+          </div>
+        </section>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 pt-2 border-t border-rule-hairline">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting
-              ? "Saving..."
+              ? "Saving…"
               : isEdit
-              ? "Save Changes"
-              : "Add Subcategory"}
+              ? "Save changes"
+              : (
+                <>
+                  <Plus className="h-3.5 w-3.5" />
+                  Add subcategory
+                </>
+              )}
           </Button>
         </div>
       </form>

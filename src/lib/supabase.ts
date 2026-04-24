@@ -280,6 +280,7 @@ export async function getEventById(id: string) {
       };
 
       const groupedWinners = winners.reduce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase nested-join response type; proper typing would require a dedicated winners-view type
         (acc: Record<string, CategoryData>, winner: any) => {
           const categoryData = Array.isArray(winner.event_categories)
             ? winner.event_categories[0]

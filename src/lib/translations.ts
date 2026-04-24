@@ -10,31 +10,32 @@ export const translations = {
     },
     about: {
       title: "About Us",
-      subtitle: "Empowering Musical Excellence",
+      subtitle: "Music, and the light behind it.",
       description:
-        "Musica Lumina is a premier international music competition platform dedicated to discovering and nurturing exceptional musical talent.\n\nFounded by a team of passionate musicians and educators, we believe in creating opportunities for young musicians to showcase their artistry, connect with fellow performers, and receive guidance from world-renowned adjudicators.\n\nOur competitions span various musical disciplines and age categories, providing a platform for musicians at different stages of their journey to grow and excel.",
+        "The name is Latin. Musica, music. Lumina, light. Put the two words together and you get a small idea: that music should be staged with care, and that the light around it — the attention, the audience, the craft — matters as much as the notes themselves.\n\nMusica Lumina hosts competitions, festivals, masterclasses, and group classes across the year. Our programmes run from introductory festivals for first-time performers to international competitions for established artists. We work with musicians of every age — from children at their first recital to senior artists returning to the stage.\n\nWe keep the programme small on purpose. Fewer events, more attention per musician. Adjudicators who listen carefully. Feedback written with thought. Prestige without intimidation, rigour without coldness. The result is a calendar we'd want to play in ourselves.",
       coreValues: {
-        title: "Our Core Values",
+        title: "Our Principles",
         excellence: {
-          title: "Excellence",
+          title: "Craft",
           description:
-            "We uphold the highest standards in music education and performance, fostering an environment where talent can flourish.",
+            "We prepare each event the way a musician prepares a piece — with rigour, rehearsal, and the patience to get the small things right. Quality comes from care, not volume.",
         },
         innovation: {
-          title: "Innovation",
+          title: "Range",
           description:
-            "We embrace modern approaches to music education and competition, utilizing technology to enhance the learning experience.",
+            "Our calendar spans festivals, masterclasses, and international competitions. Performers range from children at a first recital to senior artists returning to the stage — prestige without intimidation, rigour without coldness.",
         },
         passion: {
-          title: "Passion",
+          title: "Attention",
           description:
-            "We are driven by our love for music and our commitment to nurturing the next generation of musicians.",
+            "Adjudicators who listen carefully. Feedback written with thought. An audience that treats the work seriously. Every programme starts here.",
         },
       },
     },
     partners: {
-      title: "Our Partners",
-      subtitle: "Collaborating for Musical Excellence",
+      title: "In good company.",
+      subtitle:
+        "The international competitions and music organisations we share stages, programmes, and performers with.",
     },
     contact: {
       title: "Contact Us",
@@ -81,7 +82,7 @@ export const translations = {
       partners: "Our Partners",
       contact: "Contact",
       contactUs: "Contact Us",
-      copyright: "Copyright © {year} MusicaLumina. All rights reserved.",
+      copyright: "Copyright © {year} Musica Lumina. All rights reserved.",
     },
     registration: {
       title: "Event Registration",
@@ -203,6 +204,9 @@ export const translations = {
       viewDetails: "View Details",
       comingSoon: "Coming Soon",
       viewResults: "View Results",
+      statusOpen: "Open",
+      statusUpcoming: "Upcoming",
+      statusConcluded: "Concluded",
       eventTypes: {
         festival: "Festival",
         competition: "Competition",
@@ -270,6 +274,89 @@ export const translations = {
     common: {
       tbd: "TBA",
     },
+    /* pageCopy — editorial copy extracted from inline `const copy = {}`
+       objects in Phase 8c. Kept in one namespace so translators can find
+       and tune the editorial voice in one place, rather than scattering
+       across home/events/eventDetails/masterclass/etc. */
+    pageCopy: {
+      home: {
+        heroMeta: "Est. 2024 · Jakarta",
+        heroNowBooking: "Now booking",
+        featuredEyebrow: "In season",
+        featuredHeading: "The work we're hosting now.",
+        featuredLede:
+          "Competitions, masterclasses, and group classes currently accepting registrations or arriving soon.",
+        featuredEmpty:
+          "No live events at the moment. Check back shortly — the season is always turning.",
+        howItWorksEyebrow: "For participants",
+        howItWorksHeading: "A path, in three movements.",
+        howItWorksLede:
+          "Registration is short, documents are light, and the rest is performance.",
+        stepOneTitle: "Browse",
+        stepOneBody:
+          "Find events that fit your repertoire, your level, and your season.",
+        stepTwoTitle: "Register",
+        stepTwoBody:
+          "Secure your place with a short form and the documents we'll need on file.",
+        stepThreeTitle: "Perform",
+        stepThreeBody:
+          "Arrive, play, and walk away with feedback from people who take craft seriously.",
+        closingEyebrow: "Your next event",
+        closingHeading: "Where your next performance lives.",
+        closingLede:
+          "The full calendar of competitions, masterclasses, and group classes — curated across the year.",
+      },
+      events: {
+        eyebrow: "Our programme",
+        lede: "Competitions, masterclasses, and group classes across the season — live, upcoming, and from the archive.",
+        filterLabel: "Filter by",
+        upcomingHeading: "Upcoming Events",
+        archiveEyebrow: "Archive",
+        archiveHeading: "From the archive",
+        archiveLede: "Programmes we've hosted in previous seasons.",
+        emptySeasonTitle: "No events in season.",
+        emptySeasonBody:
+          "The season turns. Check back in a few weeks, or explore our archive below.",
+        emptyArchiveBody: "No archived programmes yet.",
+      },
+      eventDetails: {
+        tiersLede:
+          "Select the appropriate category based on age and repertoire requirements. All participants receive written adjudicator feedback.",
+        juryHeading: "Adjudicators",
+        juryLede: "The panel guiding this programme.",
+        prizesLede: "Recognition and awards for distinguished performances.",
+        importantLabel: "Before you register",
+        subcategoriesLabel: "Subcategories",
+      },
+      pastEvents: {
+        eyebrow: "Archive",
+        galleryEyebrow: "Highlights",
+        winnersHeading: "Honoured performers",
+        winnersLede: "Prize recipients across each category and tier.",
+      },
+      masterclassDetails: {
+        eyebrow: "Masterclass",
+        importantLabel: "Before you register",
+        instructorEyebrow: "Your instructor",
+      },
+      pastMasterclass: {
+        eyebrow: "Archive · Masterclass",
+        galleryEyebrow: "Highlights",
+        participantsHeading: "Participants",
+      },
+      groupClass: {
+        eyebrow: "Group Class",
+        importantLabel: "Before you register",
+        instructorEyebrow: "Your teacher",
+      },
+      videoSubmission: {
+        eyebrow: "Submission",
+        step1: "01 · Reference",
+        step2: "02 · Confirm participant",
+        step3: "03 · Your performance",
+        participantInfoHeading: "Participant on file",
+      },
+    },
     videoSubmissionForm: {
       title: "Video Submission",
       description:
@@ -319,31 +406,32 @@ export const translations = {
     },
     about: {
       title: "Tentang Kami",
-      subtitle: "Memberdayakan Keunggulan Musik",
+      subtitle: "Musik, dan cahaya di baliknya.",
       description:
-        "Musica Lumina adalah platform kompetisi musik internasional terkemuka yang berdedikasi untuk menemukan dan membina bakat musik.\n\nDidirikan oleh tim musisi dan pendidik yang bersemangat, kami percaya dalam menciptakan kesempatan bagi musisi muda untuk menampilkan kesenian mereka, terhubung dengan sesama musisi, dan menerima pengarahan dari juri yang diakui dunia.\n\nKompetisi kami mencakup berbagai disiplin musik dan kategori usia, menyediakan platform bagi musisi di berbagai tahap perjalanan mereka untuk berkembang.",
+        "Namanya berasal dari bahasa Latin. Musica, musik. Lumina, cahaya. Digabungkan, kedua kata itu menyampaikan satu gagasan sederhana: bahwa musik harus dipentaskan dengan perhatian, dan cahaya di sekitarnya — audiens, kerajinan, kepedulian — sama pentingnya dengan nada itu sendiri.\n\nMusica Lumina menggelar kompetisi, festival, masterclass, dan kelas kelompok sepanjang tahun. Program kami membentang dari festival perkenalan untuk pemusik pemula hingga kompetisi internasional untuk seniman mapan. Kami bekerja dengan pemusik dari segala usia — dari anak-anak yang memainkan resital pertama hingga seniman senior yang kembali ke panggung.\n\nKami sengaja membuat program yang kecil. Lebih sedikit acara, lebih banyak perhatian per pemusik. Juri yang mendengarkan dengan saksama. Umpan balik yang ditulis dengan hati-hati. Prestisius tanpa intimidasi, teliti tanpa terasa dingin. Hasilnya adalah kalender yang ingin kami mainkan sendiri.",
       coreValues: {
-        title: "Nilai-Nilai Utama Kami",
+        title: "Prinsip Kami",
         excellence: {
-          title: "Keunggulan",
+          title: "Kerajinan",
           description:
-            "Kami menjunjung tinggi standar tertinggi dalam pendidikan dan pertunjukan musik, memupuk lingkungan di mana bakat dapat berkembang.",
+            "Kami menyiapkan setiap acara seperti musisi menyiapkan satu karya — dengan ketelitian, latihan, dan kesabaran untuk memastikan detail kecil berjalan tepat. Kualitas lahir dari kepedulian, bukan dari kuantitas.",
         },
         innovation: {
-          title: "Inovasi",
+          title: "Cakupan",
           description:
-            "Kami menerapkan pendekatan modern dalam pendidikan dan kompetisi musik, memanfaatkan teknologi untuk meningkatkan pengalaman belajar.",
+            "Kalender kami mencakup festival, masterclass, dan kompetisi internasional. Pemusik kami bervariasi dari anak yang tampil di resital pertama hingga seniman senior yang kembali ke panggung — prestisius tanpa intimidasi, teliti tanpa terasa dingin.",
         },
         passion: {
-          title: "Semangat",
+          title: "Perhatian",
           description:
-            "Kami didorong oleh kecintaan kami terhadap musik dan komitmen kami untuk membina generasi musisi berikutnya.",
+            "Juri yang mendengarkan dengan saksama. Umpan balik yang ditulis dengan hati-hati. Audiens yang menghargai kerja keras di balik panggung. Setiap program dimulai dari sini.",
         },
       },
     },
     partners: {
-      title: "Mitra Kami",
-      subtitle: "Berkolaborasi untuk Keunggulan Musik",
+      title: "Bersama mitra terbaik.",
+      subtitle:
+        "Kompetisi internasional dan organisasi musik tempat kami berbagi panggung, program, dan pemusik sepanjang tahun.",
     },
     contact: {
       title: "Hubungi Kami",
@@ -390,7 +478,7 @@ export const translations = {
       partners: "Mitra Kami",
       contact: "Kontak",
       contactUs: "Hubungi Kami",
-      copyright: "Hak Cipta © {year} MusicaLumina. Seluruh hak dilindungi.",
+      copyright: "Hak Cipta © {year} Musica Lumina. Seluruh hak dilindungi.",
     },
     registration: {
       title: "Pendaftaran Acara",
@@ -516,6 +604,9 @@ export const translations = {
       viewDetails: "Lihat Detail",
       comingSoon: "Segera Hadir",
       viewResults: "Lihat Hasil",
+      statusOpen: "Dibuka",
+      statusUpcoming: "Akan Datang",
+      statusConcluded: "Selesai",
       eventTypes: {
         festival: "Festival",
         competition: "Kompetisi",
@@ -582,6 +673,86 @@ export const translations = {
     },
     common: {
       tbd: "Akan Diumumkan",
+    },
+    pageCopy: {
+      home: {
+        heroMeta: "Est. 2024 · Jakarta",
+        heroNowBooking: "Pendaftaran dibuka",
+        featuredEyebrow: "Musim ini",
+        featuredHeading: "Program yang sedang kami selenggarakan.",
+        featuredLede:
+          "Kompetisi, masterclass, dan kelas kelompok yang sedang menerima pendaftaran atau segera hadir.",
+        featuredEmpty:
+          "Belum ada acara yang sedang berlangsung. Silakan cek kembali — musim selalu berputar.",
+        howItWorksEyebrow: "Untuk peserta",
+        howItWorksHeading: "Sebuah jalan, dalam tiga gerakan.",
+        howItWorksLede:
+          "Pendaftaran singkat, dokumen ringkas, selebihnya adalah penampilan.",
+        stepOneTitle: "Jelajahi",
+        stepOneBody:
+          "Temukan acara yang sesuai dengan repertoar, level, dan musim Anda.",
+        stepTwoTitle: "Daftar",
+        stepTwoBody:
+          "Amankan tempat Anda dengan formulir singkat dan dokumen yang kami butuhkan.",
+        stepThreeTitle: "Tampil",
+        stepThreeBody:
+          "Hadir, bermain, dan pulang dengan umpan balik dari mereka yang serius menghargai keahlian.",
+        closingEyebrow: "Acara Anda berikutnya",
+        closingHeading: "Di mana penampilan Anda berikutnya bermukim.",
+        closingLede:
+          "Kalender lengkap kompetisi, masterclass, dan kelas kelompok — dikurasi sepanjang tahun.",
+      },
+      events: {
+        eyebrow: "Program kami",
+        lede: "Kompetisi, masterclass, dan kelas kelompok sepanjang musim — berjalan, mendatang, dan dari arsip.",
+        filterLabel: "Saring berdasarkan",
+        upcomingHeading: "Acara Mendatang",
+        archiveEyebrow: "Arsip",
+        archiveHeading: "Dari arsip",
+        archiveLede:
+          "Program yang pernah kami selenggarakan di musim sebelumnya.",
+        emptySeasonTitle: "Belum ada acara di musim ini.",
+        emptySeasonBody:
+          "Musim berputar. Silakan cek lagi dalam beberapa minggu, atau jelajahi arsip kami di bawah.",
+        emptyArchiveBody: "Belum ada program terarsip.",
+      },
+      eventDetails: {
+        tiersLede:
+          "Pilih kategori yang sesuai berdasarkan persyaratan usia dan repertoar. Semua peserta mendapatkan umpan balik tertulis dari juri.",
+        juryHeading: "Dewan Juri",
+        juryLede: "Panel yang memandu program ini.",
+        prizesLede: "Penghargaan dan apresiasi untuk penampilan istimewa.",
+        importantLabel: "Sebelum Anda mendaftar",
+        subcategoriesLabel: "Sub Kategori",
+      },
+      pastEvents: {
+        eyebrow: "Arsip",
+        galleryEyebrow: "Sorotan",
+        winnersHeading: "Penampil terbaik",
+        winnersLede: "Penerima penghargaan di setiap kategori dan tingkatan.",
+      },
+      masterclassDetails: {
+        eyebrow: "Masterclass",
+        importantLabel: "Sebelum Anda mendaftar",
+        instructorEyebrow: "Instruktur Anda",
+      },
+      pastMasterclass: {
+        eyebrow: "Arsip · Masterclass",
+        galleryEyebrow: "Sorotan",
+        participantsHeading: "Peserta",
+      },
+      groupClass: {
+        eyebrow: "Kelas Kelompok",
+        importantLabel: "Sebelum Anda mendaftar",
+        instructorEyebrow: "Pengajar Anda",
+      },
+      videoSubmission: {
+        eyebrow: "Pengiriman",
+        step1: "01 · Referensi",
+        step2: "02 · Konfirmasi peserta",
+        step3: "03 · Penampilan Anda",
+        participantInfoHeading: "Peserta terdaftar",
+      },
     },
     videoSubmissionForm: {
       title: "Submit Video",

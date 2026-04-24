@@ -14,6 +14,17 @@ export type RegistrationState = "pending" | "verified";
 export interface Database {
   public: {
     Tables: {
+      /**
+       * events
+       *
+       * DEPRECATED column: `registration_fee` — the event-level fee exists
+       * in the schema but is never read by the public pages. All live
+       * pricing is carried by `event_subcategories.registration_fee` /
+       * `event_subcategories.final_registration_fee`. Leave the column in
+       * place for existing rows but do not wire new UI to it; confirm with
+       * the data owner before dropping. Flagged during the Phase 6f
+       * schema audit.
+       */
       events: {
         Row: {
           id: string;
@@ -386,6 +397,67 @@ export interface Database {
           number_of_slots?: number | null;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      event_prizes: {
+        Row: {
+          id: string;
+          event_id: string;
+          category_id: string | null;
+          title: string;
+          amount: number | null;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          category_id?: string | null;
+          title: string;
+          amount?: number | null;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          category_id?: string | null;
+          title?: string;
+          amount?: number | null;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      invitation_codes: {
+        Row: {
+          id: string;
+          event_id: string;
+          code_hash: string;
+          max_uses: number;
+          uses: number | null;
+          expires_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          code_hash: string;
+          max_uses: number;
+          uses?: number | null;
+          expires_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          code_hash?: string;
+          max_uses?: number;
+          uses?: number | null;
+          expires_at?: string | null;
+          created_at?: string;
         };
       };
     };

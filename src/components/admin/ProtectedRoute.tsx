@@ -1,59 +1,65 @@
 import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/clerk-react";
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Shield, AlertTriangle } from "lucide-react";
+import { Shield, AlertTriangle, Loader2 } from "lucide-react";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { WireframeWave } from "@/components/ui/wireframe-wave";
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
+/**
+ * ProtectedRoute — authorization wall for every admin route.
+ *
+ * Authorization rules preserved exactly from the original:
+ *   - Clerk `org:admin` role → authorized
+ *   - Email or username contains "staff" → authorized
+ *   - Otherwise → denied, auto-logout after 3 seconds
+ *
+ * Only the loading / denied UIs have been redesigned to the editorial system.
+ */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const [authError, setAuthError] = useState<string>('');
+  const [authError, setAuthError] = useState<string>("");
 
   useEffect(() => {
     if (isLoaded && user) {
-      // Check authorization
       const checkAuthorization = () => {
         try {
-          // Check for org:admin role
-          const hasAdminRole = user.organizationMemberships?.some(
-            membership => membership.role === 'org:admin'
-          ) || user.publicMetadata?.role === 'org:admin';
+          const hasAdminRole =
+            user.organizationMemberships?.some(
+              (membership) => membership.role === "org:admin"
+            ) || user.publicMetadata?.role === "org:admin";
 
           if (hasAdminRole) {
             setIsAuthorized(true);
             return;
           }
 
-          // Check if email or username contains 'staff'
-          const email = user.primaryEmailAddress?.emailAddress?.toLowerCase() || '';
-          const username = user.username?.toLowerCase() || '';
-          
-          const hasStaffInEmail = email.includes('staff');
-          const hasStaffInUsername = username.includes('staff');
+          const email =
+            user.primaryEmailAddress?.emailAddress?.toLowerCase() || "";
+          const username = user.username?.toLowerCase() || "";
 
-          if (hasStaffInEmail || hasStaffInUsername) {
+          if (email.includes("staff") || username.includes("staff")) {
             setIsAuthorized(true);
             return;
           }
 
-          // If neither condition is met, user is not authorized
           setIsAuthorized(false);
-          setAuthError('Access denied: You must be an admin or staff member to use this application.');
+          setAuthError(
+            "Access denied: You must be an admin or staff member to use this application."
+          );
 
-          // Force logout after a short delay to show the error message
           setTimeout(() => {
             signOut();
           }, 3000);
-
         } catch (error) {
-          console.error('Authorization check error:', error);
+          console.error("Authorization check error:", error);
           setIsAuthorized(false);
-          setAuthError('Error checking authorization. Please try again.');
-          
+          setAuthError("Error checking authorization. Please try again.");
           setTimeout(() => {
             signOut();
           }, 3000);
@@ -62,46 +68,59 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
       checkAuthorization();
     } else if (isLoaded && !user) {
-      // User is not signed in
       setIsAuthorized(null);
     }
   }, [isLoaded, user, signOut]);
 
-  // Loading state while checking authorization
+  // Loading — editorial card with marigold pulse
   if (isLoaded && user && isAuthorized === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-musica-cream via-amber-50 to-musica-cream flex items-center justify-center">
-        <div className="text-center bg-white/80 backdrop-blur-lg rounded-2xl p-8 border border-musica-burgundy/10 shadow-xl max-w-md w-full">
-          <div className="w-16 h-16 bg-musica-gold rounded-xl flex items-center justify-center shadow-lg mx-auto mb-6 animate-pulse">
-            <Shield className="w-8 h-8 text-musica-burgundy" />
-          </div>
-          <h2 className="text-2xl font-bold text-musica-burgundy mb-4">
-            Checking Authorization...
+      <div className="relative min-h-screen bg-surface-canvas flex items-center justify-center px-4 overflow-hidden">
+        <WireframeWave opacity={0.04} amplitude={0.7} lines={5} />
+        <div className="relative max-w-md w-full flex flex-col items-center gap-5 text-center">
+          <span
+            aria-hidden
+            className="flex h-14 w-14 items-center justify-center bg-marigold/15 border border-marigold/30"
+          >
+            <Shield className="h-6 w-6 text-marigold" />
+          </span>
+          <Eyebrow withRule>Authorization</Eyebrow>
+          <h2 className="type-headline-md text-burgundy">
+            Verifying access…
           </h2>
-          <p className="text-musica-burgundy/70">
-            Please wait while we verify your access permissions.
+          <p className="type-body-sm text-ink-muted max-w-sm">
+            Checking your permissions against the Musica Lumina admin directory.
           </p>
+          <Loader2
+            className="h-4 w-4 text-marigold animate-spin mt-2"
+            aria-hidden
+          />
         </div>
       </div>
     );
   }
 
-  // Authorization failed state
+  // Denied — editorial error state
   if (isLoaded && user && isAuthorized === false) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-red-25 to-red-50 flex items-center justify-center">
-        <div className="text-center bg-white/80 backdrop-blur-lg rounded-2xl p-8 border border-red-200 shadow-xl max-w-md w-full">
-          <div className="w-16 h-16 bg-red-100 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-6">
-            <AlertTriangle className="w-8 h-8 text-red-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-red-700 mb-4">
-            Access Denied
+      <div className="relative min-h-screen bg-surface-canvas flex items-center justify-center px-4 overflow-hidden">
+        <WireframeWave opacity={0.04} amplitude={0.7} lines={5} />
+        <div className="relative max-w-md w-full flex flex-col items-center gap-5 text-center">
+          <span
+            aria-hidden
+            className="flex h-14 w-14 items-center justify-center bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30"
+          >
+            <AlertTriangle className="h-6 w-6 text-[color:var(--status-error)]" />
+          </span>
+          <Eyebrow withRule tone="muted">
+            Access denied
+          </Eyebrow>
+          <h2 className="type-headline-md text-burgundy">
+            Not authorised.
           </h2>
-          <p className="text-red-600 mb-6">
-            {authError}
-          </p>
-          <p className="text-red-500 text-sm">
-            You will be signed out automatically in a few seconds...
+          <p className="type-body-sm text-ink-body max-w-sm">{authError}</p>
+          <p className="type-caption text-ink-muted italic">
+            Signing you out in a few seconds…
           </p>
         </div>
       </div>
@@ -110,10 +129,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   return (
     <>
-      <SignedIn>
-        {/* Only render children if user is authorized */}
-        {isAuthorized === true ? children : null}
-      </SignedIn>
+      <SignedIn>{isAuthorized === true ? children : null}</SignedIn>
       <SignedOut>
         <Navigate to="/admin" replace />
       </SignedOut>

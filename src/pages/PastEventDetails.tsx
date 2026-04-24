@@ -1,22 +1,22 @@
-import {
-  ArrowLeft,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  MapPin,
-  Medal,
-  Trophy,
-  Users,
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { cn } from "@/lib/utils";
 import { useEvent } from "../hooks/useEvent";
+import { useEventPhotos } from "../hooks/useEventPhotos";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
 import { useLanguage } from "../lib/LanguageContext";
-import { supabase } from "../lib/supabase";
 import { formatMultipleDatesWithLocale } from "../lib/utils";
+import { Section, Container } from "@/components/ui/section";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Image } from "@/components/ui/image";
+import { NoteGlyph } from "@/components/ui/wireframe-wave";
+import { EventGallery } from "@/components/EventGallery";
 
 type EventJuror = Omit<
   Database["public"]["Tables"]["event_jury"]["Row"],
@@ -37,241 +37,35 @@ type PastEvent = Database["public"]["Tables"]["events"]["Row"] & {
   };
 };
 
-function preloadImage(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
-    img.src = src;
-  });
-}
+const EASE = [0.19, 1, 0.22, 1] as const;
 
-function EventHighlightsCarousel({
-  images,
-  isLoading,
-}: {
-  images: string[];
-  isLoading: boolean;
-}) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
+  },
+};
 
-  const nextSlide = useCallback(() => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === images.length - 1 ? 0 : prevIndex + 1
-    );
-  }, [images.length]);
+const fadeUp = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+};
 
-  const prevSlide = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? images.length - 1 : prevIndex - 1
-    );
-  };
+const fadeUpSoft = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } },
+};
 
-  useEffect(() => {
-    // Reset loaded state when images change
-    setImagesLoaded(false);
+const viewportOnce = { once: true, margin: "-80px" } as const;
 
-    // Preload all images
-    if (images.length > 0) {
-      Promise.all(images.map(preloadImage))
-        .then(() => setImagesLoaded(true))
-        .catch((error) => {
-          console.error("Failed to preload images:", error);
-          // Still set as loaded to show whatever images we have
-          setImagesLoaded(true);
-        });
-    }
-  }, [images]);
-
-  useEffect(() => {
-    if (images.length > 1 && imagesLoaded) {
-      const timer = setInterval(nextSlide, 5000);
-      return () => clearInterval(timer);
-    }
-  }, [nextSlide, images.length, imagesLoaded]);
-
-  if (isLoading || !imagesLoaded) {
-    return (
-      <div className="relative w-full h-[600px] mb-8 bg-[#F7E7CE]/30 rounded-lg flex items-center justify-center">
-        <LoadingSpinner
-          message={
-            isLoading ? "Loading event photos..." : "Preparing photos..."
-          }
-        />
-      </div>
-    );
-  }
-
-  if (images.length === 0) {
-    return (
-      <div className="relative w-full h-[400px] mb-8 bg-[#F7E7CE]/30 rounded-lg flex items-center justify-center">
-        <p className="text-black/60 text-lg">
-          No photos available for this event
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative w-full h-[600px] mb-8 group">
-      <div className="relative h-full overflow-hidden rounded-lg">
-        {images.map((image, index) => (
-          <div
-            key={index}
-            className={`absolute w-full h-full transition-opacity duration-700 ease-in-out ${
-              index === currentIndex ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <img
-              src={image}
-              alt={`Event highlight ${index + 1}`}
-              className="absolute block w-full h-full object-cover"
-            />
-          </div>
-        ))}
-      </div>
-
-      {images.length > 1 && (
-        <>
-          {/* Navigation Buttons */}
-          <button
-            onClick={prevSlide}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <button
-            onClick={nextSlide}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
-
-          {/* Dots Indicator */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  index === currentIndex
-                    ? "bg-white w-4"
-                    : "bg-white/50 hover:bg-white/80"
-                }`}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function useEventPhotos(eventId: string) {
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function fetchEventPhotos() {
-      try {
-        setLoading(true);
-
-        // List all files in the event's directory
-        const { data: files, error } = await supabase.storage
-          .from("event-photos")
-          .list(eventId);
-
-        if (error) throw error;
-
-        if (!files || files.length === 0) {
-          if (mounted) setPhotos([]);
-          return;
-        }
-
-        // Get signed URLs for all photos
-        const photoUrls = await Promise.all(
-          files
-            .filter((file) => file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i))
-            .map(async (file) => {
-              const signedUrlResult = await supabase.storage
-                .from("event-photos")
-                .createSignedUrl(`${eventId}/${file.name}`, 3600); // 1 hour expiry
-
-              if (signedUrlResult.error) throw signedUrlResult.error;
-              return signedUrlResult.data?.signedUrl;
-            })
-        );
-
-        if (mounted) setPhotos(photoUrls.filter(Boolean) as string[]);
-      } catch (err) {
-        console.error("Error fetching event photos:", err);
-        if (mounted) {
-          setError(
-            err instanceof Error
-              ? err
-              : new Error("Failed to fetch event photos")
-          );
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-
-    if (eventId) {
-      fetchEventPhotos();
-    }
-
-    return () => {
-      mounted = false;
-    };
-  }, [eventId]);
-
-  // Refresh signed URLs periodically (every 45 minutes)
-  useEffect(() => {
-    if (photos.length === 0) return;
-
-    const refreshInterval = setInterval(async () => {
-      try {
-        const { data: files, error } = await supabase.storage
-          .from("event-photos")
-          .list(eventId);
-
-        if (error) throw error;
-
-        if (!files || files.length === 0) return;
-
-        const newPhotoUrls = await Promise.all(
-          files
-            .filter((file) => file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i))
-            .map(async (file) => {
-              const signedUrlResult = await supabase.storage
-                .from("event-photos")
-                .createSignedUrl(`${eventId}/${file.name}`, 3600);
-
-              if (signedUrlResult.error) throw signedUrlResult.error;
-              return signedUrlResult.data?.signedUrl;
-            })
-        );
-
-        setPhotos(newPhotoUrls.filter(Boolean) as string[]);
-      } catch (err) {
-        console.error("Error refreshing signed URLs:", err);
-      }
-    }, 45 * 60 * 1000); // 45 minutes
-
-    return () => clearInterval(refreshInterval);
-  }, [eventId, photos.length]);
-
-  return { photos, loading, error };
-}
 
 function PastEventDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+  const initial = reduceMotion ? false : "hidden";
+
   const { t, language } = useLanguage();
   const {
     event,
@@ -292,183 +86,577 @@ function PastEventDetails() {
   };
 
   if (eventLoading) {
-    return <LoadingSpinner message={t("loading.loadingEventDetails")} />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-canvas pt-20">
+        <LoadingSpinner message={t("loading.loadingEventDetails")} />
+      </div>
+    );
   }
 
   if (eventError || !event) {
     return (
-      <div className="pt-20 pb-12 bg-[#FFFFF0] min-h-screen animate-fadeIn">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+      <div className="min-h-screen bg-surface-canvas pt-32">
+        <Container>
           <button
             onClick={handleBackClick}
-            className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
+            className="type-label inline-flex items-center gap-2 text-ink-accent hover:text-marigold transition-colors mb-10"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4" />
             {t("eventDetails.backToEvents")}
           </button>
-          <div className="text-center py-12">
-            <h2 className="text-3xl font-playfair text-[#808080] mb-4">
+          <div className="flex flex-col gap-5 max-w-prose border-l-2 border-marigold pl-8 py-8">
+            <Eyebrow withRule>{t("pageCopy.pastEvents.eyebrow")}</Eyebrow>
+            <h2 className="type-display-md text-burgundy">
               {eventError
                 ? t("eventDetails.errorLoading")
                 : t("eventDetails.notFound")}
             </h2>
-            <p className="text-lg text-black/60 mb-6">
+            <p className="type-body-lg text-ink-muted">
               {eventError
                 ? t("eventDetails.errorMessage")
                 : t("eventDetails.notFoundMessage")}
             </p>
-            <button
-              onClick={() => navigate("/events")}
-              className="inline-flex items-center px-6 py-3 bg-marigold text-white rounded-lg hover:bg-marigold/90 transition-colors"
-            >
-              {t("eventDetails.viewAllEvents")}
-            </button>
+            <div>
+              <Button size="lg" onClick={() => navigate("/events")}>
+                {t("eventDetails.viewAllEvents")}
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </div>
+        </Container>
       </div>
     );
   }
 
   return (
-    <div className="pt-20 pb-12 bg-[#FFFFF0] animate-fadeIn">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <button
-          onClick={handleBackClick}
-          className="inline-flex items-center text-marigold hover:text-marigold/90 mb-8"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {t("eventDetails.backToEvents")}
-        </button>
+    <div className="bg-surface-canvas">
+      {/* ================================================================
+          HERO — editorial header for the archive entry
+          ================================================================ */}
+      <section className="pt-28 md:pt-28 lg:pt-32 pb-10 md:pb-12 lg:pb-16">
+        <Container>
+          <motion.button
+            onClick={handleBackClick}
+            className="type-label inline-flex items-center gap-2 text-ink-accent hover:text-marigold transition-colors mb-10"
+            initial={reduceMotion ? false : { opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: EASE }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("eventDetails.backToEvents")}
+          </motion.button>
 
-        <EventHighlightsCarousel images={photos} isLoading={photosLoading} />
-
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          <h1 className="text-4xl font-serif text-black mb-8">{event.title}</h1>
-          <p
-            className="text-black/80 mb-8"
-            dangerouslySetInnerHTML={{
-              __html:
-                event.description?.[language] || event.description?.en || "",
-            }}
-          />
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="flex items-center space-x-3">
-              <Calendar className="h-5 w-5 text-marigold" />
-              <div>
-                <h3 className="font-medium text-black">
-                  {t("eventDetails.eventDate")}
-                </h3>
-                <div className="text-black/80 whitespace-pre-line">
+          <motion.div
+            variants={reduceMotion ? undefined : stagger}
+            initial={initial}
+            animate="visible"
+            className="flex flex-col gap-6 max-w-4xl"
+          >
+            <motion.div variants={fadeUpSoft}>
+              <Eyebrow withRule tone="muted">
+                {t("pageCopy.pastEvents.eyebrow")}
+              </Eyebrow>
+            </motion.div>
+            <motion.h1
+              variants={fadeUp}
+              className="type-display-lg text-burgundy text-balance"
+            >
+              {event.title}
+            </motion.h1>
+            <motion.div variants={fadeUpSoft}>
+              <Badge status="ended" dot>
+                {t("eventCard.statusConcluded")}
+              </Badge>
+            </motion.div>
+            <motion.dl
+              variants={fadeUpSoft}
+              className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6"
+            >
+              <MetaItem label={t("eventDetails.eventDate")}>
+                <span className="whitespace-pre-line">
                   {formatMultipleDatesWithLocale(event.event_date, language)}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <MapPin className="h-5 w-5 text-marigold" />
-              <div>
-                <h3 className="font-medium text-black">
-                  {t("eventDetails.venue")}
-                </h3>
-                <p className="text-black/80">{event.location}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+                </span>
+              </MetaItem>
+              <MetaItem label={t("eventDetails.venue")}>
+                {event.location}
+              </MetaItem>
+            </motion.dl>
+          </motion.div>
+        </Container>
+      </section>
 
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          <div className="flex items-center space-x-3 mb-6">
-            <Users className="h-6 w-6 text-marigold" />
-            <h2 className="text-2xl font-serif text-black">
-              {t("eventDetails.juryPanel")}
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {event.event_jury.map((juror) => (
-              <div key={juror.id} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
-                <div className="flex flex-col items-center space-y-4">
-                  <img
-                    src={juror.avatar_url || ""}
-                    alt={juror.name}
-                    className="w-48 h-48 rounded-full object-cover shadow-lg"
-                  />
-                  <div className="text-center">
-                    <h2 className="text-2xl font-playfair text-black mb-2">
+      {/* ================================================================
+          GALLERY — editorial photo essay
+          ================================================================ */}
+      <section className="pb-12 lg:pb-16">
+        <Container>
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportOnce}
+            transition={{ duration: 0.7, ease: EASE }}
+            className="flex flex-col gap-5"
+          >
+            <Eyebrow withRule>{t("pageCopy.pastEvents.galleryEyebrow")}</Eyebrow>
+            <EventGallery images={photos} isLoading={photosLoading} />
+          </motion.div>
+        </Container>
+      </section>
+
+      {/* ================================================================
+          NARRATIVE — long-form description
+          ================================================================ */}
+      {event.description && (
+        <Section tone="canvas" pause="sm" rule="top">
+          <Container>
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={viewportOnce}
+              transition={{ duration: 0.8, ease: EASE }}
+              className="max-w-prose mx-auto type-body-lg text-ink-body prose prose-sm"
+              dangerouslySetInnerHTML={{
+                __html:
+                  event.description?.[language] ||
+                  event.description?.en ||
+                  "",
+              }}
+            />
+          </Container>
+        </Section>
+      )}
+
+      {/* ================================================================
+          WINNERS — accordion + pill rail (same grammar as EventDetails
+          categories), with rebuilt subcategory cards: eyebrow + serif name
+          stacked vertically per the reference design.
+          ================================================================ */}
+      {event.winners && Object.keys(event.winners).length > 0 && (
+        <Section tone="warm" pause="sm" rule="top">
+          <Container>
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={viewportOnce}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="max-w-3xl mb-8 lg:mb-10"
+            >
+              <Eyebrow withRule>{t("eventDetails.prizes")}</Eyebrow>
+              <h2 className="type-headline-lg text-burgundy mt-3 mb-2">
+                {t("pageCopy.pastEvents.winnersHeading")}
+              </h2>
+              <p className="type-body-md text-ink-muted">{t("pageCopy.pastEvents.winnersLede")}</p>
+            </motion.div>
+
+            <WinnersAccordion
+              winners={event.winners}
+              reduceMotion={Boolean(reduceMotion)}
+            />
+          </Container>
+        </Section>
+      )}
+
+      {/* ================================================================
+          JURY — who adjudicated this edition
+          ================================================================ */}
+      {event.event_jury.length > 0 && (
+        <Section tone="canvas" pause="md" rule="top">
+          <Container>
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={viewportOnce}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="max-w-3xl mb-10 lg:mb-12"
+            >
+              <Eyebrow withRule>{t("eventDetails.juryPanel")}</Eyebrow>
+              <h2 className="type-headline-lg text-burgundy mt-3">
+                Adjudicators
+              </h2>
+            </motion.div>
+
+            <motion.div
+              variants={reduceMotion ? undefined : stagger}
+              initial={initial}
+              whileInView="visible"
+              viewport={viewportOnce}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+              {event.event_jury.map((juror) => (
+                <motion.article
+                  key={juror.id}
+                  variants={fadeUp}
+                  className="flex flex-col gap-5 border-t border-rule-hairline pt-6"
+                >
+                  {juror.avatar_url && (
+                    <Image
+                      src={juror.avatar_url}
+                      alt={juror.name}
+                      aspect="3/4"
+                      containerClassName="bg-surface-canvas-warm"
+                      fit="cover"
+                    />
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <Eyebrow>{juror.title}</Eyebrow>
+                    <h3 className="type-headline-md text-burgundy">
                       {juror.name}
-                    </h2>
-                    <p className="text-lg font-medium text-marigold mb-4">
-                      {juror.title}
-                    </p>
+                    </h3>
                     {juror.description && (
                       <div
-                        className="text-sm text-black/80 mb-3 space-y-2 text-left"
+                        className="type-body-sm text-ink-body prose prose-sm max-w-none mt-2"
                         dangerouslySetInnerHTML={{
                           __html: juror.description,
                         }}
-                      ></div>
+                      />
                     )}
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="flex items-center space-x-3 mb-6">
-            <Trophy className="h-6 w-6 text-marigold" />
-            <h2 className="text-2xl font-serif text-black">
-              {t("eventDetails.prizes")}
-            </h2>
-          </div>
-          <div className="space-y-8">
-            {event.winners &&
-              Object.entries(event.winners).map(([category, subcategories]) => (
-                <div key={category} className="bg-[#F7E7CE]/30 p-6 rounded-lg">
-                  <h3 className="text-2xl font-serif text-black mb-6">
-                    {category}
-                  </h3>
-                  <div className="space-y-6 md:grid md:grid-cols-3 gap-4">
-                    {Object.entries(subcategories).map(
-                      ([subcategory, winners]) => (
-                        <div
-                          key={subcategory}
-                          className="bg-white p-6 rounded-lg shadow-sm"
-                        >
-                          <h4 className="text-xl font-serif text-black mb-4">
-                            {subcategory}
-                          </h4>
-                          <div className="space-y-3">
-                            {winners.map((winner, index) => {
-                              const isCommendation =
-                                winner.prize_title === "Commendation";
-                              const IconComponent = isCommendation ? Medal : Trophy;
-                              return (
-                                <div
-                                  key={index}
-                                  className="flex items-center gap-3"
-                                >
-                                  <IconComponent className="h-5 w-5 text-marigold flex-shrink-0" />
-                                  <span className="font-medium text-marigold whitespace-nowrap">
-                                    {winner.prize_title}:
-                                  </span>
-                                  <span className="text-black/80 break-words">
-                                    {winner.participant_name}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
+                </motion.article>
               ))}
+            </motion.div>
+          </Container>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function MetaItem({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="type-label text-ink-accent">{label}</dt>
+      <dd className="type-body-md text-burgundy">{children}</dd>
+    </div>
+  );
+}
+
+// Suppress unused-import lint while NoteGlyph stays available for future fallbacks.
+void NoteGlyph;
+
+/* ============================================================================
+   WinnersAccordion — owns open state + desktop pill rail. Mirrors the
+   accordion pattern used on the live EventDetails categories so users get the
+   same interaction grammar across the site.
+   ============================================================================ */
+
+type WinnersData = NonNullable<PastEvent["winners"]>;
+
+function slugifyCategory(name: string): string {
+  return `winners-${name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}`;
+}
+
+function WinnersAccordion({
+  winners,
+  reduceMotion,
+}: {
+  winners: WinnersData;
+  reduceMotion: boolean;
+}) {
+  const categories = Object.entries(winners);
+  const [openIds, setOpenIds] = useState<Set<string>>(
+    () => new Set(categories[0]?.[0] ? [categories[0][0]] : [])
+  );
+  const [activeId, setActiveId] = useState<string | null>(
+    categories[0]?.[0] ?? null
+  );
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Scroll-based active-pill tracking.
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort(
+            (a, b) =>
+              a.boundingClientRect.top - b.boundingClientRect.top
+          );
+        if (visible.length > 0) {
+          // Pull the original category name back from the slug id we set on
+          // the wrapper — match against the slugified form.
+          const matchedCategory = categories.find(
+            ([cat]) => slugifyCategory(cat) === visible[0].target.id
+          );
+          if (matchedCategory) {
+            setActiveId(matchedCategory[0]);
+          }
+        }
+      },
+      { rootMargin: "-160px 0px -55% 0px", threshold: 0 }
+    );
+
+    categories.forEach(([cat]) => {
+      const el = cardRefs.current[cat];
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [categories]);
+
+  const toggleOpen = (category: string) => {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
+
+  const handleJumpTo = (category: string) => {
+    setOpenIds((prev) => {
+      if (prev.has(category)) return prev;
+      const next = new Set(prev);
+      next.add(category);
+      return next;
+    });
+    setActiveId(category);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = cardRefs.current[category];
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  };
+
+  const showPillRail = categories.length > 1;
+
+  return (
+    <>
+      {/* "Jump to" pill rail — mobile gets a non-sticky TOC above the cards,
+          desktop gets the same rail stickied below the main nav. Mirrors the
+          live-event EventDetails behaviour. */}
+      {showPillRail && (
+        <div
+          className={cn(
+            "lg:sticky lg:top-20 z-30 -mx-4 sm:-mx-8 lg:-mx-12 mb-6 lg:mb-8",
+            "bg-surface-canvas-warm/90 backdrop-blur-md border-y border-rule-hairline"
+          )}
+        >
+          <div className="px-4 sm:px-8 lg:px-12">
+            <div className="flex items-center gap-5 lg:gap-8 py-3 lg:py-3.5 overflow-x-auto no-scrollbar">
+              <span className="type-label text-ink-muted flex items-center gap-3 shrink-0">
+                <span aria-hidden className="inline-block w-5 h-px bg-marigold" />
+                Jump to
+              </span>
+              {categories.map(([category]) => {
+                const active = activeId === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => handleJumpTo(category)}
+                    aria-current={active ? "true" : undefined}
+                    className={cn(
+                      "relative type-label whitespace-nowrap py-1 shrink-0",
+                      "transition-colors duration-fast ease-out-quart",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2 rounded-sm",
+                      active
+                        ? "text-marigold-700"
+                        : "text-ink-muted hover:text-burgundy"
+                    )}
+                  >
+                    {category}
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute inset-x-0 -bottom-[12px] lg:-bottom-[14px] h-[2px] bg-marigold origin-left",
+                        "transition-transform duration-base ease-out-quart",
+                        active ? "scale-x-100" : "scale-x-0"
+                      )}
+                    />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      <motion.div
+        variants={reduceMotion ? undefined : stagger}
+        initial={reduceMotion ? false : "hidden"}
+        whileInView="visible"
+        viewport={viewportOnce}
+        className="flex flex-col gap-4 lg:gap-5"
+      >
+        {categories.map(([category, subcategories], idx) => {
+          const slug = slugifyCategory(category);
+          return (
+            <motion.div
+              key={category}
+              variants={fadeUp}
+              id={slug}
+              ref={(el) => {
+                cardRefs.current[category] = el as HTMLDivElement | null;
+              }}
+              className="scroll-mt-40"
+            >
+              <WinnerCategoryAccordion
+                category={category}
+                subcategories={subcategories}
+                index={idx}
+                isOpen={openIds.has(category)}
+                onToggle={() => toggleOpen(category)}
+              />
+            </motion.div>
+          );
+        })}
+      </motion.div>
+    </>
+  );
+}
+
+/* ============================================================================
+   WinnerCategoryAccordion — a single collapsible category. Closed state shows
+   a preview ("4 subcategories · 18 winners"). Open state reveals a grid of
+   subcategory cards.
+   ============================================================================ */
+
+function WinnerCategoryAccordion({
+  category,
+  subcategories,
+  index,
+  isOpen,
+  onToggle,
+}: {
+  category: string;
+  subcategories: WinnersData[string];
+  index: number;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const subcategoryEntries = Object.entries(subcategories);
+  const totalWinners = subcategoryEntries.reduce(
+    (sum, [, list]) => sum + list.length,
+    0
+  );
+  const accentColor = index === 0 ? "bg-marigold" : "bg-burgundy/40";
+  const slug = slugifyCategory(category);
+  const panelId = `${slug}-panel`;
+  const headerId = `${slug}-header`;
+
+  const previewParts = [
+    `${subcategoryEntries.length} ${subcategoryEntries.length === 1 ? "subcategory" : "subcategories"}`,
+    `${totalWinners} ${totalWinners === 1 ? "honoured performer" : "honoured performers"}`,
+  ];
+
+  return (
+    <article
+      className={cn(
+        "relative bg-surface-elevated border transition-colors duration-base ease-out-quart",
+        isOpen
+          ? "border-burgundy/25"
+          : "border-rule-hairline hover:border-burgundy/20"
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-x-0 top-0 h-[2px] transition-colors duration-base ease-out-quart",
+          isOpen ? "bg-marigold" : accentColor
+        )}
+      />
+
+      <button
+        type="button"
+        id={headerId}
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        className={cn(
+          "w-full text-left p-6 lg:p-8",
+          "flex items-center justify-between gap-6",
+          "transition-colors duration-fast ease-out-quart",
+          "hover:bg-surface-canvas-warm/40",
+          "focus-visible:outline-none focus-visible:bg-surface-canvas-warm/60"
+        )}
+      >
+        <div className="flex flex-col gap-1.5 min-w-0">
+          <h3 className="type-headline-lg text-burgundy text-balance">
+            {category}
+          </h3>
+          <p className="type-caption text-ink-muted">{previewParts.join(" · ")}</p>
+        </div>
+        <ChevronDown
+          className={cn(
+            "h-5 w-5 flex-shrink-0 transition-[transform,color] duration-base ease-out-quart",
+            isOpen ? "rotate-180 text-marigold" : "text-burgundy/60"
+          )}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.section
+            key="panel"
+            id={panelId}
+            role="region"
+            aria-labelledby={headerId}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              height: { duration: 0.45, ease: EASE },
+              opacity: { duration: 0.3, ease: EASE },
+            }}
+            className="overflow-hidden border-t border-rule-hairline"
+          >
+            <div className="p-6 lg:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {subcategoryEntries.map(([subcategory, list]) => (
+                  <SubcategoryWinners
+                    key={subcategory}
+                    name={subcategory}
+                    winners={list}
+                  />
+                ))}
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+    </article>
+  );
+}
+
+/* ============================================================================
+   SubcategoryWinners — the rebuilt prize card per the reference design.
+   Eyebrow (rank) + serif name stacked vertically, generous spacing,
+   no dotted leaders.
+   ============================================================================ */
+
+function SubcategoryWinners({
+  name,
+  winners,
+}: {
+  name: string;
+  winners: Array<{ prize_title: string; participant_name: string }>;
+}) {
+  return (
+    <article className="bg-surface-canvas-warm border border-rule-hairline p-6 lg:p-7 flex flex-col gap-5">
+      <h4 className="type-headline-sm text-burgundy">{name}</h4>
+      <ul className="flex flex-col gap-4 pt-4 border-t border-rule-hairline">
+        {winners.map((winner, i) => (
+          <li key={i} className="flex flex-col gap-1">
+            <Eyebrow>{winner.prize_title}</Eyebrow>
+            <span className="font-serif text-title-lg text-burgundy leading-tight text-balance">
+              {winner.participant_name}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </article>
   );
 }
 

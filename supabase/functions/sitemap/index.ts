@@ -34,7 +34,7 @@ function generateSitemapXML(urls: SitemapURL[]): string {
 </urlset>`;
 }
 
-serve(async (_req) => {
+serve(async () => {
   try {
     // Initialize Supabase client with service role key for public access
     const supabaseClient = createClient(

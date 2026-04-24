@@ -1,8 +1,28 @@
-import { Calendar, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { EventStatus, EventType } from "../lib/database.types";
 import { useLanguage } from "../lib/LanguageContext";
 import { formatDateWithLocale } from "../lib/utils";
+import {
+  Card,
+  CardContent,
+  CardEyebrow,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge, type BadgeStatus } from "@/components/ui/badge";
+import { NoteGlyph } from "@/components/ui/wireframe-wave";
+import { cn } from "@/lib/utils";
+
+/**
+ * EventCard — Musical Lumina
+ *
+ * Editorial event card. Uses the Card primitive's `accent` slot to color-code
+ * content type with a 2px top rule — no icon clutter, glanceable at speed.
+ *
+ * Data flow is preserved: same props, same routing rules, same disabled state
+ * for upcoming events. Only the visual composition changes.
+ */
 
 interface EventCardProps {
   id: string;
@@ -13,6 +33,15 @@ interface EventCardProps {
   status: EventStatus;
   image: string;
 }
+
+type CardAccent = "event" | "masterclass" | "group" | "past";
+
+const ACCENT_BY_TYPE: Record<EventType, CardAccent> = {
+  festival: "event",
+  competition: "event",
+  masterclass: "masterclass",
+  "group class": "group",
+};
 
 function EventCard({
   id,
@@ -25,102 +54,108 @@ function EventCard({
 }: EventCardProps) {
   const { t, language } = useLanguage();
 
-  const getButtonConfig = () => {
-    switch (status) {
-      case "ongoing":
-        return {
-          text: t("eventCard.viewDetails"),
-          disabled: false,
-          className: "bg-marigold hover:bg-marigold/90",
-        };
-      case "upcoming":
-        return {
-          text: t("eventCard.comingSoon"),
-          disabled: true,
-          className: "bg-gray-400 cursor-not-allowed",
-        };
-      default:
-        return {
-          text: t("eventCard.viewResults"),
-          disabled: false,
-          className: "bg-marigold hover:bg-marigold/90",
-        };
+  const accent: CardAccent = status === "completed" ? "past" : ACCENT_BY_TYPE[type];
+
+  // Route resolution preserved from original implementation.
+  const href =
+    status === "completed"
+      ? type === "masterclass"
+        ? `/past-masterclass/${id}`
+        : `/past-event/${id}`
+      : type === "masterclass"
+        ? `/masterclass/${id}`
+        : type === "group class"
+          ? `/group-class/${id}`
+          : `/event/${id}`;
+
+  // CTA label + disabled state mirror the original business logic.
+  const ctaConfig = (() => {
+    if (status === "completed") {
+      return { label: t("eventCard.viewResults"), disabled: false };
     }
-  };
-
-  const formatEventType = (type: EventType) => {
-    return t(`eventCard.eventTypes.${type}`);
-  };
-
-  const getTypeColor = (type: EventType) => {
-    switch (type) {
-      case "festival":
-        return "bg-purple-100/90 text-purple-800";
-      case "competition":
-        return "bg-blue-100/90 text-blue-800";
-      case "masterclass":
-        return "bg-green-100/90 text-green-800";
-      case "group class":
-        return "bg-red-100/90 text-red-800";
-      default:
-        return "bg-gray-100/90 text-gray-800";
+    if (status === "upcoming") {
+      return { label: t("eventCard.comingSoon"), disabled: true };
     }
-  };
+    return { label: t("eventCard.viewDetails"), disabled: false };
+  })();
 
-  // Format multiple dates separated by commas
-  const formatDates = (dates: string[]) => {
-    return dates
-      .map((date) => formatDateWithLocale(date, language))
-      .join("; ");
-  };
+  // Status pill: shows registration STATE, not the CTA. The CTA lives in the
+  // footer link — badge + link must say different things or the card feels
+  // duplicative.
+  const statusPill: { status: BadgeStatus; label: string } = (() => {
+    if (status === "completed") return { status: "ended", label: t("eventCard.statusConcluded") };
+    if (status === "upcoming") return { status: "upcoming", label: t("eventCard.statusUpcoming") };
+    return { status: "open", label: t("eventCard.statusOpen") };
+  })();
 
-  const buttonConfig = getButtonConfig();
-  const typeColor = getTypeColor(type);
-  const formattedDates = formatDates(dates);
+  const formattedDates = dates
+    .map((d) => formatDateWithLocale(d, language))
+    .join(" · ");
 
   return (
-    <div className="bg-[#FFFFF0] rounded-lg overflow-hidden shadow-lg h-full flex flex-col">
-      <div className="relative">
-        <img src={image} alt={title} className="w-full h-48 object-cover" />
-        <span
-          className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-medium ${typeColor}`}
-        >
-          {formatEventType(type)}
-        </span>
+    <Card
+      accent={accent}
+      interactive={!ctaConfig.disabled}
+      className={cn(
+        "flex flex-col h-full overflow-hidden",
+        ctaConfig.disabled && "opacity-75 hover:opacity-100"
+      )}
+    >
+      {/* Image — flush to card edges, sits just below the 2px accent rule */}
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-surface-canvas-warm">
+        <img
+          src={image}
+          alt={title}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-slower ease-out-quart motion-safe:group-hover:scale-[1.03]"
+        />
+        {/* Subtle ivory gradient at bottom of image to separate from content */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-surface-elevated pointer-events-none"
+        />
       </div>
-      <div className="p-6 flex flex-col flex-grow">
-        <h3 className="text-xl font-serif text-[#808080] mb-4">{title}</h3>
-        <div className="space-y-2 mb-6">
-          <div className="flex items-center space-x-2">
-            <Calendar className="h-4 w-4 text-marigold" />
-            <span className="text-sm text-[#808080]">{formattedDates}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <MapPin className="h-4 w-4 text-marigold" />
-            <span className="text-sm text-[#808080]">{location}</span>
-          </div>
-        </div>
-        <div className="mt-auto">
+
+      <CardHeader className="pt-6 pb-3">
+        <CardEyebrow>{t(`eventCard.eventTypes.${type}`)}</CardEyebrow>
+        <CardTitle className="text-balance">{title}</CardTitle>
+      </CardHeader>
+
+      <CardContent className="flex-1">
+        <ul className="flex flex-col gap-2.5">
+          <li className="flex items-start gap-2.5 type-caption text-ink-muted">
+            <NoteGlyph size={14} className="text-marigold mt-0.5 flex-shrink-0" />
+            <span className="leading-snug">{formattedDates}</span>
+          </li>
+          <li className="flex items-start gap-2.5 type-caption text-ink-muted">
+            <NoteGlyph size={14} className="text-marigold mt-0.5 flex-shrink-0" />
+            <span className="leading-snug">{location}</span>
+          </li>
+        </ul>
+      </CardContent>
+
+      <CardFooter className="flex items-center justify-between">
+        <Badge status={statusPill.status} dot>
+          {statusPill.label}
+        </Badge>
+        {ctaConfig.disabled ? (
+          <span className="type-label text-ink-subtle">{ctaConfig.label}</span>
+        ) : (
           <Link
-            to={
-              status === "completed"
-                ? type === "masterclass"
-                  ? `/past-masterclass/${id}`
-                  : `/past-event/${id}`
-                : type === "masterclass"
-                ? `/masterclass/${id}`
-                : type === "group class"
-                ? `/group-class/${id}`
-                : `/event/${id}`
-            }
-            className={`block w-full text-[#FFFFF0] px-4 py-2 rounded-lg transition-colors text-center ${buttonConfig.className}`}
-            onClick={(e) => buttonConfig.disabled && e.preventDefault()}
+            to={href}
+            className={cn(
+              "type-label text-burgundy",
+              "transition-colors duration-fast ease-out-quart hover:text-marigold",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2 rounded-sm",
+              "flex items-center gap-2"
+            )}
           >
-            {buttonConfig.text}
+            {ctaConfig.label}
+            <span aria-hidden className="inline-block w-4 h-px bg-current" />
           </Link>
-        </div>
-      </div>
-    </div>
+        )}
+      </CardFooter>
+    </Card>
   );
 }
 

@@ -1,21 +1,31 @@
 import { useEffect, useState } from "react";
+import { Pencil, Ticket, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
+import { Badge, type BadgeStatus } from "@/components/ui/badge";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { AddEventModal } from "@/components/admin/AddEventModal";
 import { EditEventModal } from "@/components/admin/EditEventModal";
 import InvitationCodesModal from "@/components/admin/InvitationCodesModal";
-import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
+/**
+ * AdminEvents — table of every event with inline edit, invitation code
+ * management, and delete actions. Desktop shows the full table; narrow
+ * viewports collapse to card stack. Supabase wiring + modal triggers
+ * unchanged.
+ */
 export function AdminEvents() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [invitationCodesEvent, setInvitationCodesEvent] = useState<Event | null>(null);
+  const [invitationCodesEvent, setInvitationCodesEvent] =
+    useState<Event | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -28,7 +38,6 @@ export function AdminEvents() {
         .from("events")
         .select("*")
         .order("start_date", { ascending: false });
-
       if (error) throw error;
       setEvents(data || []);
     } catch (error) {
@@ -38,108 +47,82 @@ export function AdminEvents() {
     }
   };
 
-  const handleEdit = (event: Event) => {
-    setEditingEvent(event);
-  };
-
-  const handleInvitationCodes = (event: Event) => {
-    setInvitationCodesEvent(event);
-  };
-
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Header - responsive layout */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
-          <Button 
-            variant="elegant" 
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full sm:w-auto"
-          >
-            Add Event
-          </Button>
-        </div>
+      <div className="flex flex-col gap-8">
+        {/* Header */}
+        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Eyebrow withRule>Manage · Events</Eyebrow>
+            <h1 className="type-display-md text-burgundy">Events</h1>
+            <p className="type-body-sm text-ink-muted">
+              {events.length} {events.length === 1 ? "event" : "events"} in the
+              calendar.
+            </p>
+          </div>
+          <Button onClick={() => setIsAddModalOpen(true)}>Add Event</Button>
+        </header>
 
-        {/* Desktop Table View */}
-        <div className="hidden lg:block overflow-hidden rounded-lg border border-gray-200 bg-white shadow">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        {/* Desktop table */}
+        <div className="hidden lg:block bg-surface-elevated border border-rule-hairline overflow-hidden">
+          <table className="min-w-full">
+            <thead className="bg-surface-canvas-warm border-b border-rule-hairline">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Title</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Event Date</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Location</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Max Quota</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Actions</th>
+                <Th>Title</Th>
+                <Th>Type</Th>
+                <Th>Status</Th>
+                <Th>Date</Th>
+                <Th>Location</Th>
+                <Th className="text-right">Quota</Th>
+                <Th className="text-right">Actions</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-rule-hairline">
               {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                    Loading...
-                  </td>
-                </tr>
+                <TableMessageRow colSpan={7}>Loading events…</TableMessageRow>
               ) : events.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No events found
-                  </td>
-                </tr>
+                <TableMessageRow colSpan={7}>
+                  No events yet. Use <strong>Add Event</strong> to create one.
+                </TableMessageRow>
               ) : (
                 events.map((event) => (
-                  <tr key={event.id}>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                  <tr
+                    key={event.id}
+                    className="hover:bg-surface-canvas-warm/40 transition-colors"
+                  >
+                    <Td className="text-burgundy font-medium">
                       {event.title}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {event.type.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      <span
-                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                          event.status === "upcoming"
-                            ? "bg-blue-100 text-blue-800"
-                            : event.status === "ongoing"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {event.status}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {event.event_date && event.event_date.length > 0
-                        ? event.event_date.map(date => new Date(date).toLocaleDateString()).join(', ')
-                        : new Date(event.start_date).toLocaleDateString()}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {event.location}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {event.max_quota ? event.max_quota.toLocaleString() : "Unlimited"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
-                      <Button 
-                        variant="ghost" 
-                        className="mr-2"
-                        onClick={() => handleEdit(event)}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        className="mr-2"
-                        onClick={() => handleInvitationCodes(event)}
-                      >
-                        Invite Codes
-                      </Button>
-                      <Button variant="ghost" className="text-red-600 hover:text-red-800">
-                        Delete
-                      </Button>
-                    </td>
+                    </Td>
+                    <Td>{titleCase(event.type)}</Td>
+                    <Td>
+                      <StatusBadge status={event.status} />
+                    </Td>
+                    <Td>{formatEventDates(event)}</Td>
+                    <Td>{event.location}</Td>
+                    <Td className="text-right">
+                      {event.max_quota
+                        ? event.max_quota.toLocaleString()
+                        : "—"}
+                    </Td>
+                    <Td className="text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <IconAction
+                          onClick={() => setEditingEvent(event)}
+                          label="Edit"
+                          icon={<Pencil className="h-3.5 w-3.5" />}
+                        />
+                        <IconAction
+                          onClick={() => setInvitationCodesEvent(event)}
+                          label="Invite codes"
+                          icon={<Ticket className="h-3.5 w-3.5" />}
+                        />
+                        <IconAction
+                          destructive
+                          label="Delete"
+                          icon={<Trash2 className="h-3.5 w-3.5" />}
+                        />
+                      </div>
+                    </Td>
                   </tr>
                 ))
               )}
@@ -147,100 +130,74 @@ export function AdminEvents() {
           </table>
         </div>
 
-        {/* Mobile Card View */}
-        <div className="lg:hidden space-y-4">
+        {/* Mobile cards */}
+        <div className="lg:hidden flex flex-col gap-3">
           {isLoading ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-sm text-gray-500">Loading...</div>
-              </CardContent>
-            </Card>
+            <EmptyCard>Loading events…</EmptyCard>
           ) : events.length === 0 ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-sm text-gray-500">No events found</div>
-              </CardContent>
-            </Card>
+            <EmptyCard>
+              No events yet. Use <strong>Add Event</strong> to create one.
+            </EmptyCard>
           ) : (
             events.map((event) => (
-              <Card key={event.id} className="border border-gray-200 shadow-sm">
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    {/* Title and Status */}
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-semibold text-gray-900 text-base leading-tight pr-2">
-                        {event.title}
-                      </h3>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold leading-4 flex-shrink-0 ${
-                          event.status === "upcoming"
-                            ? "bg-blue-100 text-blue-800"
-                            : event.status === "ongoing"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {event.status}
-                      </span>
-                    </div>
-
-                    {/* Event Details Grid */}
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="text-gray-500 block">Type</span>
-                        <span className="text-gray-900 font-medium">
-                          {event.type.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block">Event Date</span>
-                        <span className="text-gray-900 font-medium">
-                          {event.event_date && event.event_date.length > 0
-                            ? event.event_date.map(date => new Date(date).toLocaleDateString()).join(', ')
-                            : new Date(event.start_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block">Location</span>
-                        <span className="text-gray-900 font-medium">{event.location}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block">Max Quota</span>
-                        <span className="text-gray-900 font-medium">
-                          {event.max_quota ? event.max_quota.toLocaleString() : "Unlimited"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleEdit(event)}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleInvitationCodes(event)}
-                      >
-                        Invite Codes
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex-1 text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
-                      >
-                        Delete
-                      </Button>
-                    </div>
+              <article
+                key={event.id}
+                className="bg-surface-elevated border border-rule-hairline p-4 flex flex-col gap-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="type-title-md text-burgundy leading-tight text-balance flex-1">
+                    {event.title}
+                  </h3>
+                  <StatusBadge status={event.status} />
+                </div>
+                <dl className="grid grid-cols-2 gap-3 type-caption">
+                  <div>
+                    <dt className="type-label text-ink-muted">Type</dt>
+                    <dd className="text-burgundy mt-0.5">
+                      {titleCase(event.type)}
+                    </dd>
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <dt className="type-label text-ink-muted">Date</dt>
+                    <dd className="text-burgundy mt-0.5">
+                      {formatEventDates(event)}
+                    </dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="type-label text-ink-muted">Location</dt>
+                    <dd className="text-burgundy mt-0.5">{event.location}</dd>
+                  </div>
+                  <div>
+                    <dt className="type-label text-ink-muted">Quota</dt>
+                    <dd className="text-burgundy mt-0.5">
+                      {event.max_quota
+                        ? event.max_quota.toLocaleString()
+                        : "Unlimited"}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="flex gap-2 pt-2 border-t border-rule-hairline">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setEditingEvent(event)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setInvitationCodesEvent(event)}
+                  >
+                    Codes
+                  </Button>
+                  <Button variant="destructive" size="sm" className="flex-1">
+                    Delete
+                  </Button>
+                </div>
+              </article>
             ))
           )}
         </div>
@@ -267,4 +224,136 @@ export function AdminEvents() {
       />
     </AdminLayout>
   );
-} 
+}
+
+/* ============================================================================
+   Editorial table primitives — shared across admin list pages.
+   ============================================================================ */
+
+function Th({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={cn(
+        "px-5 py-3 text-left type-label text-ink-muted whitespace-nowrap",
+        className
+      )}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <td
+      className={cn(
+        "px-5 py-3 type-body-sm text-ink-body whitespace-nowrap",
+        className
+      )}
+    >
+      {children}
+    </td>
+  );
+}
+
+function TableMessageRow({
+  children,
+  colSpan,
+}: {
+  children: React.ReactNode;
+  colSpan: number;
+}) {
+  return (
+    <tr>
+      <td
+        colSpan={colSpan}
+        className="px-5 py-10 text-center type-body-sm text-ink-muted"
+      >
+        {children}
+      </td>
+    </tr>
+  );
+}
+
+function EmptyCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-surface-elevated border border-rule-hairline p-6 text-center type-body-sm text-ink-muted">
+      {children}
+    </div>
+  );
+}
+
+function IconAction({
+  onClick,
+  label,
+  icon,
+  destructive,
+}: {
+  onClick?: () => void;
+  label: string;
+  icon: React.ReactNode;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={cn(
+        "h-8 w-8 flex items-center justify-center rounded-sm transition-colors duration-fast ease-out-quart",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2",
+        destructive
+          ? "text-ink-muted hover:text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)]"
+          : "text-ink-muted hover:text-burgundy hover:bg-surface-canvas-warm"
+      )}
+    >
+      {icon}
+    </button>
+  );
+}
+
+/* ============================================================================
+   Small helpers
+   ============================================================================ */
+
+function titleCase(value: string): string {
+  return value
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function formatEventDates(event: Event): string {
+  if (event.event_date && event.event_date.length > 0) {
+    return event.event_date
+      .map((d) => new Date(d).toLocaleDateString())
+      .join(", ");
+  }
+  return new Date(event.start_date).toLocaleDateString();
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const mapping: Record<string, BadgeStatus> = {
+    upcoming: "upcoming",
+    ongoing: "open",
+    completed: "ended",
+  };
+  const badgeStatus = mapping[status] ?? "closed";
+  return (
+    <Badge status={badgeStatus} dot size="sm">
+      {status}
+    </Badge>
+  );
+}

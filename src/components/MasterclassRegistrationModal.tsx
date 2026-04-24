@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Loader2, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import PhoneInput from "react-phone-input-2";
@@ -13,8 +13,17 @@ import FileUpload from "./FileUpload";
 import LoadingModal from "./LoadingModal";
 import Modal from "./Modal";
 import ThankYouModal from "./ThankYouModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { cn } from "@/lib/utils";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+/* ============================================================================
+   Constants + types — preserved 1:1.
+   ============================================================================ */
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 interface FileState {
   file: File | null;
@@ -26,20 +35,16 @@ interface FileStates {
   payment_receipt: FileState;
 }
 
-// Helper function to format date for display
 function formatDateForDisplay(dateString: string): string {
   const date = new Date(dateString);
   const day = date.getDate();
   const month = date.toLocaleDateString("en-US", { month: "long" });
   const year = date.getFullYear();
-
-  // Add ordinal suffix to day
   const getOrdinal = (n: number) => {
     const s = ["th", "st", "nd", "rd"];
     const v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
-
   return `${getOrdinal(day)} ${month} ${year}`;
 }
 
@@ -104,6 +109,35 @@ interface MasterclassRegistrationModalProps {
   onOpenTerms: () => void;
 }
 
+/* ============================================================================
+   Shared editorial classes (mirrors RegistrationModal)
+   ============================================================================ */
+
+const SELECT_CLASSES = [
+  "w-full h-11 px-3 py-2 rounded-sm border border-burgundy/20 bg-surface-elevated",
+  "font-sans text-body-md text-ink-body",
+  "transition-[border-color,background-color,box-shadow] duration-fast ease-out-quart",
+  "hover:border-burgundy/40",
+  "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
+  "aria-[invalid=true]:border-[color:var(--status-error)]",
+  "appearance-none bg-no-repeat bg-[right_0.75rem_center]",
+  "bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 12 12%22 fill=%22none%22 stroke=%22%23491822%22 stroke-width=%221.5%22><path d=%22M3 5l3 3 3-3%22/></svg>')]",
+  "pr-10",
+].join(" ");
+
+const FIELD_ERROR_CLASS =
+  "mt-2 type-caption text-[color:var(--status-error)]";
+
+const REQ = (
+  <span className="text-[color:var(--status-error)]" aria-hidden>
+    *
+  </span>
+);
+
+/* ============================================================================
+   Page component
+   ============================================================================ */
+
 function MasterclassRegistrationModal({
   isOpen,
   onClose,
@@ -120,11 +154,14 @@ function MasterclassRegistrationModal({
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
   const [eventDates, setEventDates] = useState<string[]>([]);
   const [eventDurations, setEventDurations] = useState<number[]>([]);
-  const [registrationFees, setRegistrationFees] = useState<{ uom: string; price: number }[]>([]);
+  const [registrationFees, setRegistrationFees] = useState<
+    { uom: string; price: number }[]
+  >([]);
   const [files, setFiles] = useState<FileStates>({
     song_pdfs: [{ file: null }],
     payment_receipt: { file: null },
   });
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const masterclassSchema = createMasterclassSchema(t);
 
@@ -153,7 +190,6 @@ function MasterclassRegistrationModal({
     if (!selectedDuration) return null;
     const durationMinutes = parseInt(selectedDuration, 10);
     if (isNaN(durationMinutes)) return null;
-    // uom example: "15 minutes" → parse leading number
     for (const fee of registrationFees) {
       const n = parseInt(String(fee.uom).replace(/[^0-9]/g, ""), 10);
       if (!isNaN(n) && n === durationMinutes) return fee;
@@ -168,7 +204,7 @@ function MasterclassRegistrationModal({
     return matchedFee.price * slots;
   })();
 
-  // Fetch event data to get event_date array
+  // Fetch event dates + durations
   useEffect(() => {
     const fetchEventData = async () => {
       try {
@@ -177,26 +213,18 @@ function MasterclassRegistrationModal({
           .select("event_date, event_duration")
           .eq("id", eventId)
           .single();
-
         if (error) throw error;
-
-        if (eventData?.event_date) {
-          setEventDates(eventData.event_date);
-        }
-        if (eventData?.event_duration) {
+        if (eventData?.event_date) setEventDates(eventData.event_date);
+        if (eventData?.event_duration)
           setEventDurations(eventData.event_duration as number[]);
-        }
       } catch (error) {
         console.error("Error fetching event data:", error);
       }
     };
-
-    if (eventId && isOpen) {
-      fetchEventData();
-    }
+    if (eventId && isOpen) fetchEventData();
   }, [eventId, isOpen]);
 
-  // Fetch registration fees for price calculation
+  // Fetch fees
   useEffect(() => {
     const fetchFees = async () => {
       try {
@@ -222,69 +250,66 @@ function MasterclassRegistrationModal({
       payment_receipt: { file: null },
     });
     setShowThankYou(false);
+    setSubmitError(null);
     reset();
     onClose();
   };
 
-  const addRepertoire = () => {
-    setRepertoireList([...repertoireList, ""]);
-  };
-
+  const addRepertoire = () => setRepertoireList([...repertoireList, ""]);
   const removeRepertoire = (index: number) => {
     if (repertoireList.length > 1) {
-      const newList = repertoireList.filter((_, i) => i !== index);
-      setRepertoireList(newList);
+      setRepertoireList(repertoireList.filter((_, i) => i !== index));
     }
   };
-
   const updateRepertoire = (index: number, value: string) => {
-    const newList = [...repertoireList];
-    newList[index] = value;
-    setRepertoireList(newList);
+    const next = [...repertoireList];
+    next[index] = value;
+    setRepertoireList(next);
   };
 
-  const handleFileChange = (type: keyof FileStates, index?: number) => (file: File | null) => {
-    if (file && file.size > MAX_FILE_SIZE) {
-      if (type === 'song_pdfs' && index !== undefined) {
+  const handleFileChange =
+    (type: keyof FileStates, index?: number) => (file: File | null) => {
+      if (file && file.size > MAX_FILE_SIZE) {
+        if (type === "song_pdfs" && index !== undefined) {
+          setFiles((prev) => ({
+            ...prev,
+            song_pdfs: prev.song_pdfs.map((item, i) =>
+              i === index
+                ? { file: null, error: t("validation.fileSizeLimit") }
+                : item
+            ),
+          }));
+        } else if (type === "payment_receipt") {
+          setFiles((prev) => ({
+            ...prev,
+            payment_receipt: {
+              file: null,
+              error: t("validation.fileSizeLimit"),
+            },
+          }));
+        }
+        return;
+      }
+      if (type === "song_pdfs" && index !== undefined) {
         setFiles((prev) => ({
           ...prev,
           song_pdfs: prev.song_pdfs.map((item, i) =>
-            i === index
-              ? { file: null, error: t("validation.fileSizeLimit") }
-              : item
+            i === index ? { file, error: undefined } : item
           ),
         }));
-      } else if (type === 'payment_receipt') {
+      } else if (type === "payment_receipt") {
         setFiles((prev) => ({
           ...prev,
-          payment_receipt: { file: null, error: t("validation.fileSizeLimit") },
+          payment_receipt: { file, error: undefined },
         }));
       }
-      return;
-    }
+    };
 
-    if (type === 'song_pdfs' && index !== undefined) {
-      setFiles((prev) => ({
-        ...prev,
-        song_pdfs: prev.song_pdfs.map((item, i) =>
-          i === index ? { file, error: undefined } : item
-        ),
-      }));
-    } else if (type === 'payment_receipt') {
-      setFiles((prev) => ({
-        ...prev,
-        payment_receipt: { file, error: undefined },
-      }));
-    }
-  };
-
-  const addFileUpload = () => {
+  const addFileUpload = () =>
     setFiles((prev) => ({
       ...prev,
       song_pdfs: [...prev.song_pdfs, { file: null }],
     }));
-  };
-
   const removeFileUpload = (index: number) => {
     if (files.song_pdfs.length > 1) {
       setFiles((prev) => ({
@@ -295,53 +320,33 @@ function MasterclassRegistrationModal({
   };
 
   const uploadFile = async (file: File, path: string) => {
-    try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
-      const filePath = `${path}/${fileName}`;
-
-      const { error: uploadError, data } = await supabase.storage
-        .from("registration-documents")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw new Error(`Error uploading ${path}: ${uploadError.message}`);
-      }
-
-      if (!data?.path) {
-        throw new Error("Upload succeeded but no path returned");
-      }
-
-      const { data: signedUrlData, error: signedUrlError } =
-        await supabase.storage
-          .from("registration-documents")
-          .createSignedUrl(data.path, 31536000); // 1 year expiry
-
-      if (signedUrlError || !signedUrlData?.signedUrl) {
-        console.error("Signed URL error:", signedUrlError);
-        throw new Error("Failed to generate signed URL for uploaded file");
-      }
-
-      return signedUrlData.signedUrl;
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      throw error;
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
+    const filePath = `${path}/${fileName}`;
+    const { error: uploadError, data } = await supabase.storage
+      .from("registration-documents")
+      .upload(filePath, file, { cacheControl: "3600", upsert: false });
+    if (uploadError) {
+      throw new Error(`Error uploading ${path}: ${uploadError.message}`);
     }
+    if (!data?.path) throw new Error("Upload succeeded but no path returned");
+    const { data: signedUrlData, error: signedUrlError } =
+      await supabase.storage
+        .from("registration-documents")
+        .createSignedUrl(data.path, 31536000);
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      throw new Error("Failed to generate signed URL for uploaded file");
+    }
+    return signedUrlData.signedUrl;
   };
 
   const validateFiles = () => {
     let isValid = true;
     const newFiles = { ...files };
-
     if (!files.payment_receipt.file) {
       newFiles.payment_receipt.error = t("validation.uploadPayment");
       isValid = false;
     }
-
     setFiles(newFiles);
     return isValid;
   };
@@ -350,41 +355,36 @@ function MasterclassRegistrationModal({
     try {
       setIsSubmitting(true);
       setShowLoadingModal(true);
+      setSubmitError(null);
 
-      // Filter out empty repertoire entries
       const filteredRepertoire = repertoireList.filter(
         (title) => title.trim() !== ""
       );
 
       if (filteredRepertoire.length === 0) {
-        alert(t("masterclass.registration.addAtLeastOneRepertoire"));
+        setSubmitError(t("masterclass.registration.addAtLeastOneRepertoire"));
         setIsSubmitting(false);
         setShowLoadingModal(false);
         return;
       }
 
-      // Validate files first
       if (!validateFiles()) {
         setIsSubmitting(false);
         setShowLoadingModal(false);
         return;
       }
 
-      // Upload files to storage
       const uploadPromises = [
         uploadFile(files.payment_receipt.file!, "payment-receipts"),
       ];
 
-      // Upload PDF files
-      const pdfFiles = files.song_pdfs.filter(
-        (fileState) => fileState.file !== null
-      );
+      const pdfFiles = files.song_pdfs.filter((s) => s.file !== null);
       let songPdfUrls: string[] = [];
       let paymentReceiptUrl: string;
 
       if (pdfFiles.length > 0) {
-        const pdfUploadPromises = pdfFiles.map((fileState) =>
-          uploadFile(fileState.file!, "song-pdfs")
+        const pdfUploadPromises = pdfFiles.map((s) =>
+          uploadFile(s.file!, "song-pdfs")
         );
         uploadPromises.push(...pdfUploadPromises);
       }
@@ -395,13 +395,12 @@ function MasterclassRegistrationModal({
         songPdfUrls = uploadedFiles.slice(1);
       } catch (error) {
         console.error("Error uploading files:", error);
-        alert(t("registration.errorSubmitting"));
+        setSubmitError(t("registration.errorSubmitting"));
         setIsSubmitting(false);
         setShowLoadingModal(false);
         return;
       }
 
-      // Create registration
       const { data: registration, error } = await supabase
         .from("registrations")
         .insert({
@@ -429,7 +428,6 @@ function MasterclassRegistrationModal({
 
       if (error) throw error;
 
-      // Save repertoire to masterclass_participants
       const { error: participantError } = await supabase
         .from("masterclass_participants")
         .insert({
@@ -444,19 +442,14 @@ function MasterclassRegistrationModal({
         console.error("Error saving participant data:", participantError);
       }
 
-      // Generate reference number
       const uuid = registration.id;
       const phone = data.registrant_whatsapp.replace(/\D/g, "");
       const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
-      // Track event
       if (!import.meta.env.DEV) {
-        window.umami?.track("masterclass_registration_submitted", {
-          eventId,
-        });
+        window.umami?.track("masterclass_registration_submitted", { eventId });
       }
 
-      // Send to Lark if configured
       const { data: eventData } = await supabase
         .from("events")
         .select("lark_base, lark_table, type")
@@ -502,7 +495,6 @@ function MasterclassRegistrationModal({
         }
       }
 
-      // Send Email
       try {
         await EmailService.sendMasterclassRegistrationEmail({
           registrant_status: data.registrant_status,
@@ -537,7 +529,7 @@ function MasterclassRegistrationModal({
       });
     } catch (error) {
       console.error("Error submitting registration:", error);
-      alert(t("registration.errorSubmitting"));
+      setSubmitError(t("registration.errorSubmitting"));
     } finally {
       setIsSubmitting(false);
       setShowLoadingModal(false);
@@ -547,7 +539,7 @@ function MasterclassRegistrationModal({
   if (showThankYou) {
     return (
       <ThankYouModal
-        isOpen={true}
+        isOpen
         onClose={handleClose}
         participantName={registeredName}
         referenceNumber={registrationRef}
@@ -561,151 +553,160 @@ function MasterclassRegistrationModal({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
+        eyebrow="Masterclass entry"
         title={t("masterclass.registration.title")}
-        maxWidth="2xl"
+        maxWidth="3xl"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          {/* Registrant's Data */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">
-              {t("registration.registrantData")}
-            </h3>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-10">
+          {submitError && (
+            <div className="border-l-2 border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] px-5 py-4 flex items-start gap-3">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span className="type-body-sm">{submitError}</span>
+            </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
+          {/* Registrant */}
+          <Section eyebrow="01 · Registrant">
+            <Field>
+              <Label variant="editorial" htmlFor="m_registrant_status">
                 {t("registration.registrantStatus")}
-              </label>
+              </Label>
               <select
+                id="m_registrant_status"
                 {...register("registrant_status")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                className={SELECT_CLASSES}
               >
                 <option value="personal">{t("registration.personal")}</option>
                 <option value="parents">{t("registration.parents")}</option>
                 <option value="teacher">{t("registration.teacher")}</option>
               </select>
-            </div>
+            </Field>
 
             {registrantStatus !== "personal" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
+              <Field>
+                <Label variant="editorial" htmlFor="m_registrant_name">
                   {t("registration.registrantName")}
-                </label>
-                <input
+                </Label>
+                <Input
+                  variant="boxed"
+                  id="m_registrant_name"
                   type="text"
                   {...register("registrant_name")}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
                 />
                 {errors.registrant_name && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className={FIELD_ERROR_CLASS}>
                     {errors.registrant_name.message}
                   </p>
                 )}
-              </div>
+              </Field>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("registration.whatsappNumber")}
-              </label>
-              <div className="mt-1">
-                <Controller
-                  name="registrant_whatsapp"
-                  control={control}
-                  render={({ field: { onChange, value } }) => (
-                    <PhoneInput
-                      country="id"
-                      preferredCountries={["id", "sg", "my"]}
-                      enableSearch
-                      searchPlaceholder="Search country..."
-                      inputClass="!w-full !py-2 !text-base !rounded-md !border-gray-300 focus:!border-marigold focus:!ring focus:!ring-marigold focus:!ring-opacity-50"
-                      buttonClass="!border-gray-300 !rounded-l-md hover:!bg-gray-50"
-                      dropdownClass="!text-base"
-                      value={value}
-                      onChange={(phone) => {
-                        onChange(`+${phone}`);
-                      }}
-                      placeholder={t("registration.whatsappPlaceholder")}
-                    />
-                  )}
-                />
-                {errors.registrant_whatsapp && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.registrant_whatsapp.message}
-                  </p>
+            <Field>
+              <Label variant="editorial" htmlFor="m_registrant_whatsapp">
+                {t("registration.whatsappNumber")} {REQ}
+              </Label>
+              <Controller
+                name="registrant_whatsapp"
+                control={control}
+                render={({ field: { onChange, value } }) => (
+                  <PhoneInput
+                    country="id"
+                    preferredCountries={["id", "sg", "my"]}
+                    enableSearch
+                    searchPlaceholder="Search country..."
+                    inputClass={cn(
+                      "!w-full !h-11 !text-base !rounded-sm",
+                      "!border !border-burgundy/20 !bg-surface-elevated",
+                      "focus:!border-marigold focus:!ring-2 focus:!ring-marigold/20"
+                    )}
+                    buttonClass="!border !border-burgundy/20 !rounded-l-sm !bg-surface-canvas-warm hover:!bg-surface-canvas-mist"
+                    dropdownClass="!text-base"
+                    value={value}
+                    onChange={(phone) => onChange(`+${phone}`)}
+                    placeholder={t("registration.whatsappPlaceholder")}
+                    inputProps={{ id: "m_registrant_whatsapp" }}
+                  />
                 )}
-                <p className="mt-1 text-xs text-gray-500">
-                  {t("registration.whatsappHelp")}
+              />
+              {errors.registrant_whatsapp && (
+                <p className={FIELD_ERROR_CLASS}>
+                  {errors.registrant_whatsapp.message}
                 </p>
-              </div>
-            </div>
+              )}
+              <p className="mt-2 type-caption text-ink-muted">
+                {t("registration.whatsappHelp")}
+              </p>
+            </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("registration.email")}
-              </label>
-              <input
+            <Field>
+              <Label variant="editorial" htmlFor="m_registrant_email">
+                {t("registration.email")} {REQ}
+              </Label>
+              <Input
+                variant="boxed"
+                id="m_registrant_email"
                 type="email"
+                autoComplete="email"
                 {...register("registrant_email")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               />
               {errors.registrant_email && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className={FIELD_ERROR_CLASS}>
                   {errors.registrant_email.message}
                 </p>
               )}
+            </Field>
+          </Section>
+
+          {/* Participant */}
+          <Section eyebrow="02 · Participant & session">
+            <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-6">
+              <Field>
+                <Label variant="editorial" htmlFor="m_participant_name">
+                  {t("registration.fullName")} {REQ}
+                </Label>
+                <Input
+                  variant="boxed"
+                  id="m_participant_name"
+                  type="text"
+                  {...register("participant_name")}
+                />
+                {errors.participant_name && (
+                  <p className={FIELD_ERROR_CLASS}>
+                    {errors.participant_name.message}
+                  </p>
+                )}
+              </Field>
+              <Field>
+                <Label variant="editorial" htmlFor="m_participant_age">
+                  {t("registration.participantAge")} {REQ}
+                </Label>
+                <Input
+                  variant="boxed"
+                  id="m_participant_age"
+                  type="number"
+                  min="1"
+                  max="100"
+                  {...register("participant_age")}
+                />
+                {errors.participant_age && (
+                  <p className={FIELD_ERROR_CLASS}>
+                    {errors.participant_age.message}
+                  </p>
+                )}
+              </Field>
             </div>
-          </div>
 
-          {/* Participant's Data */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">
-              {t("registration.participantData")}
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("registration.fullName")}
-              </label>
-              <input
-                type="text"
-                {...register("participant_name")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-              />
-              {errors.participant_name && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.participant_name.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("registration.participantAge")}
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                {...register("participant_age")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-              />
-              {errors.participant_age && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.participant_age.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Select Date
-                </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <Field>
+                <Label variant="editorial" htmlFor="m_selected_date">
+                  Select date {REQ}
+                </Label>
                 <select
+                  id="m_selected_date"
                   {...register("selected_date")}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                  className={SELECT_CLASSES}
                 >
-                  <option value="">Select a date...</option>
+                  <option value="">Select a date…</option>
                   {eventDates.map((date, index) => (
                     <option key={index} value={date}>
                       {formatDateForDisplay(date)}
@@ -713,37 +714,41 @@ function MasterclassRegistrationModal({
                   ))}
                 </select>
                 {errors.selected_date && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className={FIELD_ERROR_CLASS}>
                     {errors.selected_date.message}
                   </p>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Select Duration (minutes)
-                </label>
+              </Field>
+              <Field>
+                <Label variant="editorial" htmlFor="m_selected_duration">
+                  Duration (min) {REQ}
+                </Label>
                 <select
+                  id="m_selected_duration"
                   {...register("selected_duration")}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
+                  className={SELECT_CLASSES}
                 >
-                  <option value="">Select duration...</option>
+                  <option value="">Select duration…</option>
                   {eventDurations.map((d, index) => (
-                    <option key={index} value={d}>{d}</option>
+                    <option key={index} value={d}>
+                      {d}
+                    </option>
                   ))}
                 </select>
                 {errors.selected_duration && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className={FIELD_ERROR_CLASS}>
                     {errors.selected_duration.message}
                   </p>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {t("masterclass.registration.numberOfSlots")}
-                </label>
+              </Field>
+              <Field>
+                <Label variant="editorial" htmlFor="m_number_of_slots">
+                  {t("masterclass.registration.numberOfSlots")} {REQ}
+                </Label>
                 <select
+                  id="m_number_of_slots"
                   {...register("number_of_slots")}
-                  className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50 sm:w-40"
+                  className={SELECT_CLASSES}
                 >
                   {[1, 2, 3].map((num) => (
                     <option key={num} value={num}>
@@ -752,172 +757,186 @@ function MasterclassRegistrationModal({
                   ))}
                 </select>
                 {errors.number_of_slots && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className={FIELD_ERROR_CLASS}>
                     {errors.number_of_slots.message}
                   </p>
                 )}
-              </div>
-              <div>
-                <span className="block text-xs text-gray-500">Total price:</span>
-                <div className="mt-1 text-base font-medium">
-                  {computedTotal !== null ? `IDR ${computedTotal.toLocaleString()}` : "-"}
-                </div>
-              </div>
+              </Field>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("masterclass.registration.repertoire")}
-              </label>
-              {repertoireList.map((repertoire, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={repertoire}
-                    onChange={(e) => updateRepertoire(index, e.target.value)}
-                    placeholder={t(
-                      "masterclass.registration.repertoirePlaceholder"
+            {/* Computed price */}
+            <div className="bg-surface-canvas-warm border-l-2 border-marigold px-5 py-4 flex items-baseline justify-between gap-4">
+              <span className="type-label text-ink-accent">Total price</span>
+              <span className="type-headline-sm font-serif text-burgundy">
+                {computedTotal !== null
+                  ? `IDR ${computedTotal.toLocaleString()}`
+                  : "—"}
+              </span>
+            </div>
+
+            {/* Repertoire */}
+            <div className="flex flex-col gap-3">
+              <Label variant="editorial">
+                {t("masterclass.registration.repertoire")} {REQ}
+              </Label>
+              <div className="flex flex-col gap-2">
+                {repertoireList.map((repertoire, index) => (
+                  <div key={index} className="flex gap-2 items-start">
+                    <Input
+                      variant="boxed"
+                      type="text"
+                      value={repertoire}
+                      onChange={(e) => updateRepertoire(index, e.target.value)}
+                      placeholder={t(
+                        "masterclass.registration.repertoirePlaceholder"
+                      )}
+                      required
+                    />
+                    {repertoireList.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRepertoire(index)}
+                        className="h-11 w-11 flex items-center justify-center text-ink-muted hover:text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)] rounded-sm transition-colors"
+                        aria-label="Remove repertoire"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     )}
-                    className="flex-1 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-                    required
-                  />
-                  {repertoireList.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeRepertoire(index)}
-                      className="mt-1 p-2 text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={addRepertoire}
-                className="flex items-center gap-2 text-sm text-marigold hover:text-marigold/90"
+                className="self-start type-label inline-flex items-center gap-2 text-burgundy hover:text-marigold transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 {t("masterclass.registration.addRepertoire")}
               </button>
             </div>
 
-            {/* PDF Upload Section */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* PDF uploads */}
+            <div className="flex flex-col gap-3">
+              <Label variant="editorial">
                 {t("masterclass.registration.repertoirePdf")}
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
+              </Label>
+              <p className="type-caption text-ink-muted">
                 {t("masterclass.registration.repertoirePdfHelp")}
               </p>
               {files.song_pdfs.map((fileState, index) => (
-                <div key={index} className="mb-3">
-                  <div className="flex gap-2 items-start">
-                    <div className="flex-1">
-                      <FileUpload
-                        label={`PDF ${index + 1}`}
-                        accept=".pdf"
-                        registration={{
-                          name: `song_pdf_${index}`,
-                          onChange: async () => true,
-                          onBlur: async () => true,
-                        }}
-                        error={fileState.error}
-                        onFileChange={handleFileChange('song_pdfs', index)}
-                      />
-                    </div>
-                    {files.song_pdfs.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeFileUpload(index)}
-                        className="mt-6 p-2 text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    )}
+                <div key={index} className="flex gap-2 items-start">
+                  <div className="flex-1">
+                    <FileUpload
+                      label={`PDF ${index + 1}`}
+                      accept=".pdf"
+                      registration={{
+                        name: `song_pdf_${index}`,
+                        onChange: async () => true,
+                        onBlur: async () => true,
+                      }}
+                      error={fileState.error}
+                      onFileChange={handleFileChange("song_pdfs", index)}
+                    />
                   </div>
+                  {files.song_pdfs.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeFileUpload(index)}
+                      className="mt-7 h-11 w-11 flex items-center justify-center text-ink-muted hover:text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)] rounded-sm transition-colors"
+                      aria-label="Remove PDF"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))}
               <button
                 type="button"
                 onClick={addFileUpload}
-                className="flex items-center gap-2 text-sm text-marigold hover:text-marigold/90"
+                className="self-start type-label inline-flex items-center gap-2 text-burgundy hover:text-marigold transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 {t("masterclass.registration.addPdf")}
               </button>
             </div>
-          </div>
+          </Section>
 
-          {/* Payment Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">
-              {t("registration.paymentInfo")}
-            </h3>
-
-            <div className="bg-gray-200 p-4 rounded-md">
-              <p className="text-center font-bold text-lg mb-4">
-                {t("registration.bankTransferDetails")}
-              </p>
-              <p>Bank Central Asia (BCA)</p>
-              <p>3720421151</p>
-              <p>RODERICK OR NICHOLAS</p>
-            </div>
-
-            <div className="bg-gray-200 p-4 rounded-md">
-              <p className="text-center font-bold text-lg mb-4">
-                {t("registration.qris")}
-              </p>
-              <img src="/Musica-Lumina_QR.jpeg" alt="QRIS" className="w-full" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("registration.bankName")}
-              </label>
-              <input
-                type="text"
-                {...register("bank_name")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-              />
-              {errors.bank_name && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.bank_name.message}
+          {/* Payment */}
+          <Section eyebrow="03 · Payment">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <PaymentInfoCard label={t("registration.bankTransferDetails")}>
+                <p className="type-body-md text-burgundy">
+                  Bank Central Asia (BCA)
                 </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("registration.accountNumber")}
-              </label>
-              <input
-                type="text"
-                {...register("bank_account_number")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
-              />
-              {errors.bank_account_number && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.bank_account_number.message}
+                <p className="type-headline-sm text-burgundy font-serif tracking-wide mt-1">
+                  3720421151
                 </p>
-              )}
+                <p className="type-caption text-ink-muted mt-2">
+                  RODERICK OR NICHOLAS
+                </p>
+              </PaymentInfoCard>
+              <PaymentInfoCard label={t("registration.qris")}>
+                <img
+                  src="/Musica-Lumina_QR.jpeg"
+                  alt="QRIS"
+                  className="w-full h-auto"
+                  loading="lazy"
+                />
+              </PaymentInfoCard>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("registration.accountHolderName")}
-              </label>
-              <input
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <Field>
+                <Label variant="editorial" htmlFor="m_bank_name">
+                  {t("registration.bankName")} {REQ}
+                </Label>
+                <Input
+                  variant="boxed"
+                  id="m_bank_name"
+                  type="text"
+                  {...register("bank_name")}
+                />
+                {errors.bank_name && (
+                  <p className={FIELD_ERROR_CLASS}>
+                    {errors.bank_name.message}
+                  </p>
+                )}
+              </Field>
+              <Field>
+                <Label variant="editorial" htmlFor="m_bank_account_number">
+                  {t("registration.accountNumber")} {REQ}
+                </Label>
+                <Input
+                  variant="boxed"
+                  id="m_bank_account_number"
+                  type="text"
+                  inputMode="numeric"
+                  {...register("bank_account_number")}
+                />
+                {errors.bank_account_number && (
+                  <p className={FIELD_ERROR_CLASS}>
+                    {errors.bank_account_number.message}
+                  </p>
+                )}
+              </Field>
+            </div>
+
+            <Field>
+              <Label variant="editorial" htmlFor="m_bank_account_name">
+                {t("registration.accountHolderName")} {REQ}
+              </Label>
+              <Input
+                variant="boxed"
+                id="m_bank_account_name"
                 type="text"
                 {...register("bank_account_name")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-marigold focus:ring focus:ring-marigold focus:ring-opacity-50"
               />
               {errors.bank_account_name && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className={FIELD_ERROR_CLASS}>
                   {errors.bank_account_name.message}
                 </p>
               )}
-            </div>
+            </Field>
 
             <FileUpload
               label={t("registration.paymentReceipt")}
@@ -928,61 +947,86 @@ function MasterclassRegistrationModal({
                 onBlur: async () => true,
               }}
               error={files.payment_receipt.error}
-              onFileChange={handleFileChange('payment_receipt')}
+              onFileChange={handleFileChange("payment_receipt")}
             />
-          </div>
+          </Section>
 
-          {/* Terms and Conditions */}
-          <div className="space-y-4">
-            <div className="flex items-start">
-              <div className="flex items-center h-5">
+          {/* Terms */}
+          <div className="border-t border-rule-hairline pt-6">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <span className="flex items-center h-6 mt-0.5">
                 <input
                   type="checkbox"
                   {...register("terms_accepted")}
-                  className="h-4 w-4 text-marigold border-gray-300 rounded focus:ring-marigold"
+                  className="h-4 w-4 rounded-sm border-burgundy/30 text-marigold focus:ring-2 focus:ring-marigold focus:ring-offset-2"
                 />
-              </div>
-              <div className="ml-3">
-                <label className="text-sm text-gray-700">
-                  {t("registration.termsAndConditions")}{" "}
-                  <button
-                    type="button"
-                    onClick={onOpenTerms}
-                    className="text-marigold hover:text-marigold/90 underline"
-                  >
-                    {t("registration.termsLink")}
-                  </button>
-                </label>
-                {errors.terms_accepted && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.terms_accepted.message}
-                  </p>
-                )}
-              </div>
-            </div>
+              </span>
+              <span className="type-body-sm text-ink-body">
+                {t("registration.termsAndConditions")}{" "}
+                <button
+                  type="button"
+                  onClick={onOpenTerms}
+                  className="text-burgundy underline underline-offset-2 hover:text-marigold transition-colors"
+                >
+                  {t("registration.termsLink")}
+                </button>
+              </span>
+            </label>
+            {errors.terms_accepted && (
+              <p className={cn(FIELD_ERROR_CLASS, "ml-7")}>
+                {errors.terms_accepted.message}
+              </p>
+            )}
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
               {t("registration.cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 bg-marigold text-white rounded-md hover:bg-marigold/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            </Button>
+            <Button type="submit" size="lg" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {isSubmitting
                 ? t("registration.submitting")
                 : t("registration.submit")}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
     </>
+  );
+}
+
+function Section({
+  eyebrow,
+  children,
+}: {
+  eyebrow: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-6">
+      <Eyebrow withRule>{eyebrow}</Eyebrow>
+      <div className="flex flex-col gap-5">{children}</div>
+    </section>
+  );
+}
+
+function Field({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-col">{children}</div>;
+}
+
+function PaymentInfoCard({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-surface-canvas-warm border border-rule-hairline p-5 flex flex-col gap-3">
+      <Eyebrow>{label}</Eyebrow>
+      <div className="flex flex-col">{children}</div>
+    </div>
   );
 }
 
