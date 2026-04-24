@@ -1,4 +1,26 @@
-import * as jose from "jose";
+import { supabase } from "./supabase";
+
+/**
+ * WhatsAppService — browser client for the `whatsapp-send` Edge Function.
+ *
+ * Previously held `VITE_JWT_SECRET` client-side and called
+ * `n8n.kangritel.com/webhook/send-whatsapp-message` directly. The JWT is
+ * now signed server-side inside the Edge Function; this file just posts
+ * the `{ phone, message }` envelope.
+ */
+
+/** Invoke the whatsapp-send Edge Function. Throws on failure. */
+async function sendWhatsAppViaFunction(payload: {
+  phone: string;
+  message: string;
+}): Promise<void> {
+  const { error } = await supabase.functions.invoke("whatsapp-send", {
+    body: payload,
+  });
+  if (error) {
+    throw new Error(`whatsapp-send failed: ${error.message}`);
+  }
+}
 
 // Helper function to format date for WhatsApp display
 function formatDateForWhatsApp(dateString: string): string {
@@ -38,29 +60,6 @@ interface WhatsAppMessageData {
 }
 
 export class WhatsAppService {
-  private static readonly WEBHOOK_URL =
-    "https://n8n.kangritel.com/webhook/send-whatsapp-message";
-
-  private static async generateAuthToken(): Promise<string> {
-    const secret = import.meta.env.VITE_JWT_SECRET;
-    if (!secret) {
-      throw new Error("WhatsApp JWT secret is not configured");
-    }
-
-    const alg = "HS256";
-    const secretBytes = new TextEncoder().encode(secret);
-
-    const jwt = await new jose.SignJWT({
-      iss: "musical-lumina",
-    })
-      .setProtectedHeader({ alg })
-      .setIssuedAt()
-      .setExpirationTime("1h")
-      .sign(secretBytes);
-
-    return jwt;
-  }
-
   private static formatCompetitionMessage(data: WhatsAppMessageData): string {
     const registrantType =
       {
@@ -136,27 +135,8 @@ export class WhatsAppService {
     try {
       const message = this.formatCompetitionMessage(data);
       const phone = this.formatPhoneNumber(data.registrant_whatsapp);
-      const token = await this.generateAuthToken();
 
-      const response = await fetch(this.WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          phone,
-          message,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to send WhatsApp message: ${response.statusText}`
-        );
-      }
-
-      await response.json();
+      await sendWhatsAppViaFunction({ phone, message });
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
       throw error;
@@ -169,27 +149,8 @@ export class WhatsAppService {
     try {
       const message = this.formatGroupClassMessage(data);
       const phone = this.formatPhoneNumber(data.registrant_whatsapp);
-      const token = await this.generateAuthToken();
 
-      const response = await fetch(this.WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          phone,
-          message,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to send WhatsApp message: ${response.statusText}`
-        );
-      }
-
-      await response.json();
+      await sendWhatsAppViaFunction({ phone, message });
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
       throw error;
@@ -202,27 +163,8 @@ export class WhatsAppService {
     try {
       const message = this.formatMasterclassMessage(data);
       const phone = this.formatPhoneNumber(data.registrant_whatsapp);
-      const token = await this.generateAuthToken();
 
-      const response = await fetch(this.WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          phone,
-          message,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to send WhatsApp message: ${response.statusText}`
-        );
-      }
-
-      await response.json();
+      await sendWhatsAppViaFunction({ phone, message });
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
       throw error;

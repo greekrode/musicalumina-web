@@ -40,7 +40,6 @@
     "dompurify": "^3.4.1",
     "express": "^4.21.2",
     "framer-motion": "^11.0.8",
-    "jose": "^6.0.10",
     "lucide-react": "^0.483.0",
     "moment": "^2.30.1",
     "react": "^18.3.1",

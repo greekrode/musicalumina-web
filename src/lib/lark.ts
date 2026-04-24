@@ -1,4 +1,20 @@
-import * as jose from "jose";
+import { supabase } from "./supabase";
+
+/**
+ * LarkService — browser client for the Lark-bridge Edge Functions.
+ *
+ * Before: this file held `VITE_N8N_USERNAME` / `VITE_N8N_PASSWORD` /
+ * `VITE_JWT_SECRET` and called `n8n.kangritel.com/webhook/…` directly.
+ * Those values shipped in the client bundle and were readable by anyone
+ * inspecting the site source, which effectively made the n8n → Lark
+ * bridge an open write endpoint.
+ *
+ * After: every outbound call goes through a Supabase Edge Function in
+ * `supabase/functions/lark-*`. The functions hold the credentials
+ * server-side via Deno.env. Public API of this class is unchanged so
+ * every call-site (RegistrationModal, VideoSubmissionPage, etc.) works
+ * without edits.
+ */
 
 interface LarkRegistrationData {
   event: {
@@ -63,47 +79,42 @@ interface LarkSearchResponse {
   msg: string;
 }
 
-export class LarkService {
-  private static readonly WEBHOOK_URL =
-    "https://n8n.kangritel.com/webhook/send-to-lark";
+/**
+ * Invoke a Supabase Edge Function and return its JSON response. Throws
+ * `Error` (not a raw FunctionsHttpError) so call sites can keep the
+ * same try/catch shape they used when this class called `fetch` directly.
+ */
+async function invokeLarkFunction<T>(
+  name: "lark-access-token" | "lark-search" | "lark-update" | "lark-send",
+  body?: Record<string, unknown>
+): Promise<T> {
+  const { data, error } = await supabase.functions.invoke<T>(name, {
+    body: body ?? {},
+  });
+  if (error) {
+    throw new Error(`${name} failed: ${error.message}`);
+  }
+  if (data === null || data === undefined) {
+    throw new Error(`${name} returned empty response`);
+  }
+  return data;
+}
 
+export class LarkService {
   /**
-   * Get Lark access token from n8n endpoint
+   * Get a Lark access token via the `lark-access-token` Edge Function.
+   * Kept for backward compatibility with any call sites that explicitly
+   * request a token; the registration / video-submission flows never need
+   * it directly.
    */
   public static async getAccessToken(): Promise<string> {
     try {
-      const username = import.meta.env.VITE_N8N_USERNAME?.trim();
-      const password = import.meta.env.VITE_N8N_PASSWORD?.trim();
-
-      if (!username || !password) {
-        throw new Error("N8N credentials are not configured");
-      }
-
-      const credentials = btoa(`${username}:${password}`);
-
-      const response = await fetch(
-        "https://n8n.kangritel.com/webhook/lark-access-token",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const data = await invokeLarkFunction<{ lark_access_token?: string }>(
+        "lark-access-token"
       );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to get Lark access token: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-
       if (!data.lark_access_token) {
         throw new Error("No lark_access_token in response");
       }
-
       return data.lark_access_token;
     } catch (error) {
       console.error("Error getting Lark access token:", error);
@@ -112,59 +123,33 @@ export class LarkService {
   }
 
   /**
-   * Search for participant data by registration reference code
+   * Look up a registration in Lark by its reference code. Called from the
+   * video-submission flow to confirm the participant before accepting a
+   * video URL.
    */
   public static async searchParticipantData(
     registrationRefCode: string
   ): Promise<ParticipantData> {
     try {
-      const username = import.meta.env.VITE_N8N_USERNAME?.trim();
-      const password = import.meta.env.VITE_N8N_PASSWORD?.trim();
-
-      if (!username || !password) {
-        throw new Error("N8N credentials are not configured");
-      }
-
-      const credentials = btoa(`${username}:${password}`);
-
-      const response = await fetch(
-        "https://n8n.kangritel.com/webhook/search-lark",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            base_id: "DPxNbSyPEa918OsuMJWlzy43gId",
-            table_id: "tblh4z8siDb2qt50",
-            view_id: "vewx2setSe",
-            filter: {
-              conjunction: "and",
-              conditions: [
-                {
-                  field_name: "Registration Reference Code",
-                  operator: "is",
-                  value: [registrationRefCode],
-                },
-              ],
+      const data = await invokeLarkFunction<LarkSearchResponse>("lark-search", {
+        base_id: "DPxNbSyPEa918OsuMJWlzy43gId",
+        table_id: "tblh4z8siDb2qt50",
+        view_id: "vewx2setSe",
+        filter: {
+          conjunction: "and",
+          conditions: [
+            {
+              field_name: "Registration Reference Code",
+              operator: "is",
+              value: [registrationRefCode],
             },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to search participant data: ${response.statusText}`
-        );
-      }
-
-      const data: LarkSearchResponse = await response.json();
+          ],
+        },
+      });
 
       if (data.code !== 0) {
         throw new Error(`Lark API error: ${data.msg}`);
       }
-
       if (data.data.total === 0) {
         throw new Error("Invalid registration reference code");
       }
@@ -187,9 +172,7 @@ export class LarkService {
     }
   }
 
-  /**
-   * Update participant video URL in Lark
-   */
+  /** Write back a video URL on an existing Lark record. */
   public static async updateParticipantVideo(
     recordId: string,
     videoUrl: string,
@@ -198,16 +181,7 @@ export class LarkService {
     subCategory: string
   ): Promise<void> {
     try {
-      const username = import.meta.env.VITE_N8N_USERNAME?.trim();
-      const password = import.meta.env.VITE_N8N_PASSWORD?.trim();
-
-      if (!username || !password) {
-        throw new Error("N8N credentials are not configured");
-      }
-
-      const credentials = btoa(`${username}:${password}`);
-
-      const requestBody = {
+      await invokeLarkFunction<unknown>("lark-update", {
         base_id: "DPxNbSyPEa918OsuMJWlzy43gId",
         table_id: "tblh4z8siDb2qt50",
         view_id: "vewx2setSe",
@@ -218,51 +192,39 @@ export class LarkService {
             text: `${participantName} - ${category} - ${subCategory}`,
           },
         },
-      };
-
-      const response = await fetch(
-        "https://n8n.kangritel.com/webhook/update-lark-record",
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to update participant video: ${response.statusText}`
-        );
-      }
-
-      await response.json();
+      });
     } catch (error) {
       console.error("Error updating participant video:", error);
       throw error;
     }
   }
 
-  private static async generateAuthToken(): Promise<string> {
-    const secret = import.meta.env.VITE_JWT_SECRET;
-    if (!secret) {
-      throw new Error("Lark JWT secret is not configured");
+  /**
+   * Mirror a new registration to Lark Base via the `lark-send` Edge
+   * Function. The function signs a short-lived JWT on the server side —
+   * the client doesn't hold the secret anymore.
+   */
+  public static async sendRegistrationData(
+    data: LarkRegistrationData
+  ): Promise<void> {
+    try {
+      const { event } = data;
+      // Skip if no Lark configuration on the event
+      if (!event.lark_base || !event.lark_table) {
+        return;
+      }
+
+      const formData = LarkService.formatLarkData(data, event);
+      await invokeLarkFunction<unknown>("lark-send", {
+        data: {
+          event,
+          formData,
+        },
+      });
+    } catch (error) {
+      console.error("Error sending data to Lark:", error);
+      throw error;
     }
-
-    const alg = "HS256";
-    const secretBytes = new TextEncoder().encode(secret);
-
-    const jwt = await new jose.SignJWT({
-      iss: "musical-lumina",
-    })
-      .setProtectedHeader({ alg })
-      .setIssuedAt()
-      .setExpirationTime("1h")
-      .sign(secretBytes);
-
-    return jwt;
   }
 
   private static formatWhatsAppNumber(phone: string): string {
@@ -274,7 +236,7 @@ export class LarkService {
     event: { type: string }
   ): Record<string, unknown> {
     const { registration } = data;
-    const whatsappNumber = this.formatWhatsAppNumber(
+    const whatsappNumber = LarkService.formatWhatsAppNumber(
       registration.registrant_whatsapp
     );
 
@@ -311,7 +273,7 @@ export class LarkService {
         // For masterclass with multiple PDFs, create comma-separated links
         fields["Song PDF"] = registration.song_pdf_url.join(", ");
       } else {
-        // For single PDF (backward compatibility) - extract first element from array
+        // Single PDF (backward compatibility) — first element only
         fields["Song PDF"] = {
           link: registration.song_pdf_url[0],
           text: registration.song_title,
@@ -352,7 +314,7 @@ export class LarkService {
     }
 
     if (registration.selected_date) {
-      // Convert to Unix timestamp in milliseconds for Lark
+      // Unix timestamp in milliseconds — Lark's expected date format.
       const epochTimestamp = new Date(registration.selected_date).getTime();
       fields["Selected Date"] = epochTimestamp;
     }
@@ -361,46 +323,6 @@ export class LarkService {
       fields["Duration"] = registration.duration;
     }
 
-    return {
-      fields,
-    };
-  }
-
-  public static async sendRegistrationData(
-    data: LarkRegistrationData
-  ): Promise<void> {
-    try {
-      const { event } = data;
-      // Skip if no Lark configuration
-      if (!event.lark_base || !event.lark_table) {
-        return;
-      }
-
-      const formData = this.formatLarkData(data, event);
-      const token = await this.generateAuthToken();
-
-      const response = await fetch(this.WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          data: {
-            event,
-            formData,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send data to Lark: ${response.statusText}`);
-      }
-
-      await response.json();
-    } catch (error) {
-      console.error("Error sending data to Lark:", error);
-      throw error;
-    }
+    return { fields };
   }
 }
