@@ -430,6 +430,7 @@ function EventDetails() {
               <AccordionCategories
                 categories={event.event_categories}
                 eventStartDate={event.start_date}
+                earlyBirdEndDate={event.early_bird_end_date}
                 reduceMotion={Boolean(reduceMotion)}
               />
             </Suspense>
@@ -545,10 +546,12 @@ function EventDetails() {
 function AccordionCategories({
   categories,
   eventStartDate,
+  earlyBirdEndDate,
   reduceMotion,
 }: {
   categories: EventCategory[];
   eventStartDate?: string;
+  earlyBirdEndDate: string | null;
   reduceMotion: boolean;
 }) {
   const [openIds, setOpenIds] = useState<Set<string>>(
@@ -698,6 +701,7 @@ function AccordionCategories({
               category={category}
               index={idx}
               eventStartDate={eventStartDate}
+              earlyBirdEndDate={earlyBirdEndDate}
               isOpen={openIds.has(category.id)}
               onToggle={() => toggleOpen(category.id)}
             />
@@ -754,12 +758,14 @@ function AccordionCategory({
   category,
   index,
   eventStartDate,
+  earlyBirdEndDate,
   isOpen,
   onToggle,
 }: {
   category: EventCategory;
   index: number;
   eventStartDate?: string;
+  earlyBirdEndDate: string | null;
   isOpen: boolean;
   onToggle: () => void;
 }) {
@@ -909,6 +915,7 @@ function AccordionCategory({
                       <SubcategoryCard
                         key={sub.id}
                         sub={sub}
+                        earlyBirdEndDate={earlyBirdEndDate}
                         t={t}
                         language={language}
                       />
@@ -932,20 +939,22 @@ function AccordionCategory({
 
 function SubcategoryCard({
   sub,
+  earlyBirdEndDate,
   t,
   language,
 }: {
   sub: EventCategory["event_subcategories"][number];
+  earlyBirdEndDate: string | null;
   t: (key: string) => string;
   language: string;
 }) {
-  const _earlyBirdDate = sub.early_bird_end_date
-    ? new Date(sub.early_bird_end_date)
+  const earlyBirdDate = earlyBirdEndDate
+    ? new Date(earlyBirdEndDate)
     : null;
   const isEarlyBirdActive =
-    _earlyBirdDate != null &&
-    !isNaN(_earlyBirdDate.getTime()) &&
-    _earlyBirdDate > new Date();
+    earlyBirdDate != null &&
+    !isNaN(earlyBirdDate.getTime()) &&
+    earlyBirdDate > new Date();
 
   const hasEarlyBirdForeignFees = Boolean(
     sub.early_bird_foreign_registration_fee &&
@@ -990,7 +999,7 @@ function SubcategoryCard({
               {t("eventDetails.earlyBirdFee")}
               <span className="type-caption text-marigold font-medium">
                 {t("eventDetails.earlyBirdEnds")}{" "}
-                {formatDateWithLocale(sub.early_bird_end_date!, language)}
+                {formatDateWithLocale(earlyBirdEndDate!, language)}
               </span>
             </dt>
             <dd className="type-title-md text-burgundy">

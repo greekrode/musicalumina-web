@@ -84,8 +84,10 @@ export default function AdminEventCategories() {
             age_requirement,
             registration_fee,
             final_registration_fee,
+            early_bird_registration_fee,
             foreign_registration_fee,
             foreign_final_registration_fee,
+            early_bird_foreign_registration_fee,
             repertoire,
             performance_duration,
             requirements,
@@ -203,7 +205,6 @@ export default function AdminEventCategories() {
         | Array<{ country: string; fee: string }>
         | null;
       early_bird_registration_fee: number | null;
-      early_bird_end_date: string | null;
       early_bird_foreign_registration_fee:
         | Array<{ country: string; fee: string }>
         | null;
@@ -227,7 +228,6 @@ export default function AdminEventCategories() {
             foreign_registration_fee: data.foreign_registration_fee,
             foreign_final_registration_fee: data.foreign_final_registration_fee,
             early_bird_registration_fee: data.early_bird_registration_fee,
-            early_bird_end_date: data.early_bird_end_date,
             early_bird_foreign_registration_fee:
               data.early_bird_foreign_registration_fee,
             repertoire: data.repertoire,
@@ -435,8 +435,6 @@ export default function AdminEventCategories() {
                 early_bird_registration_fee:
                   subcategoryModal.initialData.early_bird_registration_fee ??
                   null,
-                early_bird_end_date:
-                  subcategoryModal.initialData.early_bird_end_date ?? null,
                 early_bird_foreign_registration_fee: Array.isArray(
                   subcategoryModal.initialData
                     .early_bird_foreign_registration_fee

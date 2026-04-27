@@ -72,6 +72,7 @@ export function AdminEvents() {
                 <Th>Type</Th>
                 <Th>Status</Th>
                 <Th>Date</Th>
+                <Th>Early bird</Th>
                 <Th>Location</Th>
                 <Th className="text-right">Quota</Th>
                 <Th className="text-right">Actions</Th>
@@ -79,9 +80,9 @@ export function AdminEvents() {
             </thead>
             <tbody className="divide-y divide-rule-hairline">
               {isLoading ? (
-                <TableMessageRow colSpan={7}>Loading events…</TableMessageRow>
+                <TableMessageRow colSpan={8}>Loading events…</TableMessageRow>
               ) : events.length === 0 ? (
-                <TableMessageRow colSpan={7}>
+                <TableMessageRow colSpan={8}>
                   No events yet. Use <strong>Add Event</strong> to create one.
                 </TableMessageRow>
               ) : (
@@ -98,6 +99,7 @@ export function AdminEvents() {
                       <StatusBadge status={event.status} />
                     </Td>
                     <Td>{formatEventDates(event)}</Td>
+                    <Td>{formatEarlyBirdDate(event)}</Td>
                     <Td>{event.location}</Td>
                     <Td className="text-right">
                       {event.max_quota
@@ -161,6 +163,12 @@ export function AdminEvents() {
                     <dt className="type-label text-ink-muted">Date</dt>
                     <dd className="text-burgundy mt-0.5">
                       {formatEventDates(event)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="type-label text-ink-muted">Early bird</dt>
+                    <dd className="text-burgundy mt-0.5">
+                      {formatEarlyBirdDate(event)}
                     </dd>
                   </div>
                   <div className="col-span-2">
@@ -342,6 +350,12 @@ function formatEventDates(event: Event): string {
       .join(", ");
   }
   return new Date(event.start_date).toLocaleDateString();
+}
+
+function formatEarlyBirdDate(event: Event): string {
+  return event.early_bird_end_date
+    ? new Date(event.early_bird_end_date).toLocaleString()
+    : "—";
 }
 
 function StatusBadge({ status }: { status: string }) {
