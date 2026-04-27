@@ -49,7 +49,4 @@ jobs:
           VITE_SUPABASE_ANON_KEY: "ci-placeholder"
           VITE_CLERK_PUBLISHABLE_KEY: "pk_test_ci-placeholder"
           VITE_TINYMCE_API_KEY: "ci-placeholder"
-          VITE_N8N_USERNAME: "ci-placeholder"
-          VITE_N8N_PASSWORD: "ci-placeholder"
-          VITE_JWT_SECRET: "ci-placeholder"
         run: npm run build

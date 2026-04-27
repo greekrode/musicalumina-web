@@ -1,4 +1,29 @@
-import * as jose from "jose";
+import { supabase } from "./supabase";
+
+/**
+ * EmailService — browser client for the `email-send` Edge Function.
+ *
+ * Previously held `VITE_JWT_SECRET` and called `n8n.kangritel.com/webhook/
+ * send-email` directly, which leaked the HS256 signing key in the client
+ * bundle. The JWT is now minted server-side inside the Edge Function; this
+ * client just posts the `{ email, subject, message }` envelope. Public API
+ * (sendCompetitionRegistrationEmail / sendGroupClassRegistrationEmail /
+ * sendMasterclassRegistrationEmail) is unchanged.
+ */
+
+/** Invoke the email-send Edge Function. Throws on failure. */
+async function sendEmailViaFunction(payload: {
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<void> {
+  const { error } = await supabase.functions.invoke("email-send", {
+    body: payload,
+  });
+  if (error) {
+    throw new Error(`email-send failed: ${error.message}`);
+  }
+}
 
 // Helper function to format date for email display
 function formatDateForEmail(dateString: string): string {
@@ -38,29 +63,6 @@ interface EmailMessageData {
 }
 
 export class EmailService {
-  private static readonly WEBHOOK_URL =
-    "https://n8n.kangritel.com/webhook/send-email";
-
-  private static async generateAuthToken(): Promise<string> {
-    const secret = import.meta.env.VITE_JWT_SECRET;
-    if (!secret) {
-      throw new Error("Email JWT secret is not configured");
-    }
-
-    const alg = "HS256";
-    const secretBytes = new TextEncoder().encode(secret);
-
-    const jwt = await new jose.SignJWT({
-      iss: "musical-lumina",
-    })
-      .setProtectedHeader({ alg })
-      .setIssuedAt()
-      .setExpirationTime("1h")
-      .sign(secretBytes);
-
-    return jwt;
-  }
-
   private static getEmailTemplate(content: string): string {
     return `
 <!DOCTYPE html>
@@ -537,30 +539,16 @@ export class EmailService {
   ): Promise<void> {
     try {
       const message = this.formatCompetitionMessage(data);
-      const token = await this.generateAuthToken();
       const subject =
         data.language === "id"
           ? `Pendaftaran ${data.event_name} Berhasil! 🎉`
           : `${data.event_name} Registration Successful! 🎉`;
 
-      const response = await fetch(this.WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          email: data.registrant_email,
-          subject,
-          message,
-        }),
+      await sendEmailViaFunction({
+        email: data.registrant_email,
+        subject,
+        message,
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send email: ${response.statusText}`);
-      }
-
-      await response.json();
     } catch (error) {
       console.error("Error sending email:", error);
       throw error;
@@ -572,30 +560,16 @@ export class EmailService {
   ): Promise<void> {
     try {
       const message = this.formatGroupClassMessage(data);
-      const token = await this.generateAuthToken();
       const subject =
         data.language === "id"
           ? `Pendaftaran ${data.event_name} Berhasil! 🎉`
           : `${data.event_name} Registration Successful! 🎉`;
 
-      const response = await fetch(this.WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          email: data.registrant_email,
-          subject,
-          message,
-        }),
+      await sendEmailViaFunction({
+        email: data.registrant_email,
+        subject,
+        message,
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send email: ${response.statusText}`);
-      }
-
-      await response.json();
     } catch (error) {
       console.error("Error sending email:", error);
       throw error;
@@ -607,30 +581,16 @@ export class EmailService {
   ): Promise<void> {
     try {
       const message = this.formatMasterclassMessage(data);
-      const token = await this.generateAuthToken();
       const subject =
         data.language === "id"
           ? `Pendaftaran ${data.event_name} Berhasil! 🎉`
           : `${data.event_name} Registration Successful! 🎉`;
 
-      const response = await fetch(this.WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          email: data.registrant_email,
-          subject,
-          message,
-        }),
+      await sendEmailViaFunction({
+        email: data.registrant_email,
+        subject,
+        message,
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send email: ${response.statusText}`);
-      }
-
-      await response.json();
     } catch (error) {
       console.error("Error sending email:", error);
       throw error;
