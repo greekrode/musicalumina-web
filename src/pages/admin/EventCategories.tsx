@@ -432,6 +432,21 @@ export default function AdminEventCategories() {
                       fee: string;
                     }>)
                   : null,
+                early_bird_registration_fee:
+                  subcategoryModal.initialData.early_bird_registration_fee ??
+                  null,
+                early_bird_end_date:
+                  subcategoryModal.initialData.early_bird_end_date ?? null,
+                early_bird_foreign_registration_fee: Array.isArray(
+                  subcategoryModal.initialData
+                    .early_bird_foreign_registration_fee
+                )
+                  ? (subcategoryModal.initialData
+                      .early_bird_foreign_registration_fee as Array<{
+                      country: string;
+                      fee: string;
+                    }>)
+                  : null,
                 repertoire: Array.isArray(
                   subcategoryModal.initialData.repertoire
                 )

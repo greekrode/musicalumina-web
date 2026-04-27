@@ -73,6 +73,23 @@ const subcategorySchema = z.object({
   performance_duration: z.string().nullable(),
   requirements: z.string().nullable(),
   order_index: z.coerce.number().int().min(0, "Order is required"),
+}).superRefine((data, ctx) => {
+  const hasFee = data.early_bird_registration_fee != null;
+  const hasDate = data.early_bird_end_date != null && data.early_bird_end_date !== "";
+  if (hasFee && !hasDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Early bird end date is required when a fee is set",
+      path: ["early_bird_end_date"],
+    });
+  }
+  if (hasDate && !hasFee) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Early bird fee is required when an end date is set",
+      path: ["early_bird_registration_fee"],
+    });
+  }
 });
 
 type SubcategoryFormData = z.infer<typeof subcategorySchema>;
@@ -377,8 +394,8 @@ export function SubcategoryModal({
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setForm((prev) => {
-        const oldIndex = parseInt(active.id as string);
-        const newIndex = parseInt(over.id as string);
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
         return {
           ...prev,
           repertoire: arrayMove(prev.repertoire || [], oldIndex, newIndex),
@@ -441,8 +458,8 @@ export function SubcategoryModal({
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setForm((prev) => {
-        const oldIndex = parseInt(active.id as string);
-        const newIndex = parseInt(over.id as string);
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
         return {
           ...prev,
           foreign_registration_fee: arrayMove(
@@ -514,8 +531,8 @@ export function SubcategoryModal({
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setForm((prev) => {
-        const oldIndex = parseInt(active.id as string);
-        const newIndex = parseInt(over.id as string);
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
         return {
           ...prev,
           foreign_final_registration_fee: arrayMove(
@@ -582,8 +599,8 @@ export function SubcategoryModal({
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setForm((prev) => {
-        const oldIndex = parseInt(active.id as string);
-        const newIndex = parseInt(over.id as string);
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
         return {
           ...prev,
           early_bird_foreign_registration_fee: arrayMove(
@@ -771,17 +788,17 @@ export function SubcategoryModal({
               <Input
                 id="sub-early-bird-end"
                 name="early_bird_end_date"
-                type="date"
+                type="datetime-local"
                 variant="boxed"
                 value={
                   form.early_bird_end_date
-                    ? form.early_bird_end_date.slice(0, 10)
+                    ? form.early_bird_end_date.slice(0, 16)
                     : ""
                 }
                 onChange={handleChange}
               />
               <p className="type-caption text-ink-muted">
-                Early bird row hides after this date.
+                Early bird row hides after this date and time.
               </p>
             </div>
           </div>
@@ -850,7 +867,7 @@ export function SubcategoryModal({
                 onDragEnd={handleEarlyBirdForeignFeeDragEnd}
               >
                 <SortableContext
-                  items={earlyBirdForeignFees.map((_, i) => i.toString())}
+                  items={earlyBirdForeignFees.map((_, i) => `eb-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   {earlyBirdForeignFees.length === 0 ? (
@@ -861,7 +878,7 @@ export function SubcategoryModal({
                     earlyBirdForeignFees.map((item, index) => (
                       <SortableForeignFee
                         key={index}
-                        id={index.toString()}
+                        id={`eb-${index}`}
                         item={item}
                         onRemove={() => handleRemoveEarlyBirdForeignFee(index)}
                         onEdit={() => handleEditEarlyBirdForeignFee(index)}
@@ -934,7 +951,7 @@ export function SubcategoryModal({
                 onDragEnd={handleForeignFeeDragEnd}
               >
                 <SortableContext
-                  items={foreignFees.map((_, i) => i.toString())}
+                  items={foreignFees.map((_, i) => `reg-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   {foreignFees.length === 0 ? (
@@ -945,7 +962,7 @@ export function SubcategoryModal({
                     foreignFees.map((item, index) => (
                       <SortableForeignFee
                         key={index}
-                        id={index.toString()}
+                        id={`reg-${index}`}
                         item={item}
                         onRemove={() => handleRemoveForeignFee(index)}
                         onEdit={() => handleEditForeignFee(index)}
@@ -1021,7 +1038,7 @@ export function SubcategoryModal({
                 onDragEnd={handleForeignFinalFeeDragEnd}
               >
                 <SortableContext
-                  items={foreignFinalFees.map((_, i) => i.toString())}
+                  items={foreignFinalFees.map((_, i) => `fin-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   {foreignFinalFees.length === 0 ? (
@@ -1032,7 +1049,7 @@ export function SubcategoryModal({
                     foreignFinalFees.map((item, index) => (
                       <SortableForeignFee
                         key={index}
-                        id={index.toString()}
+                        id={`fin-${index}`}
                         item={item}
                         onRemove={() => handleRemoveForeignFinalFee(index)}
                         onEdit={() => handleEditForeignFinalFee(index)}
@@ -1091,7 +1108,7 @@ export function SubcategoryModal({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={repertoire.map((_, i) => i.toString())}
+                  items={repertoire.map((_, i) => `rep-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   {repertoire.length === 0 ? (
@@ -1102,7 +1119,7 @@ export function SubcategoryModal({
                     repertoire.map((item, index) => (
                       <SortableItem
                         key={index}
-                        id={index.toString()}
+                        id={`rep-${index}`}
                         item={item}
                         onRemove={() => handleRemoveRepertoireItem(index)}
                         onEdit={() => handleEditRepertoireItem(index)}

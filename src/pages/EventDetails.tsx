@@ -939,9 +939,13 @@ function SubcategoryCard({
   t: (key: string) => string;
   language: string;
 }) {
+  const _earlyBirdDate = sub.early_bird_end_date
+    ? new Date(sub.early_bird_end_date)
+    : null;
   const isEarlyBirdActive =
-    sub.early_bird_end_date != null &&
-    new Date(sub.early_bird_end_date) > new Date();
+    _earlyBirdDate != null &&
+    !isNaN(_earlyBirdDate.getTime()) &&
+    _earlyBirdDate > new Date();
 
   const hasEarlyBirdForeignFees = Boolean(
     sub.early_bird_foreign_registration_fee &&
@@ -956,7 +960,7 @@ function SubcategoryCard({
       (sub.foreign_final_registration_fee &&
         Array.isArray(sub.foreign_final_registration_fee) &&
         sub.foreign_final_registration_fee.length > 0) ||
-      hasEarlyBirdForeignFees
+      (isEarlyBirdActive && hasEarlyBirdForeignFees)
   );
 
   return (
@@ -1049,7 +1053,7 @@ function SubcategoryCard({
                           {t("eventDetails.finalRegistrationFee")}
                         </th>
                       )}
-                    {hasEarlyBirdForeignFees && (
+                    {isEarlyBirdActive && hasEarlyBirdForeignFees && (
                       <th className="text-left py-2 type-label text-ink-muted">
                         {t("eventDetails.earlyBirdForeignFees")}
                       </th>
@@ -1076,7 +1080,11 @@ function SubcategoryCard({
                     const allCountries = new Set<string>();
                     regFees.forEach((f) => allCountries.add(f.country));
                     finalFees.forEach((f) => allCountries.add(f.country));
-                    earlyBirdFees.forEach((f) => allCountries.add(f.country));
+                    if (isEarlyBirdActive) {
+                      earlyBirdFees.forEach((f) =>
+                        allCountries.add(f.country)
+                      );
+                    }
 
                     return Array.from(allCountries).map((country) => {
                       const regFee = regFees.find((f) => f.country === country);
@@ -1106,7 +1114,7 @@ function SubcategoryCard({
                                 {finalFee ? finalFee.fee : "—"}
                               </td>
                             )}
-                          {hasEarlyBirdForeignFees && (
+                          {isEarlyBirdActive && hasEarlyBirdForeignFees && (
                             <td className="py-2 text-ink-body">
                               {earlyBirdFee ? earlyBirdFee.fee : "—"}
                             </td>
