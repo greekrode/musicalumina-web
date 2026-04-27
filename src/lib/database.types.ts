@@ -275,6 +275,9 @@ export interface Database {
           created_at: string;
           order_index: number;
           updated_at: string;
+          early_bird_registration_fee: number | null;
+          early_bird_end_date: string | null;
+          early_bird_foreign_registration_fee: Json | null;
         };
         Insert: {
           id?: string;
@@ -291,6 +294,9 @@ export interface Database {
           created_at?: string;
           order_index: number;
           updated_at?: string;
+          early_bird_registration_fee?: number | null;
+          early_bird_end_date?: string | null;
+          early_bird_foreign_registration_fee?: Json | null;
         };
         Update: {
           id?: string;
@@ -307,6 +313,9 @@ export interface Database {
           created_at?: string;
           order_index?: number;
           updated_at?: string;
+          early_bird_registration_fee?: number | null;
+          early_bird_end_date?: string | null;
+          early_bird_foreign_registration_fee?: Json | null;
         };
       };
       event_jury: {

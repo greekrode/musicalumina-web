@@ -202,6 +202,11 @@ export default function AdminEventCategories() {
       foreign_final_registration_fee:
         | Array<{ country: string; fee: string }>
         | null;
+      early_bird_registration_fee: number | null;
+      early_bird_end_date: string | null;
+      early_bird_foreign_registration_fee:
+        | Array<{ country: string; fee: string }>
+        | null;
       repertoire: string[] | null;
       performance_duration: string | null;
       requirements: string | null;
@@ -221,6 +226,10 @@ export default function AdminEventCategories() {
             final_registration_fee: data.final_registration_fee,
             foreign_registration_fee: data.foreign_registration_fee,
             foreign_final_registration_fee: data.foreign_final_registration_fee,
+            early_bird_registration_fee: data.early_bird_registration_fee,
+            early_bird_end_date: data.early_bird_end_date,
+            early_bird_foreign_registration_fee:
+              data.early_bird_foreign_registration_fee,
             repertoire: data.repertoire,
             performance_duration: data.performance_duration,
             requirements: data.requirements,
@@ -419,6 +428,21 @@ export default function AdminEventCategories() {
                 )
                   ? (subcategoryModal.initialData
                       .foreign_final_registration_fee as Array<{
+                      country: string;
+                      fee: string;
+                    }>)
+                  : null,
+                early_bird_registration_fee:
+                  subcategoryModal.initialData.early_bird_registration_fee ??
+                  null,
+                early_bird_end_date:
+                  subcategoryModal.initialData.early_bird_end_date ?? null,
+                early_bird_foreign_registration_fee: Array.isArray(
+                  subcategoryModal.initialData
+                    .early_bird_foreign_registration_fee
+                )
+                  ? (subcategoryModal.initialData
+                      .early_bird_foreign_registration_fee as Array<{
                       country: string;
                       fee: string;
                     }>)

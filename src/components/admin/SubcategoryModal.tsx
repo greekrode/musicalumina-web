@@ -59,10 +59,37 @@ const subcategorySchema = z.object({
       })
     )
     .nullable(),
+  early_bird_registration_fee: z.coerce.number().min(0).nullable(),
+  early_bird_end_date: z.string().nullable(),
+  early_bird_foreign_registration_fee: z
+    .array(
+      z.object({
+        country: z.string().min(1, "Country is required"),
+        fee: z.string().min(1, "Fee is required"),
+      })
+    )
+    .nullable(),
   repertoire: z.array(z.string()).nullable(),
   performance_duration: z.string().nullable(),
   requirements: z.string().nullable(),
   order_index: z.coerce.number().int().min(0, "Order is required"),
+}).superRefine((data, ctx) => {
+  const hasFee = data.early_bird_registration_fee != null;
+  const hasDate = data.early_bird_end_date != null && data.early_bird_end_date !== "";
+  if (hasFee && !hasDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Early bird end date is required when a fee is set",
+      path: ["early_bird_end_date"],
+    });
+  }
+  if (hasDate && !hasFee) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Early bird fee is required when an end date is set",
+      path: ["early_bird_registration_fee"],
+    });
+  }
 });
 
 type SubcategoryFormData = z.infer<typeof subcategorySchema>;
@@ -234,6 +261,11 @@ export function SubcategoryModal({
     foreign_registration_fee: initialData?.foreign_registration_fee || [],
     foreign_final_registration_fee:
       initialData?.foreign_final_registration_fee || [],
+    early_bird_registration_fee:
+      initialData?.early_bird_registration_fee ?? null,
+    early_bird_end_date: initialData?.early_bird_end_date || "",
+    early_bird_foreign_registration_fee:
+      initialData?.early_bird_foreign_registration_fee || [],
     repertoire: initialData?.repertoire || [],
     performance_duration: initialData?.performance_duration || "",
     requirements: initialData?.requirements || "",
@@ -252,6 +284,12 @@ export function SubcategoryModal({
   const [editingForeignFinalIndex, setEditingForeignFinalIndex] = useState<
     number | null
   >(null);
+  const [newEarlyBirdForeignFee, setNewEarlyBirdForeignFee] = useState({
+    country: "",
+    fee: "",
+  });
+  const [editingEarlyBirdForeignIndex, setEditingEarlyBirdForeignIndex] =
+    useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -271,6 +309,11 @@ export function SubcategoryModal({
       foreign_registration_fee: initialData?.foreign_registration_fee || [],
       foreign_final_registration_fee:
         initialData?.foreign_final_registration_fee || [],
+      early_bird_registration_fee:
+        initialData?.early_bird_registration_fee ?? null,
+      early_bird_end_date: initialData?.early_bird_end_date || "",
+      early_bird_foreign_registration_fee:
+        initialData?.early_bird_foreign_registration_fee || [],
       repertoire: initialData?.repertoire || [],
       performance_duration: initialData?.performance_duration || "",
       requirements: initialData?.requirements || "",
@@ -282,6 +325,8 @@ export function SubcategoryModal({
     setEditingForeignIndex(null);
     setNewForeignFinalFee({ country: "", fee: "" });
     setEditingForeignFinalIndex(null);
+    setNewEarlyBirdForeignFee({ country: "", fee: "" });
+    setEditingEarlyBirdForeignIndex(null);
     setError(null);
   }, [initialData, isOpen]);
 
@@ -292,7 +337,10 @@ export function SubcategoryModal({
     let processedValue: string | number | null = value;
 
     if (type === "number") {
-      if (name === "final_registration_fee") {
+      if (
+        name === "final_registration_fee" ||
+        name === "early_bird_registration_fee"
+      ) {
         processedValue = value === "" ? null : Number(value);
       } else {
         processedValue = value === "" ? 0 : Number(value);
@@ -346,8 +394,8 @@ export function SubcategoryModal({
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setForm((prev) => {
-        const oldIndex = parseInt(active.id as string);
-        const newIndex = parseInt(over.id as string);
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
         return {
           ...prev,
           repertoire: arrayMove(prev.repertoire || [], oldIndex, newIndex),
@@ -410,8 +458,8 @@ export function SubcategoryModal({
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setForm((prev) => {
-        const oldIndex = parseInt(active.id as string);
-        const newIndex = parseInt(over.id as string);
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
         return {
           ...prev,
           foreign_registration_fee: arrayMove(
@@ -483,12 +531,80 @@ export function SubcategoryModal({
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setForm((prev) => {
-        const oldIndex = parseInt(active.id as string);
-        const newIndex = parseInt(over.id as string);
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
         return {
           ...prev,
           foreign_final_registration_fee: arrayMove(
             prev.foreign_final_registration_fee || [],
+            oldIndex,
+            newIndex
+          ),
+        };
+      });
+    }
+  };
+
+  /* -------- Foreign fees (early bird) -------- */
+
+  const handleAddEarlyBirdForeignFee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newEarlyBirdForeignFee.country.trim() && newEarlyBirdForeignFee.fee.trim()) {
+      if (editingEarlyBirdForeignIndex !== null) {
+        const updated = [...(form.early_bird_foreign_registration_fee || [])];
+        updated[editingEarlyBirdForeignIndex] = {
+          country: newEarlyBirdForeignFee.country.trim(),
+          fee: newEarlyBirdForeignFee.fee.trim(),
+        };
+        setForm({ ...form, early_bird_foreign_registration_fee: updated });
+        setEditingEarlyBirdForeignIndex(null);
+      } else {
+        setForm({
+          ...form,
+          early_bird_foreign_registration_fee: [
+            ...(form.early_bird_foreign_registration_fee || []),
+            {
+              country: newEarlyBirdForeignFee.country.trim(),
+              fee: newEarlyBirdForeignFee.fee.trim(),
+            },
+          ],
+        });
+      }
+      setNewEarlyBirdForeignFee({ country: "", fee: "" });
+    }
+  };
+
+  const handleEditEarlyBirdForeignFee = (index: number) => {
+    const fee = form.early_bird_foreign_registration_fee?.[index];
+    if (fee) {
+      setNewEarlyBirdForeignFee({ country: fee.country, fee: fee.fee });
+      setEditingEarlyBirdForeignIndex(index);
+    }
+  };
+
+  const handleRemoveEarlyBirdForeignFee = (index: number) => {
+    setForm({
+      ...form,
+      early_bird_foreign_registration_fee: (
+        form.early_bird_foreign_registration_fee || []
+      ).filter((_, i) => i !== index),
+    });
+    if (editingEarlyBirdForeignIndex === index) {
+      setEditingEarlyBirdForeignIndex(null);
+      setNewEarlyBirdForeignFee({ country: "", fee: "" });
+    }
+  };
+
+  const handleEarlyBirdForeignFeeDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setForm((prev) => {
+        const oldIndex = parseInt((active.id as string).replace(/^[a-z]+-/, ''), 10);
+        const newIndex = parseInt((over.id as string).replace(/^[a-z]+-/, ''), 10);
+        return {
+          ...prev,
+          early_bird_foreign_registration_fee: arrayMove(
+            prev.early_bird_foreign_registration_fee || [],
             oldIndex,
             newIndex
           ),
@@ -514,6 +630,15 @@ export function SubcategoryModal({
         form.foreign_final_registration_fee &&
         form.foreign_final_registration_fee.length > 0
           ? form.foreign_final_registration_fee
+          : null,
+      early_bird_foreign_registration_fee:
+        form.early_bird_foreign_registration_fee &&
+        form.early_bird_foreign_registration_fee.length > 0
+          ? form.early_bird_foreign_registration_fee
+          : null,
+      early_bird_end_date:
+        form.early_bird_end_date && form.early_bird_end_date.trim() !== ""
+          ? form.early_bird_end_date
           : null,
     };
 
@@ -542,6 +667,7 @@ export function SubcategoryModal({
   const repertoire = form.repertoire || [];
   const foreignFees = form.foreign_registration_fee || [];
   const foreignFinalFees = form.foreign_final_registration_fee || [];
+  const earlyBirdForeignFees = form.early_bird_foreign_registration_fee || [];
 
   return (
     <Modal
@@ -639,6 +765,132 @@ export function SubcategoryModal({
           </div>
         </section>
 
+        {/* Early bird pricing */}
+        <section className="flex flex-col gap-4">
+          <Eyebrow withRule>Early bird pricing</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="sub-early-bird-fee">Early bird fee (IDR)</Label>
+              <Input
+                id="sub-early-bird-fee"
+                name="early_bird_registration_fee"
+                type="number"
+                variant="boxed"
+                value={form.early_bird_registration_fee ?? ""}
+                onChange={handleChange}
+              />
+              <p className="type-caption text-ink-muted">
+                Leave blank to disable early bird pricing.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="sub-early-bird-end">Early bird ends</Label>
+              <Input
+                id="sub-early-bird-end"
+                name="early_bird_end_date"
+                type="datetime-local"
+                variant="boxed"
+                value={
+                  form.early_bird_end_date
+                    ? form.early_bird_end_date.slice(0, 16)
+                    : ""
+                }
+                onChange={handleChange}
+              />
+              <p className="type-caption text-ink-muted">
+                Early bird row hides after this date and time.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Foreign fees · early bird */}
+        <section className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <Eyebrow withRule>Foreign fees · early bird</Eyebrow>
+            {earlyBirdForeignFees.length > 0 && (
+              <Eyebrow tone="muted">
+                {earlyBirdForeignFees.length}{" "}
+                {earlyBirdForeignFees.length === 1 ? "country" : "countries"}
+              </Eyebrow>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+              <Input
+                variant="boxed"
+                value={newEarlyBirdForeignFee.country}
+                onChange={(e) =>
+                  setNewEarlyBirdForeignFee({
+                    ...newEarlyBirdForeignFee,
+                    country: e.target.value,
+                  })
+                }
+                placeholder="Country (e.g. Singapore)"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddEarlyBirdForeignFee(e);
+                  }
+                }}
+              />
+              <Input
+                variant="boxed"
+                value={newEarlyBirdForeignFee.fee}
+                onChange={(e) =>
+                  setNewEarlyBirdForeignFee({
+                    ...newEarlyBirdForeignFee,
+                    fee: e.target.value,
+                  })
+                }
+                placeholder="Fee (e.g. SGD 120)"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddEarlyBirdForeignFee(e);
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={handleAddEarlyBirdForeignFee}
+                variant="outline"
+                className="sm:w-auto w-full"
+              >
+                {editingEarlyBirdForeignIndex !== null ? "Update" : "Add fee"}
+              </Button>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleEarlyBirdForeignFeeDragEnd}
+              >
+                <SortableContext
+                  items={earlyBirdForeignFees.map((_, i) => `eb-${i}`)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {earlyBirdForeignFees.length === 0 ? (
+                    <p className="type-caption text-ink-muted italic px-1 py-2">
+                      No foreign early bird fees configured.
+                    </p>
+                  ) : (
+                    earlyBirdForeignFees.map((item, index) => (
+                      <SortableForeignFee
+                        key={index}
+                        id={`eb-${index}`}
+                        item={item}
+                        onRemove={() => handleRemoveEarlyBirdForeignFee(index)}
+                        onEdit={() => handleEditEarlyBirdForeignFee(index)}
+                      />
+                    ))
+                  )}
+                </SortableContext>
+              </DndContext>
+            </div>
+          </div>
+        </section>
+
         {/* Foreign preliminary fees */}
         <section className="flex flex-col gap-4">
           <div className="flex items-end justify-between gap-3 flex-wrap">
@@ -699,7 +951,7 @@ export function SubcategoryModal({
                 onDragEnd={handleForeignFeeDragEnd}
               >
                 <SortableContext
-                  items={foreignFees.map((_, i) => i.toString())}
+                  items={foreignFees.map((_, i) => `reg-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   {foreignFees.length === 0 ? (
@@ -710,7 +962,7 @@ export function SubcategoryModal({
                     foreignFees.map((item, index) => (
                       <SortableForeignFee
                         key={index}
-                        id={index.toString()}
+                        id={`reg-${index}`}
                         item={item}
                         onRemove={() => handleRemoveForeignFee(index)}
                         onEdit={() => handleEditForeignFee(index)}
@@ -786,7 +1038,7 @@ export function SubcategoryModal({
                 onDragEnd={handleForeignFinalFeeDragEnd}
               >
                 <SortableContext
-                  items={foreignFinalFees.map((_, i) => i.toString())}
+                  items={foreignFinalFees.map((_, i) => `fin-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   {foreignFinalFees.length === 0 ? (
@@ -797,7 +1049,7 @@ export function SubcategoryModal({
                     foreignFinalFees.map((item, index) => (
                       <SortableForeignFee
                         key={index}
-                        id={index.toString()}
+                        id={`fin-${index}`}
                         item={item}
                         onRemove={() => handleRemoveForeignFinalFee(index)}
                         onEdit={() => handleEditForeignFinalFee(index)}
@@ -856,7 +1108,7 @@ export function SubcategoryModal({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={repertoire.map((_, i) => i.toString())}
+                  items={repertoire.map((_, i) => `rep-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   {repertoire.length === 0 ? (
@@ -867,7 +1119,7 @@ export function SubcategoryModal({
                     repertoire.map((item, index) => (
                       <SortableItem
                         key={index}
-                        id={index.toString()}
+                        id={`rep-${index}`}
                         item={item}
                         onRemove={() => handleRemoveRepertoireItem(index)}
                         onEdit={() => handleEditRepertoireItem(index)}
