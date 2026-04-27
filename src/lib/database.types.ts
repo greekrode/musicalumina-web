@@ -46,6 +46,7 @@ export interface Database {
           max_quota: number | null;
           event_date: string[] | null;
           event_duration: number[] | null;
+          early_bird_end_date: string | null;
         };
         Insert: {
           id?: string;
@@ -66,6 +67,7 @@ export interface Database {
           max_quota?: number | null;
           event_date?: string[] | null;
           event_duration?: number[] | null;
+          early_bird_end_date?: string | null;
         };
         Update: {
           id?: string;
@@ -86,6 +88,7 @@ export interface Database {
           max_quota?: number | null;
           event_date?: string[] | null;
           event_duration?: number[] | null;
+          early_bird_end_date?: string | null;
         };
       };
       songs: {
@@ -276,7 +279,6 @@ export interface Database {
           order_index: number;
           updated_at: string;
           early_bird_registration_fee: number | null;
-          early_bird_end_date: string | null;
           early_bird_foreign_registration_fee: Json | null;
         };
         Insert: {
@@ -295,7 +297,6 @@ export interface Database {
           order_index: number;
           updated_at?: string;
           early_bird_registration_fee?: number | null;
-          early_bird_end_date?: string | null;
           early_bird_foreign_registration_fee?: Json | null;
         };
         Update: {
@@ -314,7 +315,6 @@ export interface Database {
           order_index?: number;
           updated_at?: string;
           early_bird_registration_fee?: number | null;
-          early_bird_end_date?: string | null;
           early_bird_foreign_registration_fee?: Json | null;
         };
       };

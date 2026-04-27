@@ -48,6 +48,7 @@ const formSchema = z.object({
     .array(eventDateSchema)
     .min(1, "At least one event date is required"),
   registration_deadline: z.string().optional(),
+  early_bird_end_date: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   venue_details: z.string().optional(),
   status: z.enum(["upcoming", "ongoing", "completed"]),
@@ -132,6 +133,7 @@ export function EditEventModal({
       start_date: "",
       event_date: [{ datetime: "" }],
       registration_deadline: "",
+      early_bird_end_date: "",
       location: "",
       venue_details: "",
       poster_image: "",
@@ -199,6 +201,7 @@ export function EditEventModal({
       registration_deadline: formatDateTimeForInput(
         event.registration_deadline
       ),
+      early_bird_end_date: formatDateTimeForInput(event.early_bird_end_date),
       location: event.location,
       venue_details: event.venue_details || "",
       poster_image: event.poster_image || "",
@@ -242,6 +245,9 @@ export function EditEventModal({
       );
       const registrationDeadlineIso = values.registration_deadline
         ? new Date(values.registration_deadline).toISOString()
+        : null;
+      const earlyBirdEndDateIso = values.early_bird_end_date
+        ? new Date(values.early_bird_end_date).toISOString()
         : null;
       // `valueAsNumber: true` turns an empty input into NaN (not ""), so the
       // original `=== ""` check was unreachable and we were forwarding NaN to
@@ -289,6 +295,7 @@ export function EditEventModal({
         event_date: convertedEventDates,
         event_duration: durations.length ? durations : null,
         registration_deadline: registrationDeadlineIso,
+        early_bird_end_date: earlyBirdEndDateIso,
         location: values.location,
         venue_details: values.venue_details,
         poster_image: posterUrl,
@@ -475,6 +482,23 @@ export function EditEventModal({
                 variant="boxed"
                 {...register("registration_deadline")}
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-early-bird-end">
+                Early bird ends{" "}
+                <span className="type-caption text-ink-muted font-normal">
+                  — optional
+                </span>
+              </Label>
+              <Input
+                id="edit-early-bird-end"
+                type="datetime-local"
+                variant="boxed"
+                {...register("early_bird_end_date")}
+              />
+              <p className="type-caption text-ink-muted">
+                Applies to every subcategory with an early bird price.
+              </p>
             </div>
           </div>
 

@@ -60,7 +60,6 @@ const subcategorySchema = z.object({
     )
     .nullable(),
   early_bird_registration_fee: z.coerce.number().min(0).nullable(),
-  early_bird_end_date: z.string().nullable(),
   early_bird_foreign_registration_fee: z
     .array(
       z.object({
@@ -73,23 +72,6 @@ const subcategorySchema = z.object({
   performance_duration: z.string().nullable(),
   requirements: z.string().nullable(),
   order_index: z.coerce.number().int().min(0, "Order is required"),
-}).superRefine((data, ctx) => {
-  const hasFee = data.early_bird_registration_fee != null;
-  const hasDate = data.early_bird_end_date != null && data.early_bird_end_date !== "";
-  if (hasFee && !hasDate) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Early bird end date is required when a fee is set",
-      path: ["early_bird_end_date"],
-    });
-  }
-  if (hasDate && !hasFee) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Early bird fee is required when an end date is set",
-      path: ["early_bird_registration_fee"],
-    });
-  }
 });
 
 type SubcategoryFormData = z.infer<typeof subcategorySchema>;
@@ -263,7 +245,6 @@ export function SubcategoryModal({
       initialData?.foreign_final_registration_fee || [],
     early_bird_registration_fee:
       initialData?.early_bird_registration_fee ?? null,
-    early_bird_end_date: initialData?.early_bird_end_date || "",
     early_bird_foreign_registration_fee:
       initialData?.early_bird_foreign_registration_fee || [],
     repertoire: initialData?.repertoire || [],
@@ -311,7 +292,6 @@ export function SubcategoryModal({
         initialData?.foreign_final_registration_fee || [],
       early_bird_registration_fee:
         initialData?.early_bird_registration_fee ?? null,
-      early_bird_end_date: initialData?.early_bird_end_date || "",
       early_bird_foreign_registration_fee:
         initialData?.early_bird_foreign_registration_fee || [],
       repertoire: initialData?.repertoire || [],
@@ -636,10 +616,6 @@ export function SubcategoryModal({
         form.early_bird_foreign_registration_fee.length > 0
           ? form.early_bird_foreign_registration_fee
           : null,
-      early_bird_end_date:
-        form.early_bird_end_date && form.early_bird_end_date.trim() !== ""
-          ? form.early_bird_end_date
-          : null,
     };
 
     const parsed = subcategorySchema.safeParse(processedData);
@@ -783,22 +759,11 @@ export function SubcategoryModal({
                 Leave blank to disable early bird pricing.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="sub-early-bird-end">Early bird ends</Label>
-              <Input
-                id="sub-early-bird-end"
-                name="early_bird_end_date"
-                type="datetime-local"
-                variant="boxed"
-                value={
-                  form.early_bird_end_date
-                    ? form.early_bird_end_date.slice(0, 16)
-                    : ""
-                }
-                onChange={handleChange}
-              />
+            <div className="flex flex-col justify-end gap-2 border border-rule-hairline bg-surface-canvas-warm px-3 py-2">
+              <Eyebrow tone="muted">Event-level date</Eyebrow>
               <p className="type-caption text-ink-muted">
-                Early bird row hides after this date and time.
+                The early bird end date is configured on the event, not on each
+                subcategory.
               </p>
             </div>
           </div>
