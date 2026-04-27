@@ -41,6 +41,7 @@ type EventCategory = Database["public"]["Tables"]["event_categories"]["Row"] & {
     repertoire?: string[];
     foreign_registration_fee?: Array<{ country: string; fee: string }>;
     foreign_final_registration_fee?: Array<{ country: string; fee: string }>;
+    early_bird_foreign_registration_fee?: Array<{ country: string; fee: string }>;
   })[];
   repertoire?: string[];
   prizes: Array<{
@@ -938,13 +939,24 @@ function SubcategoryCard({
   t: (key: string) => string;
   language: string;
 }) {
+  const isEarlyBirdActive =
+    sub.early_bird_end_date != null &&
+    new Date(sub.early_bird_end_date) > new Date();
+
+  const hasEarlyBirdForeignFees = Boolean(
+    sub.early_bird_foreign_registration_fee &&
+      Array.isArray(sub.early_bird_foreign_registration_fee) &&
+      sub.early_bird_foreign_registration_fee.length > 0
+  );
+
   const hasForeignFees = Boolean(
     (sub.foreign_registration_fee &&
       Array.isArray(sub.foreign_registration_fee) &&
       sub.foreign_registration_fee.length > 0) ||
       (sub.foreign_final_registration_fee &&
         Array.isArray(sub.foreign_final_registration_fee) &&
-        sub.foreign_final_registration_fee.length > 0)
+        sub.foreign_final_registration_fee.length > 0) ||
+      hasEarlyBirdForeignFees
   );
 
   return (
@@ -967,6 +979,21 @@ function SubcategoryCard({
             {translateAgeRequirement(sub.age_requirement, language)}
           </dd>
         </div>
+
+        {isEarlyBirdActive && sub.early_bird_registration_fee != null && (
+          <div className="flex flex-col gap-1">
+            <dt className="type-label text-ink-accent flex items-baseline gap-2 flex-wrap">
+              {t("eventDetails.earlyBirdFee")}
+              <span className="type-caption text-marigold font-medium">
+                {t("eventDetails.earlyBirdEnds")}{" "}
+                {formatDateWithLocale(sub.early_bird_end_date!, language)}
+              </span>
+            </dt>
+            <dd className="type-title-md text-burgundy">
+              IDR {sub.early_bird_registration_fee.toLocaleString()}
+            </dd>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1">
           <dt className="type-label text-ink-accent">
@@ -1018,10 +1045,15 @@ function SubcategoryCard({
                     {sub.foreign_final_registration_fee &&
                       Array.isArray(sub.foreign_final_registration_fee) &&
                       sub.foreign_final_registration_fee.length > 0 && (
-                        <th className="text-left py-2 type-label text-ink-muted">
+                        <th className="text-left py-2 pr-3 type-label text-ink-muted">
                           {t("eventDetails.finalRegistrationFee")}
                         </th>
                       )}
+                    {hasEarlyBirdForeignFees && (
+                      <th className="text-left py-2 type-label text-ink-muted">
+                        {t("eventDetails.earlyBirdForeignFees")}
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -1036,13 +1068,22 @@ function SubcategoryCard({
                         country: string;
                         fee: string;
                       }>) || [];
+                    const earlyBirdFees =
+                      (sub.early_bird_foreign_registration_fee as Array<{
+                        country: string;
+                        fee: string;
+                      }>) || [];
                     const allCountries = new Set<string>();
                     regFees.forEach((f) => allCountries.add(f.country));
                     finalFees.forEach((f) => allCountries.add(f.country));
+                    earlyBirdFees.forEach((f) => allCountries.add(f.country));
 
                     return Array.from(allCountries).map((country) => {
                       const regFee = regFees.find((f) => f.country === country);
                       const finalFee = finalFees.find(
+                        (f) => f.country === country
+                      );
+                      const earlyBirdFee = earlyBirdFees.find(
                         (f) => f.country === country
                       );
                       return (
@@ -1061,10 +1102,15 @@ function SubcategoryCard({
                           {sub.foreign_final_registration_fee &&
                             Array.isArray(sub.foreign_final_registration_fee) &&
                             sub.foreign_final_registration_fee.length > 0 && (
-                              <td className="py-2 text-ink-body">
+                              <td className="py-2 pr-3 text-ink-body">
                                 {finalFee ? finalFee.fee : "—"}
                               </td>
                             )}
+                          {hasEarlyBirdForeignFees && (
+                            <td className="py-2 text-ink-body">
+                              {earlyBirdFee ? earlyBirdFee.fee : "—"}
+                            </td>
+                          )}
                         </tr>
                       );
                     });
