@@ -113,7 +113,6 @@ export const translations = {
         "Provide a link to your performance video (YouTube, Google Drive, etc.). Make sure it's public and accessible. File name format: [LSPF 2026] Participant Name - Category - Sub Category (Song Title - Composer)",
       paymentInfo: "Payment Information",
       bankTransferDetails: "Bank Transfer",
-      qris: "Scan QRIS to Pay",
       bankName: "Bank Name",
       accountNumber: "Account Number",
       accountHolderName: "Account Holder Name",
@@ -513,7 +512,6 @@ export const translations = {
       videoUrlHelp:
         "Berikan tautan ke video penampilan Anda (YouTube, Google Drive, dll.). Pastikan video tersebut publik dan dapat diakses. Format nama file: [LSPF 2026] Nama Peserta - Kategori - Sub Kategori (Judul Partitur - Komposer)",
       paymentInfo: "Informasi Pembayaran",
-      qris: "Scan QRIS untuk membayar",
       bankTransferDetails: "Transfer Bank",
       bankName: "Nama Bank",
       accountNumber: "Nomor Rekening",

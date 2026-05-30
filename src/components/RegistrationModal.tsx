@@ -830,27 +830,17 @@ function RegistrationModal({
 
           {/* ───────────────────────────────────────── PAYMENT ───── */}
           <Section eyebrow="04 · Payment">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <PaymentInfoCard label={t("registration.bankTransferDetails")}>
-                <p className="type-body-md text-burgundy">
-                  Bank Central Asia (BCA)
-                </p>
-                <p className="type-headline-sm text-burgundy font-serif tracking-wide mt-1">
-                  3720421151
-                </p>
-                <p className="type-caption text-ink-muted mt-2">
-                  RODERICK OR NICHOLAS
-                </p>
-              </PaymentInfoCard>
-              <PaymentInfoCard label={t("registration.qris")}>
-                <img
-                  src="/Musica-Lumina_QR.jpeg"
-                  alt="QRIS"
-                  className="w-full h-auto"
-                  loading="lazy"
-                />
-              </PaymentInfoCard>
-            </div>
+            <PaymentInfoCard label={t("registration.bankTransferDetails")}>
+              <p className="type-body-md text-burgundy">
+                Bank Central Asia (BCA)
+              </p>
+              <p className="type-headline-sm text-burgundy font-serif tracking-wide mt-1">
+                3720421151
+              </p>
+              <p className="type-caption text-ink-muted mt-2">
+                RODERICK OR NICHOLAS
+              </p>
+            </PaymentInfoCard>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <Field>
