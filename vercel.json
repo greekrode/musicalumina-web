@@ -11,10 +11,21 @@
       "has": [
         {
           "type": "host",
-          "value": "lspf.musicalumina.com"
+          "value": "lspf-online.musicalumina.com"
         }
       ],
       "destination": "https://www.musicalumina.com/event/9ca96162-a3c5-4296-867b-2a9b49a39eb7",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "lspf.musicalumina.com"
+        }
+      ],
+      "destination": "https://www.musicalumina.com/event/7d267705-c591-4b98-8151-d8c91ebf2e31",
       "permanent": true
     }
   ]
