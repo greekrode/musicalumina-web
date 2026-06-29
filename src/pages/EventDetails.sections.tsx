@@ -3,6 +3,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { NoteGlyph } from "@/components/ui/wireframe-wave";
 import { useLanguage } from "../lib/LanguageContext";
 import { cn } from "@/lib/utils";
+import { getJuryGridClassName } from "@/lib/juryGrid";
 
 /**
  * EventDetails.sections — pure presentational sub-components extracted out
@@ -169,7 +170,7 @@ export function JuryPanel({ juryMembers }: { juryMembers: JurorRow[] }) {
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div className={getJuryGridClassName(sorted.length)}>
       {sorted.map((juror) => (
         <article
           key={juror.id}

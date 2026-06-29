@@ -11,6 +11,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
 import { useLanguage } from "../lib/LanguageContext";
 import { formatMultipleDatesWithLocale } from "../lib/utils";
+import { getJuryGridClassName } from "@/lib/juryGrid";
 import { Section, Container } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -282,7 +283,7 @@ function PastEventDetails() {
               initial={initial}
               whileInView="visible"
               viewport={viewportOnce}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              className={getJuryGridClassName(event.event_jury.length)}
             >
               {event.event_jury.map((juror) => (
                 <motion.article
