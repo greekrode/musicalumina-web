@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { NoteGlyph } from "@/components/ui/wireframe-wave";
 import { cn } from "@/lib/utils";
+import { getEventProspectusUrl } from "@/lib/prospectus";
 import {
   MetaItem,
   PrizesSection,
@@ -236,6 +237,7 @@ function EventDetails() {
         : { status: "upcoming" as const, label: t("eventCard.statusUpcoming") };
 
   const typeLabel = t(`eventCard.eventTypes.${event.type}`);
+  const prospectusUrl = getEventProspectusUrl(event.id, language);
   const initial = reduceMotion ? false : "hidden";
 
   return (
@@ -278,6 +280,16 @@ function EventDetails() {
                   {statusBadge.label}
                 </Badge>
               </motion.div>
+              {prospectusUrl && (
+                <motion.div variants={fadeUpSoft}>
+                  <Button asChild size="lg" variant="secondary">
+                    <a href={prospectusUrl}>
+                      <FileDown className="h-4 w-4" />
+                      {t("eventDetails.downloadProspectus")}
+                    </a>
+                  </Button>
+                </motion.div>
+              )}
               {event.description && (
                 <motion.div
                   variants={fadeUpSoft}
