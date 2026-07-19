@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import type { Language } from "./translations";
 
-const PROSPECTUS_BUCKET = "repertoires";
+const PROSPECTUS_BUCKET = "prospectus";
 
 export const LSPF_SECOND_EDITION_EVENT_ID =
   "7d267705-c591-4b98-8151-d8c91ebf2e31";
@@ -17,7 +17,7 @@ export function getProspectusFileName(language: Language) {
 
 /**
  * Return the public, download-forced prospectus URL for events that publish one.
- * Files are stored at `repertoires/<eventId>/<localized filename>`.
+ * Files are stored at `prospectus/<eventId>/<localized filename>`.
  */
 export function getEventProspectusUrl(
   eventId: string,

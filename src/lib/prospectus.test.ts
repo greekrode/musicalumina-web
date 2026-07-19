@@ -20,7 +20,7 @@ describe("event prospectus", () => {
 
     const url = getEventProspectusUrl(LSPF_SECOND_EDITION_EVENT_ID, "id");
     expect(url).toContain(
-      `/repertoires/${LSPF_SECOND_EDITION_EVENT_ID}/LSPF-2026-2nd-Edition_Guidelines-ID.pdf`
+      `/prospectus/${LSPF_SECOND_EDITION_EVENT_ID}/LSPF-2026-2nd-Edition_Guidelines-ID.pdf`
     );
     expect(url).toContain("download=");
   });
