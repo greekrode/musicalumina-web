@@ -474,6 +474,67 @@ export interface Database {
           created_at?: string;
         };
       };
+      customers: {
+        Row: {
+          id: string;
+          name: string;
+          whatsapp: string;
+          email: string | null;
+          address: string | null;
+          type: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          whatsapp: string;
+          email?: string | null;
+          address?: string | null;
+          type?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          whatsapp?: string;
+          email?: string | null;
+          address?: string | null;
+          type?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      customer_event_outreach: {
+        Row: {
+          id: string;
+          customer_id: string;
+          event_id: string;
+          poster: boolean;
+          broadcast: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          event_id: string;
+          poster?: boolean;
+          broadcast?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_id?: string;
+          event_id?: string;
+          poster?: boolean;
+          broadcast?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }
