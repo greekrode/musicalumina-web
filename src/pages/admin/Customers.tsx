@@ -905,12 +905,12 @@ function toTitleCase(value: string) {
 }
 
 const TYPE_BADGE_STYLES: Record<string, string> = {
-  teacher: "bg-burgundy/12 text-burgundy border-burgundy/20",
-  parents: "bg-marigold/20 text-[#8a5a12] border-marigold/35",
-  personal:
-    "bg-[color:var(--status-open-bg)] text-[color:var(--status-open)] border-[color:var(--status-open)]/25",
+  // Solid pastels (not low-opacity white washes) so each type reads clearly.
+  teacher: "bg-[#f3dfe4] text-[#6b1f2e] border-[#d9a8b4]",
+  parents: "bg-[#f7e4c8] text-[#8a5a12] border-[#e2c089]",
+  personal: "bg-[#dceee2] text-[#2f5f3d] border-[#9fc5aa]",
   "music school/institution":
-    "bg-[#1f4f46]/12 text-[#1f4f46] border-[#1f4f46]/20",
+    "bg-[#d5ebe8] text-[#1a4f48] border-[#8fc0b8]",
 };
 
 function TypeBadge({ type }: { type: string | null }) {
