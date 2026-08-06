@@ -285,6 +285,11 @@ function JurorCard({
         <div className="flex-1 min-w-0">
           <h3 className="type-title-md text-burgundy truncate">{jury.name}</h3>
           <p className="type-caption text-ink-accent">{jury.title}</p>
+          {jury.role && jury.role !== "jury" && (
+            <span className="inline-block mt-1.5 type-caption px-2 py-0.5 bg-marigold/10 text-marigold-700 border border-marigold/30">
+              Artist in Residence
+            </span>
+          )}
         </div>
       </div>
 

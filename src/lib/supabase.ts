@@ -64,7 +64,8 @@ export async function getEvents({
           title,
           description,
           avatar_url,
-          credentials
+          credentials,
+          role
         )
       `,
         { count: "exact" }
@@ -145,6 +146,7 @@ export async function getEventById(id: string) {
           description,
           avatar_url,
           credentials,
+          role,
           created_at
         )
       `
@@ -501,6 +503,40 @@ export async function deleteMasterclassParticipant(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Error deleting masterclass participant:", error);
+    throw error;
+  }
+}
+
+export async function getArtistsInResidence() {
+  try {
+    const { data, error } = await supabase
+      .from("event_jury")
+      .select(
+        `
+        id,
+        name,
+        title,
+        description,
+        avatar_url,
+        credentials,
+        role,
+        created_at,
+        event_id,
+        events!inner (
+          id,
+          title,
+          status
+        )
+      `
+      )
+      .eq("role", "artist_in_residence")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    return { artists: data || [] };
+  } catch (error) {
+    console.error("Error fetching artists in residence:", error);
     throw error;
   }
 }

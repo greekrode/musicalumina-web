@@ -46,6 +46,7 @@ export function JuryModal({
     description: "",
     avatar_url: "",
     credentials: {} as Record<string, string>,
+    role: "jury",
   });
   const [credentialFields, setCredentialFields] = useState<
     { key: string; value: string }[]
@@ -59,6 +60,7 @@ export function JuryModal({
         description: juryMember.description || "",
         avatar_url: juryMember.avatar_url || "",
         credentials: (juryMember.credentials as Record<string, string>) || {},
+        role: juryMember.role || "jury",
       });
       if (juryMember.avatar_url) {
         setImagePreview(juryMember.avatar_url);
@@ -84,6 +86,7 @@ export function JuryModal({
         description: "",
         avatar_url: "",
         credentials: {},
+        role: "jury",
       });
       setCredentialFields([{ key: "", value: "" }]);
       setImageFile(null);
@@ -315,6 +318,22 @@ export function JuryModal({
                 required
                 placeholder="e.g. Professor of Piano, Conservatorio Cherubini"
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="jury-role">Role</Label>
+              <select
+                id="jury-role"
+                value={formData.role}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value })
+                }
+                className="h-10 px-3 py-2 text-body-md bg-surface-canvas-warm border border-rule-hairline text-burgundy focus:outline-none focus:ring-2 focus:ring-marigold focus:border-marigold"
+              >
+                <option value="jury">Jury Member</option>
+                <option value="artist_in_residence">
+                  Artist in Residence
+                </option>
+              </select>
             </div>
           </div>
         </div>

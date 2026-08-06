@@ -327,6 +327,7 @@ export interface Database {
           description: string | null;
           avatar_url: string | null;
           credentials: Json | null;
+          role: string;
           created_at: string;
         };
         Insert: {
@@ -337,6 +338,7 @@ export interface Database {
           description?: string | null;
           avatar_url?: string | null;
           credentials?: Json | null;
+          role?: string;
           created_at?: string;
         };
         Update: {
@@ -347,6 +349,7 @@ export interface Database {
           description?: string | null;
           avatar_url?: string | null;
           credentials?: Json | null;
+          role?: string;
           created_at?: string;
         };
       };

@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import heroBg from "../assets/hero-bg.webp";
 import { useLatestEvent } from "../hooks/useLatestEvent";
@@ -8,6 +9,8 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import LoadingSpinner from "../components/LoadingSpinner";
 import EventCard from "../components/EventCard";
 import { useLanguage } from "../lib/LanguageContext";
+import { getArtistsInResidence } from "../lib/supabase";
+import { sanitizeHtml } from "../lib/sanitize";
 import { Section, Container } from "@/components/ui/section";
 import {
   PageHeader,
@@ -88,6 +91,38 @@ function HomePage() {
     status: "upcoming",
     limit: 6,
   });
+
+  const [artistsInResidence, setArtistsInResidence] = useState<
+    Array<{
+      id: string;
+      name: string;
+      title: string;
+      description: string | null;
+      avatar_url: string | null;
+      credentials: Record<string, string> | null;
+    }>
+  >([]);
+  const [artistsLoading, setArtistsLoading] = useState(true);
+
+  useEffect(() => {
+    getArtistsInResidence()
+      .then(({ artists }) => {
+        setArtistsInResidence(
+          artists.map((a) => ({
+            id: a.id,
+            name: a.name,
+            title: a.title,
+            description: a.description,
+            avatar_url: a.avatar_url,
+            credentials: a.credentials as Record<string, string> | null,
+          }))
+        );
+      })
+      .catch(() => {
+        // Silently fail — artists section is non-critical
+      })
+      .finally(() => setArtistsLoading(false));
+  }, []);
 
   const loading = latestLoading || upcomingLoading;
 
@@ -369,6 +404,100 @@ function HomePage() {
           </motion.div>
         </Container>
       </Section>
+
+      {/* ====================================================================
+          ARTISTS IN RESIDENCE
+          ==================================================================== */}
+      {!artistsLoading && artistsInResidence.length > 0 && (
+        <Section tone="canvas" pause="lg" rule="top">
+          <Container>
+            <motion.div
+              variants={reduceMotion ? undefined : staggerContainer}
+              initial={initial}
+              whileInView="visible"
+              viewport={viewportOnce}
+            >
+              <PageHeader align="start" className="mb-14 lg:mb-20 max-w-3xl">
+                <motion.div variants={fadeUpSoft}>
+                  <PageHeaderEyebrow>
+                    {t("pageCopy.home.artistsInResidenceEyebrow")}
+                  </PageHeaderEyebrow>
+                </motion.div>
+                <motion.div variants={fadeUp}>
+                  <PageHeaderTitle size="lg">
+                    {t("pageCopy.home.artistsInResidenceHeading")}
+                  </PageHeaderTitle>
+                </motion.div>
+                <motion.div variants={fadeUpSoft}>
+                  <PageHeaderLede>
+                    {t("pageCopy.home.artistsInResidenceLede")}
+                  </PageHeaderLede>
+                </motion.div>
+              </PageHeader>
+            </motion.div>
+
+            <motion.div
+              variants={reduceMotion ? undefined : gridStagger}
+              initial={initial}
+              whileInView="visible"
+              viewport={viewportOnce}
+              className={cn(
+                "grid gap-8",
+                artistsInResidence.length === 1
+                  ? "grid-cols-1 max-w-2xl mx-auto"
+                  : artistsInResidence.length === 2
+                    ? "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto"
+                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+              )}
+            >
+              {artistsInResidence.map((artist) => (
+                <motion.article
+                  key={artist.id}
+                  variants={fadeUp}
+                  className="flex flex-col gap-6 border-t border-rule-hairline pt-8"
+                >
+                  {artist.avatar_url && (
+                    <div className="aspect-[3/4] overflow-hidden bg-surface-canvas-warm border border-rule-hairline">
+                      <img
+                        src={artist.avatar_url}
+                        alt={artist.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <Eyebrow>{artist.title}</Eyebrow>
+                    <h3 className="type-headline-md text-burgundy">
+                      {artist.name}
+                    </h3>
+                    {artist.credentials && (
+                      <ul className="flex flex-col gap-1 mt-1">
+                        {Object.entries(artist.credentials).map(([k, v]) => (
+                          <li
+                            key={k}
+                            className="type-caption text-ink-muted italic"
+                          >
+                            {k}: {v}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {artist.description && (
+                      <div
+                        className="type-body-sm text-ink-body prose prose-sm max-w-none mt-3"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeHtml(artist.description),
+                        }}
+                      />
+                    )}
+                  </div>
+                </motion.article>
+              ))}
+            </motion.div>
+          </Container>
+        </Section>
+      )}
 
       {/* ====================================================================
           CLOSING CTA

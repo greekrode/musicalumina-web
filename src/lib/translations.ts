@@ -310,6 +310,10 @@ export const translations = {
         closingHeading: "Where your next performance lives.",
         closingLede:
           "The full calendar of competitions, masterclasses, and group classes — curated across the year.",
+        artistsInResidenceEyebrow: "Artists in Residence",
+        artistsInResidenceHeading: "Meet our resident artists.",
+        artistsInResidenceLede:
+          "Distinguished musicians whose work we're proud to champion — on stage, in residence, and across the year.",
       },
       events: {
         eyebrow: "Our programme",
@@ -329,6 +333,8 @@ export const translations = {
           "Select the appropriate category based on age and repertoire requirements. All participants receive written adjudicator feedback.",
         juryHeading: "Adjudicators",
         juryLede: "The panel guiding this programme.",
+        artistInResidenceHeading: "Artist in Residence",
+        artistInResidenceLede: "Represented by Musica Lumina.",
         prizesLede: "Recognition and awards for distinguished performances.",
         importantLabel: "Before you register",
         subcategoriesLabel: "Subcategories",
@@ -709,6 +715,10 @@ export const translations = {
         closingHeading: "Di mana penampilan Anda berikutnya bermukim.",
         closingLede:
           "Kalender lengkap kompetisi, masterclass, dan kelas kelompok — dikurasi sepanjang tahun.",
+        artistsInResidenceEyebrow: "Artis dalam Residensi",
+        artistsInResidenceHeading: "Kenali artis residensi kami.",
+        artistsInResidenceLede:
+          "Musisi terhormat yang karya-karyanya dengan bangga kami dukung — di atas panggung, dalam residensi, dan sepanjang tahun.",
       },
       events: {
         eyebrow: "Program kami",
@@ -729,6 +739,8 @@ export const translations = {
           "Pilih kategori yang sesuai berdasarkan persyaratan usia dan repertoar. Semua peserta mendapatkan umpan balik tertulis dari juri.",
         juryHeading: "Dewan Juri",
         juryLede: "Panel yang memandu program ini.",
+        artistInResidenceHeading: "Artis dalam Residensi",
+        artistInResidenceLede: "Direpresentasikan oleh Musica Lumina.",
         prizesLede: "Penghargaan dan apresiasi untuk penampilan istimewa.",
         importantLabel: "Sebelum Anda mendaftar",
         subcategoriesLabel: "Sub Kategori",

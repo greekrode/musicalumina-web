@@ -481,30 +481,75 @@ function EventDetails() {
       {/* ================================================================
           JURY
           ================================================================ */}
-      {event.event_jury.length > 0 && (
-        <Section tone="canvas" pause="lg" rule="top">
-          <Container>
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.7, ease: EASE }}
-              className="max-w-3xl mb-12"
-            >
-              <Eyebrow withRule>{t("eventDetails.juryPanel")}</Eyebrow>
-              <h2 className="type-display-md text-burgundy mt-4 mb-5">
-                {t("pageCopy.eventDetails.juryHeading")}
-              </h2>
-              <p className="type-body-lg text-ink-muted">{t("pageCopy.eventDetails.juryLede")}</p>
-            </motion.div>
-            <Suspense
-              fallback={<LoadingSpinner message={t("loading.loadingJury")} />}
-            >
-              <JuryPanel juryMembers={event.event_jury} />
-            </Suspense>
-          </Container>
-        </Section>
-      )}
+      {(() => {
+        const jury = event.event_jury.filter((j) => j.role !== "artist_in_residence");
+        const artistsInResidence = event.event_jury.filter(
+          (j) => j.role === "artist_in_residence"
+        );
+        return (
+          <>
+            {jury.length > 0 && (
+              <Section tone="canvas" pause="lg" rule="top">
+                <Container>
+                  <motion.div
+                    initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-80px" }}
+                    transition={{ duration: 0.7, ease: EASE }}
+                    className="max-w-3xl mb-12"
+                  >
+                    <Eyebrow withRule>{t("eventDetails.juryPanel")}</Eyebrow>
+                    <h2 className="type-display-md text-burgundy mt-4 mb-5">
+                      {t("pageCopy.eventDetails.juryHeading")}
+                    </h2>
+                    <p className="type-body-lg text-ink-muted">{t("pageCopy.eventDetails.juryLede")}</p>
+                  </motion.div>
+                  <Suspense
+                    fallback={<LoadingSpinner message={t("loading.loadingJury")} />}
+                  >
+                    <JuryPanel juryMembers={jury} />
+                  </Suspense>
+                </Container>
+              </Section>
+            )}
+
+            {artistsInResidence.length > 0 && (
+              <Section
+                tone={jury.length > 0 ? "warm" : "canvas"}
+                pause="lg"
+                rule="top"
+              >
+                <Container>
+                  <motion.div
+                    initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-80px" }}
+                    transition={{ duration: 0.7, ease: EASE }}
+                    className="max-w-3xl mb-12"
+                  >
+                    <Eyebrow withRule>
+                      {t("pageCopy.home.artistsInResidenceEyebrow")}
+                    </Eyebrow>
+                    <h2 className="type-display-md text-burgundy mt-4 mb-5">
+                      {t("pageCopy.eventDetails.artistInResidenceHeading")}
+                    </h2>
+                    <p className="type-body-lg text-ink-muted">
+                      {t("pageCopy.eventDetails.artistInResidenceLede")}
+                    </p>
+                  </motion.div>
+                  <Suspense
+                    fallback={
+                      <LoadingSpinner message={t("loading.loadingJury")} />
+                    }
+                  >
+                    <JuryPanel juryMembers={artistsInResidence} />
+                  </Suspense>
+                </Container>
+              </Section>
+            )}
+          </>
+        );
+      })()}
 
       {/* ================================================================
           MODALS — wiring preserved 1:1 from original implementation
