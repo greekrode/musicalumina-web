@@ -23,6 +23,9 @@ if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
 /* Public routes — lazy-loaded. */
 const HomePage = lazy(() => import("./pages/HomePage"));
 const EventsPage = lazy(() => import("./pages/EventsPage"));
+const ArtistsInResidencePage = lazy(
+  () => import("./pages/ArtistsInResidencePage")
+);
 const EventDetails = lazy(() => import("./pages/EventDetails"));
 const PastEventDetails = lazy(() => import("./pages/PastEventDetails"));
 const MasterclassDetails = lazy(() => import("./pages/MasterclassDetails"));
@@ -98,6 +101,23 @@ function AnimatedRoutes() {
             >
               <PageTransition>
                 <EventsPage />
+              </PageTransition>
+            </Suspense>
+          }
+        />
+        <Route
+          path="/artists-in-residence"
+          element={
+            <Suspense
+              fallback={
+                <LoadingSpinner
+                  fullScreen
+                  message="Loading artists in residence..."
+                />
+              }
+            >
+              <PageTransition>
+                <ArtistsInResidencePage />
               </PageTransition>
             </Suspense>
           }

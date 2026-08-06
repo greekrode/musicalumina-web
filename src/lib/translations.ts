@@ -4,6 +4,7 @@ export const translations = {
   en: {
     navigation: {
       events: "EVENTS",
+      artistsInResidence: "ARTISTS IN RESIDENCE",
       about: "ABOUT",
       partners: "PARTNERS",
       contact: "CONTACT",
@@ -31,6 +32,11 @@ export const translations = {
             "Adjudicators who listen carefully. Feedback written with thought. An audience that treats the work seriously. Every programme starts here.",
         },
       },
+    },
+    artistsInResidence: {
+      title: "Artists in Residence",
+      subtitle: "Meet our resident artists.",
+      lede: "Distinguished musicians whose work we're proud to champion — on stage, in residence, and across the year.",
     },
     partners: {
       title: "In good company.",
@@ -78,6 +84,7 @@ export const translations = {
       quickLinks: "Quick Links",
       home: "Home",
       events: "Events",
+      artistsInResidence: "Artists in Residence",
       about: "About",
       partners: "Our Partners",
       contact: "Contact",
@@ -310,10 +317,6 @@ export const translations = {
         closingHeading: "Where your next performance lives.",
         closingLede:
           "The full calendar of competitions, masterclasses, and group classes — curated across the year.",
-        artistsInResidenceEyebrow: "Artists in Residence",
-        artistsInResidenceHeading: "Meet our resident artists.",
-        artistsInResidenceLede:
-          "Distinguished musicians whose work we're proud to champion — on stage, in residence, and across the year.",
       },
       events: {
         eyebrow: "Our programme",
@@ -411,6 +414,7 @@ export const translations = {
   id: {
     navigation: {
       events: "ACARA",
+      artistsInResidence: "ARTIS DALAM RESIDENSI",
       about: "TENTANG",
       partners: "MITRA",
       contact: "KONTAK",
@@ -438,6 +442,11 @@ export const translations = {
             "Juri yang mendengarkan dengan saksama. Umpan balik yang ditulis dengan hati-hati. Audiens yang menghargai kerja keras di balik panggung. Setiap program dimulai dari sini.",
         },
       },
+    },
+    artistsInResidence: {
+      title: "Artis dalam Residensi",
+      subtitle: "Kenali artis residensi kami.",
+      lede: "Musisi terhormat yang karya-karyanya dengan bangga kami dukung — di atas panggung, dalam residensi, dan sepanjang tahun.",
     },
     partners: {
       title: "Bersama mitra terbaik.",
@@ -485,6 +494,7 @@ export const translations = {
       quickLinks: "Tautan Cepat",
       home: "Beranda",
       events: "Acara",
+      artistsInResidence: "Artis dalam Residensi",
       about: "Tentang",
       partners: "Mitra Kami",
       contact: "Kontak",
@@ -715,10 +725,6 @@ export const translations = {
         closingHeading: "Di mana penampilan Anda berikutnya bermukim.",
         closingLede:
           "Kalender lengkap kompetisi, masterclass, dan kelas kelompok — dikurasi sepanjang tahun.",
-        artistsInResidenceEyebrow: "Artis dalam Residensi",
-        artistsInResidenceHeading: "Kenali artis residensi kami.",
-        artistsInResidenceLede:
-          "Musisi terhormat yang karya-karyanya dengan bangga kami dukung — di atas panggung, dalam residensi, dan sepanjang tahun.",
       },
       events: {
         eyebrow: "Program kami",

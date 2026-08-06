@@ -28,6 +28,10 @@ interface NavItem {
 
 const NAV_ITEMS: readonly NavItem[] = [
   { path: "/events", labelKey: "navigation.events" },
+  {
+    path: "/artists-in-residence",
+    labelKey: "navigation.artistsInResidence",
+  },
   { path: "/about", labelKey: "navigation.about" },
   { path: "/partners", labelKey: "navigation.partners" },
   { path: "/contact", labelKey: "navigation.contact" },

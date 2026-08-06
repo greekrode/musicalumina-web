@@ -64,6 +64,7 @@ function Footer() {
   const quickLinks = [
     { path: "/", key: "footer.home" },
     { path: "/events", key: "footer.events" },
+    { path: "/artists-in-residence", key: "footer.artistsInResidence" },
     { path: "/about", key: "footer.about" },
     { path: "/contact", key: "footer.contact" },
   ];
