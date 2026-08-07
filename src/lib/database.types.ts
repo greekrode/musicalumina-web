@@ -484,6 +484,7 @@ export interface Database {
           whatsapp: string;
           email: string | null;
           address: string | null;
+          instagram: string | null;
           type: string | null;
           created_at: string;
           updated_at: string;
@@ -494,6 +495,7 @@ export interface Database {
           whatsapp: string;
           email?: string | null;
           address?: string | null;
+          instagram?: string | null;
           type?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -504,6 +506,7 @@ export interface Database {
           whatsapp?: string;
           email?: string | null;
           address?: string | null;
+          instagram?: string | null;
           type?: string | null;
           created_at?: string;
           updated_at?: string;

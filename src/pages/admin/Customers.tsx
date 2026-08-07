@@ -27,6 +27,7 @@ type CustomerDraft = {
   name: string;
   whatsapp: string;
   email: string;
+  instagram: string;
   type: string;
   address: string;
 };
@@ -42,6 +43,7 @@ const EMPTY_DRAFT: CustomerDraft = {
   name: "",
   whatsapp: "",
   email: "",
+  instagram: "",
   type: "teacher",
   address: "",
 };
@@ -76,6 +78,7 @@ function draftFromCustomer(customer: Customer): CustomerDraft {
     name: customer.name,
     whatsapp: customer.whatsapp,
     email: customer.email || "",
+    instagram: customer.instagram || "",
     type: customer.type || "",
     address: customer.address || "",
   };
@@ -168,6 +171,7 @@ export default function AdminCustomers() {
         customer.name.toLowerCase().includes(q) ||
         customer.whatsapp.toLowerCase().includes(q) ||
         (customer.email || "").toLowerCase().includes(q) ||
+        (customer.instagram || "").toLowerCase().includes(q) ||
         (customer.type || "").toLowerCase().includes(q)
       );
     });
@@ -315,6 +319,7 @@ export default function AdminCustomers() {
         name,
         whatsapp,
         email: editDraft.email.trim() || null,
+        instagram: editDraft.instagram.trim() || null,
         type: editDraft.type.trim() || null,
         updated_at: new Date().toISOString(),
       };
@@ -366,6 +371,7 @@ export default function AdminCustomers() {
           name,
           whatsapp,
           email: addDraft.email.trim() || null,
+          instagram: addDraft.instagram.trim() || null,
           address: addDraft.address.trim() || null,
           type: addDraft.type.trim() || null,
         })
@@ -388,7 +394,7 @@ export default function AdminCustomers() {
     }
   };
 
-  const colSpan = 5 + events.length * 2;
+  const colSpan = 6 + events.length * 2;
 
   return (
     <AdminLayout>
@@ -530,6 +536,12 @@ export default function AdminCustomers() {
                     className="min-w-[12rem] border-b border-l border-rule-hairline align-middle"
                   >
                     Email
+                  </Th>
+                  <Th
+                    rowSpan={2}
+                    className="min-w-[11rem] border-b border-l border-rule-hairline align-middle"
+                  >
+                    Instagram
                   </Th>
                   <Th
                     rowSpan={2}
@@ -696,6 +708,24 @@ export default function AdminCustomers() {
                             customer.email || "—"
                           )}
                         </Td>
+                        <Td className="min-w-[11rem] border-b border-l border-rule-hairline text-ink-muted">
+                          {isEditing ? (
+                            <input
+                              className={INLINE_INPUT_CLASSES}
+                              value={editDraft.instagram}
+                              onChange={(e) =>
+                                setEditDraft((prev) => ({
+                                  ...prev,
+                                  instagram: e.target.value,
+                                }))
+                              }
+                              aria-label="Edit Instagram"
+                              placeholder="@handle"
+                            />
+                          ) : (
+                            customer.instagram || "—"
+                          )}
+                        </Td>
                         <Td className="border-b border-l border-rule-hairline text-center">
                           {isEditing ? (
                             <div className="inline-flex items-center gap-1">
@@ -807,6 +837,14 @@ export default function AdminCustomers() {
                 setAddDraft((prev) => ({ ...prev, email: value }))
               }
             />
+            <Field
+              label="Instagram"
+              placeholder="@handle"
+              value={addDraft.instagram}
+              onChange={(value) =>
+                setAddDraft((prev) => ({ ...prev, instagram: value }))
+              }
+            />
             <div className="grid gap-2">
               <Label htmlFor="add-customer-type">Type</Label>
               <select
@@ -858,12 +896,14 @@ function Field({
   onChange,
   required,
   type = "text",
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
   type?: string;
+  placeholder?: string;
 }) {
   const id = `add-customer-${label.toLowerCase()}`;
   return (
@@ -877,6 +917,7 @@ function Field({
         variant="boxed"
         type={type}
         value={value}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         required={required}
       />
