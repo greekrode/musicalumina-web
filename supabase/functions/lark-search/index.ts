@@ -12,7 +12,7 @@ import { withCors, basicAuthHeader, forwardToN8n } from "../_shared/n8n.ts";
 serve(
   withCors(async (req) => {
     return await forwardToN8n(req, {
-      url: "https://n8n.kangritel.com/webhook/search-lark",
+      url: "https://hooks.kangritel.com/webhook/search-lark",
       method: "POST",
       authHeader: basicAuthHeader(),
     });

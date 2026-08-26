@@ -4,7 +4,7 @@ import { supabase } from "./supabase";
  * LarkService — browser client for the Lark-bridge Edge Functions.
  *
  * Before: this file held `VITE_N8N_USERNAME` / `VITE_N8N_PASSWORD` /
- * `VITE_JWT_SECRET` and called `n8n.kangritel.com/webhook/…` directly.
+ * `VITE_JWT_SECRET` and called `hooks.kangritel.com/webhook/…` directly.
  * Those values shipped in the client bundle and were readable by anyone
  * inspecting the site source, which effectively made the n8n → Lark
  * bridge an open write endpoint.

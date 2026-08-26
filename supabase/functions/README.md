@@ -13,7 +13,7 @@ The six functions in this directory close that gap. Each one:
 1. Receives a request from the client via `supabase.functions.invoke(name, { body })`.
 2. Reads the real credentials from `Deno.env` (never in the client bundle).
 3. Signs a JWT or attaches basic-auth as the upstream webhook expects.
-4. Forwards the request to `https://n8n.kangritel.com/webhook/…` and
+4. Forwards the request to `https://hooks.kangritel.com/webhook/…` and
    streams the upstream response back to the browser.
 
 ## Inventory

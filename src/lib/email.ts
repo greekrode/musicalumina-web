@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 /**
  * EmailService — browser client for the `email-send` Edge Function.
  *
- * Previously held `VITE_JWT_SECRET` and called `n8n.kangritel.com/webhook/
+ * Previously held `VITE_JWT_SECRET` and called `hooks.kangritel.com/webhook/
  * send-email` directly, which leaked the HS256 signing key in the client
  * bundle. The JWT is now minted server-side inside the Edge Function; this
  * client just posts the `{ email, subject, message }` envelope. Public API

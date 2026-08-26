@@ -14,7 +14,7 @@ serve(
   withCors(async (req) => {
     const token = await signN8nJwt();
     return await forwardToN8n(req, {
-      url: "https://n8n.kangritel.com/webhook/send-to-lark",
+      url: "https://hooks.kangritel.com/webhook/send-to-lark",
       method: "POST",
       authHeader: `Bearer ${token}`,
     });

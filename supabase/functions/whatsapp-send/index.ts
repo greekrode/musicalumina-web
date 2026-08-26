@@ -12,7 +12,7 @@ serve(
   withCors(async (req) => {
     const token = await signN8nJwt();
     return await forwardToN8n(req, {
-      url: "https://n8n.kangritel.com/webhook/send-whatsapp-message",
+      url: "https://hooks.kangritel.com/webhook/send-whatsapp-message",
       method: "POST",
       authHeader: `Bearer ${token}`,
     });

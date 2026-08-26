@@ -4,7 +4,7 @@ import { supabase } from "./supabase";
  * WhatsAppService — browser client for the `whatsapp-send` Edge Function.
  *
  * Previously held `VITE_JWT_SECRET` client-side and called
- * `n8n.kangritel.com/webhook/send-whatsapp-message` directly. The JWT is
+ * `hooks.kangritel.com/webhook/send-whatsapp-message` directly. The JWT is
  * now signed server-side inside the Edge Function; this file just posts
  * the `{ phone, message }` envelope.
  */
