@@ -194,6 +194,12 @@ export default function GroupClassRegistrationModal({
         return;
       }
 
+      const registrationId = crypto.randomUUID();
+      const phone = data.registrant_whatsapp.replace(/\D/g, "");
+      const refNumber = `${registrationId.slice(-4)}-${
+        phone.slice(-4) || phone
+      }`;
+
       const uploadPromises = [
         uploadFile(files.payment_receipt.file!, "payment-receipts"),
       ];
@@ -208,6 +214,7 @@ export default function GroupClassRegistrationModal({
         .from("registrations")
         .insert([
           {
+            id: registrationId,
             event_id: eventId,
             registrant_name: data.registrant_name,
             registrant_whatsapp: data.registrant_whatsapp,
@@ -219,6 +226,7 @@ export default function GroupClassRegistrationModal({
             bank_account_name: data.bank_account_name,
             payment_receipt_url: paymentReceiptUrl,
             status: "pending",
+            ref_code: refNumber,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -227,10 +235,6 @@ export default function GroupClassRegistrationModal({
         .single();
 
       if (registrationError) throw registrationError;
-
-      const uuid = registration.id;
-      const phone = data.registrant_whatsapp.replace(/\D/g, "");
-      const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
       if (!import.meta.env.DEV) {
         window.umami?.track("group_class_registration_submitted", { eventId });

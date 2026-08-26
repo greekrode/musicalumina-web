@@ -374,6 +374,12 @@ function MasterclassRegistrationModal({
         return;
       }
 
+      const registrationId = crypto.randomUUID();
+      const phone = data.registrant_whatsapp.replace(/\D/g, "");
+      const refNumber = `${registrationId.slice(-4)}-${
+        phone.slice(-4) || phone
+      }`;
+
       const uploadPromises = [
         uploadFile(files.payment_receipt.file!, "payment-receipts"),
       ];
@@ -404,6 +410,7 @@ function MasterclassRegistrationModal({
       const { data: registration, error } = await supabase
         .from("registrations")
         .insert({
+          id: registrationId,
           event_id: eventId,
           registrant_status: data.registrant_status,
           registrant_name:
@@ -422,6 +429,7 @@ function MasterclassRegistrationModal({
           song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
           payment_receipt_url: paymentReceiptUrl,
           status: "pending",
+          ref_code: refNumber,
         })
         .select()
         .single();
@@ -441,10 +449,6 @@ function MasterclassRegistrationModal({
       if (participantError) {
         console.error("Error saving participant data:", participantError);
       }
-
-      const uuid = registration.id;
-      const phone = data.registrant_whatsapp.replace(/\D/g, "");
-      const refNumber = `${uuid.slice(-4)}-${phone.slice(-4)}`;
 
       if (!import.meta.env.DEV) {
         window.umami?.track("masterclass_registration_submitted", { eventId });
