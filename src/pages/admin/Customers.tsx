@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Pencil, Plus, X } from "lucide-react";
+import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +24,7 @@ import {
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
@@ -106,6 +117,8 @@ export default function AdminCustomers() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [addDraft, setAddDraft] = useState<CustomerDraft>(EMPTY_DRAFT);
   const [isAdding, setIsAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -172,6 +185,7 @@ export default function AdminCustomers() {
         customer.whatsapp.toLowerCase().includes(q) ||
         (customer.email || "").toLowerCase().includes(q) ||
         (customer.instagram || "").toLowerCase().includes(q) ||
+        (customer.address || "").toLowerCase().includes(q) ||
         (customer.type || "").toLowerCase().includes(q)
       );
     });
@@ -320,6 +334,7 @@ export default function AdminCustomers() {
         whatsapp,
         email: editDraft.email.trim() || null,
         instagram: editDraft.instagram.trim() || null,
+        address: editDraft.address.trim() || null,
         type: editDraft.type.trim() || null,
         updated_at: new Date().toISOString(),
       };
@@ -394,7 +409,28 @@ export default function AdminCustomers() {
     }
   };
 
-  const colSpan = 6 + events.length * 2;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("customers")
+        .delete()
+        .eq("id", deleteTarget.id);
+      if (error) throw error;
+
+      setCustomers((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      toast.success("Customer deleted");
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      toast.error("Failed to delete customer");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const colSpan = 7 + events.length * 2;
 
   return (
     <AdminLayout>
@@ -545,7 +581,13 @@ export default function AdminCustomers() {
                   </Th>
                   <Th
                     rowSpan={2}
-                    className="min-w-[5.5rem] border-b border-l border-rule-hairline align-middle text-center"
+                    className="min-w-[16rem] border-b border-l border-rule-hairline align-middle"
+                  >
+                    Address
+                  </Th>
+                  <Th
+                    rowSpan={2}
+                    className="min-w-[7rem] border-b border-l border-rule-hairline align-middle text-center"
                   >
                     Actions
                   </Th>
@@ -726,6 +768,24 @@ export default function AdminCustomers() {
                             customer.instagram || "—"
                           )}
                         </Td>
+                        <Td className="min-w-[16rem] max-w-[24rem] border-b border-l border-rule-hairline text-ink-muted whitespace-pre-wrap break-words align-top">
+                          {isEditing ? (
+                            <Textarea
+                              variant="boxed"
+                              className="min-h-[4.5rem] text-body-sm py-1.5"
+                              value={editDraft.address}
+                              onChange={(e) =>
+                                setEditDraft((prev) => ({
+                                  ...prev,
+                                  address: e.target.value,
+                                }))
+                              }
+                              aria-label="Edit address"
+                            />
+                          ) : (
+                            customer.address || "—"
+                          )}
+                        </Td>
                         <Td className="border-b border-l border-rule-hairline text-center">
                           {isEditing ? (
                             <div className="inline-flex items-center gap-1">
@@ -744,12 +804,21 @@ export default function AdminCustomers() {
                               />
                             </div>
                           ) : (
-                            <IconAction
-                              label="Edit"
-                              icon={<Pencil className="h-3.5 w-3.5" />}
-                              disabled={editingId !== null}
-                              onClick={() => startEdit(customer)}
-                            />
+                            <div className="inline-flex items-center gap-1">
+                              <IconAction
+                                label="Edit"
+                                icon={<Pencil className="h-3.5 w-3.5" />}
+                                disabled={editingId !== null}
+                                onClick={() => startEdit(customer)}
+                              />
+                              <IconAction
+                                label="Delete"
+                                destructive
+                                icon={<Trash2 className="h-3.5 w-3.5" />}
+                                disabled={editingId !== null || isDeleting}
+                                onClick={() => setDeleteTarget(customer)}
+                              />
+                            </div>
                           )}
                         </Td>
                         {events.map((event) => {
@@ -886,6 +955,37 @@ export default function AdminCustomers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="bg-surface-elevated border border-rule-hairline">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-burgundy">
+              Delete {deleteTarget?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-ink-muted">
+              This permanently removes the customer and all their Poster /
+              Broadcast outreach records. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
