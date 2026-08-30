@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
-import { NoteGlyph } from "@/components/ui/wireframe-wave";
 import { cn } from "@/lib/utils";
 
 type MasterclassParticipant =
   Database["public"]["Tables"]["masterclass_participants"]["Row"] & {
-    events?: { title: string };
+    events?: { title: string; status: "upcoming" | "ongoing" | "completed" };
   };
 
 /**
@@ -22,9 +20,10 @@ export function AdminMasterclass() {
   const [participants, setParticipants] = useState<MasterclassParticipant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortByTime, setSortByTime] = useState(true);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const groupedParticipants = useMemo(() => {
-    const ordered = [...participants].sort((a, b) => sortByTime
+    const ordered = participants.filter((participant) => participant.events?.status !== "upcoming").sort((a, b) => sortByTime
       ? (a.preferred_start_at || "").localeCompare(b.preferred_start_at || "")
       : a.name.localeCompare(b.name));
     return ordered.reduce<Record<string, MasterclassParticipant[]>>((groups, participant) => {
@@ -47,7 +46,8 @@ export function AdminMasterclass() {
           `
           *,
           events (
-            title
+            title,
+            status
           )
         `
         )
@@ -74,6 +74,19 @@ export function AdminMasterclass() {
     }
   };
 
+  const moveToTimeSlot = async (target: MasterclassParticipant) => {
+    const source = participants.find((participant) => participant.id === draggedId);
+    if (!source?.preferred_start_at || !source.preferred_end_at || !target.preferred_start_at || source.id === target.id) return;
+    const nextStart = target.preferred_start_at;
+    const nextEnd = new Date(new Date(nextStart).getTime() + new Date(source.preferred_end_at).getTime() - new Date(source.preferred_start_at).getTime()).toISOString();
+    const overlaps = participants.some((participant) => participant.id !== source.id && participant.event_id === source.event_id && participant.preferred_start_at && participant.preferred_end_at && new Date(participant.preferred_start_at) < new Date(nextEnd) && new Date(participant.preferred_end_at) > new Date(nextStart));
+    if (overlaps && !window.confirm("This move overlaps another participant. Continue anyway?")) return;
+    const { error } = await supabase.from("masterclass_participants").update({ preferred_start_at: nextStart, preferred_end_at: nextEnd }).eq("id", source.id);
+    if (error) { console.error("Error moving participant:", error); return; }
+    setDraggedId(null);
+    fetchParticipants();
+  };
+
   return (
     <AdminLayout>
       <div className="flex flex-col gap-8">
@@ -84,12 +97,9 @@ export function AdminMasterclass() {
               Masterclass participants
             </h1>
             <p className="type-body-sm text-ink-muted">
-              {participants.length}{" "}
-              {participants.length === 1 ? "participant" : "participants"} across
-              all masterclass events.
+              Schedule for ongoing and completed masterclasses. Drag a slot onto another slot to reschedule it.
             </p>
           </div>
-          <Button variant="elegant">Add Participant</Button>
         </header>
 
         <div className="bg-surface-elevated border border-rule-hairline overflow-hidden">
@@ -97,8 +107,6 @@ export function AdminMasterclass() {
             <thead className="bg-surface-canvas-warm border-b border-rule-hairline">
               <tr>
                 <Th>Event</Th>
-                <Th>Name</Th>
-                <Th>Repertoire</Th>
                 <Th>
                   <button type="button" onClick={() => setSortByTime((value) => !value)} className="hover:text-burgundy transition-colors">
                     Time slot {sortByTime ? "↑" : "↓"}
@@ -109,43 +117,28 @@ export function AdminMasterclass() {
             </thead>
             <tbody className="divide-y divide-rule-hairline">
               {isLoading ? (
-                <TableMessageRow colSpan={5}>Loading participants…</TableMessageRow>
-              ) : participants.length === 0 ? (
-                <TableMessageRow colSpan={5}>
+                <TableMessageRow colSpan={3}>Loading participants…</TableMessageRow>
+              ) : Object.keys(groupedParticipants).length === 0 ? (
+                <TableMessageRow colSpan={3}>
                   No masterclass participants registered yet.
                 </TableMessageRow>
               ) : (
                 Object.entries(groupedParticipants).flatMap(([eventTitle, eventParticipants]) => [
                   <tr key={`group-${eventTitle}`} className="bg-surface-canvas-warm">
-                    <td colSpan={5} className="px-5 py-2 type-label text-burgundy">{eventTitle}</td>
+                    <td colSpan={3} className="px-5 py-2 type-label text-burgundy">{eventTitle}</td>
                   </tr>,
                   ...eventParticipants.map((participant) => (
                   <tr
                     key={participant.id}
+                    draggable={!!participant.preferred_start_at}
+                    onDragStart={() => setDraggedId(participant.id)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => moveToTimeSlot(participant)}
                     className="hover:bg-surface-canvas-warm/40 transition-colors align-top"
                   >
                     <Td className="text-ink-muted">
                       {participant.events?.title ?? "—"}
                     </Td>
-                    <Td className="text-burgundy font-medium">
-                      {participant.name}
-                    </Td>
-                    <td className="px-5 py-3 type-body-sm">
-                      <ul className="flex flex-col gap-1.5">
-                        {participant.repertoire.map((piece, index) => (
-                          <li
-                            key={index}
-                            className="flex items-start gap-2 text-ink-body"
-                          >
-                            <NoteGlyph
-                              size={12}
-                              className="text-marigold mt-0.5 flex-shrink-0"
-                            />
-                            <span>{piece}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
                     <Td className="text-ink-muted">
                       {participant.preferred_start_at && participant.preferred_end_at
                         ? `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(participant.preferred_start_at))}–${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date(participant.preferred_end_at))} WIB`
@@ -153,10 +146,6 @@ export function AdminMasterclass() {
                     </Td>
                     <Td className="text-right">
                       <div className="inline-flex items-center gap-1">
-                        <IconAction
-                          label="Edit"
-                          icon={<Pencil className="h-3.5 w-3.5" />}
-                        />
                         <IconAction
                           destructive
                           label="Delete"

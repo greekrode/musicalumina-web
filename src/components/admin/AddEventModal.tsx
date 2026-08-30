@@ -106,6 +106,7 @@ export function AddEventModal({
     { start: "", end: "" },
   ]);
   const [durations, setDurations] = useState<number[]>([]);
+  const [durationPrices, setDurationPrices] = useState<string[]>([]);
 
   const {
     register,
@@ -137,6 +138,7 @@ export function AddEventModal({
   });
 
   const termsAndConditions = watch("terms_and_conditions");
+  const eventType = watch("type");
 
   useEffect(() => {
     setValue("event_schedule", eventDates);
@@ -200,7 +202,7 @@ export function AddEventModal({
         }
       }
 
-      const { error } = await supabase.from("events").insert([
+      const { data: createdEvent, error } = await supabase.from("events").insert([
         {
           title: values.title,
           type: values.type,
@@ -222,9 +224,22 @@ export function AddEventModal({
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
-      ]);
+      ]).select("id").single();
 
       if (error) throw error;
+
+      if (values.type === "masterclass" && durations.length) {
+        const fees = durations.flatMap((duration, index) => {
+          const price = Number(durationPrices[index]);
+          return Number.isFinite(price) && price >= 0
+            ? [{ event_id: createdEvent.id, uom: `${duration} minutes`, price }]
+            : [];
+        });
+        if (fees.length) {
+          const { error: feeError } = await supabase.from("event_registration_fees").insert(fees);
+          if (feeError) throw feeError;
+        }
+      }
 
       onEventAdded();
       handleClose();
@@ -243,6 +258,7 @@ export function AddEventModal({
     setPosterFile(null);
     setEventDates([{ start: "", end: "" }]);
     setDurations([]);
+    setDurationPrices([]);
     setSubmitError(null);
     onClose();
   };
@@ -521,11 +537,12 @@ export function AddEventModal({
                   <span className="type-caption text-ink-muted flex-shrink-0">
                     minutes
                   </span>
+                  {eventType === "masterclass" && (
+                    <Input variant="boxed" type="number" min={0} placeholder="Price (IDR)" value={durationPrices[idx] || ""} onChange={(e) => setDurationPrices((prev) => prev.map((price, i) => i === idx ? e.target.value : price))} className="flex-1" />
+                  )}
                   <button
                     type="button"
-                    onClick={() =>
-                      setDurations((prev) => prev.filter((_, i) => i !== idx))
-                    }
+                    onClick={() => { setDurations((prev) => prev.filter((_, i) => i !== idx)); setDurationPrices((prev) => prev.filter((_, i) => i !== idx)); }}
                     aria-label="Remove duration"
                     className={cn(
                       "h-9 w-9 flex items-center justify-center rounded-sm",
@@ -541,7 +558,7 @@ export function AddEventModal({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setDurations((prev) => [...prev, 10])}
+                onClick={() => { setDurations((prev) => [...prev, 10]); setDurationPrices((prev) => [...prev, ""]); }}
                 className="self-start"
               >
                 <Plus className="h-3.5 w-3.5" />

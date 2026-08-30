@@ -680,6 +680,9 @@ function MasterclassRegistrationModal({
                   {errors.registrant_email.message}
                 </p>
               )}
+              <p className="mt-2 type-caption text-ink-muted">
+                Valid email for registration confirmation.
+              </p>
             </Field>
           </Section>
 
