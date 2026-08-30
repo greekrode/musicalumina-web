@@ -142,7 +142,7 @@ create or replace function public.create_masterclass_registration(
   p_registration_id uuid,
   p_ref_code text,
   p_event_id uuid,
-  p_registrant_status registration_status,
+  p_registrant_status registrant_status,
   p_registrant_name text,
   p_registrant_whatsapp text,
   p_registrant_email text,
@@ -258,6 +258,6 @@ end;
 $$;
 
 revoke all on function public.get_masterclass_available_slots(uuid, integer, integer) from public;
-revoke all on function public.create_masterclass_registration(uuid, text, uuid, registration_status, text, text, text, text, integer, timestamptz, integer, integer, text[], text, text, text, text[], text) from public;
+revoke all on function public.create_masterclass_registration(uuid, text, uuid, registrant_status, text, text, text, text, integer, timestamptz, integer, integer, text[], text, text, text, text[], text) from public;
 grant execute on function public.get_masterclass_available_slots(uuid, integer, integer) to anon, authenticated;
-grant execute on function public.create_masterclass_registration(uuid, text, uuid, registration_status, text, text, text, text, integer, timestamptz, integer, integer, text[], text, text, text, text[], text) to anon, authenticated;
+grant execute on function public.create_masterclass_registration(uuid, text, uuid, registrant_status, text, text, text, text, integer, timestamptz, integer, integer, text[], text, text, text, text[], text) to anon, authenticated;

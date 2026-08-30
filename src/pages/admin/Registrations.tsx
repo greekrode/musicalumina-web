@@ -47,7 +47,7 @@ type Registration = {
   created_at: string;
 };
 
-type Event = { id: string; title: string; type: "festival" | "competition" | "masterclass" | "group class" };
+type Event = { id: string; title: string; type: "festival" | "competition" | "masterclass" | "group class"; status: "upcoming" | "ongoing" | "completed" };
 type Subcategory = { id: string; name: string };
 type Category = {
   id: string;
@@ -78,6 +78,7 @@ export default function AdminRegistrations() {
   const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
+  const [selectedEventStatus, setSelectedEventStatus] = useState<"" | Event["status"]>("");
   const [eventSearch, setEventSearch] = useState("");
   const [eventMenuOpen, setEventMenuOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
@@ -91,8 +92,9 @@ export default function AdminRegistrations() {
   } | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const filteredEvents = useMemo(() => events.filter((event) =>
-    event.title.toLowerCase().includes(eventSearch.toLowerCase()) || event.type.includes(eventSearch.toLowerCase())
-  ), [events, eventSearch]);
+    (!selectedEventStatus || event.status === selectedEventStatus) &&
+    (event.title.toLowerCase().includes(eventSearch.toLowerCase()) || event.type.includes(eventSearch.toLowerCase()))
+  ), [events, eventSearch, selectedEventStatus]);
   const eventGroups = useMemo(() => ["competition", "festival", "masterclass", "group class"].map((type) => ({
     type, events: filteredEvents.filter((event) => event.type === type),
   })).filter((group) => group.events.length), [filteredEvents]);
@@ -101,7 +103,7 @@ export default function AdminRegistrations() {
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("id, title, type")
+        .select("id, title, type, status")
         .order("created_at", { ascending: false });
       if (error) throw error;
       setEvents(data || []);
@@ -385,6 +387,21 @@ export default function AdminRegistrations() {
         <div className="flex flex-col gap-4 p-5 lg:p-6 bg-surface-elevated border border-rule-hairline">
           <Eyebrow withRule>Filters</Eyebrow>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <select
+              value={selectedEventStatus}
+              onChange={(event) => {
+                setSelectedEventStatus(event.target.value as "" | Event["status"]);
+                setSelectedEventId("");
+                setEventSearch("");
+              }}
+              className={SELECT_CLASSES}
+              aria-label="Filter events by status"
+            >
+              <option value="">All event statuses</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+            </select>
             <div className="relative">
               <Search className="absolute left-3 top-3.5 h-4 w-4 text-ink-muted pointer-events-none" />
               <input
