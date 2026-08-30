@@ -21,6 +21,8 @@ type Event = Database["public"]["Tables"]["events"]["Row"];
  */
 export function AdminEvents() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<"" | Event["status"]>("");
+  const [selectedType, setSelectedType] = useState<"" | Event["type"]>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -47,6 +49,12 @@ export function AdminEvents() {
     }
   };
 
+  const filteredEvents = events.filter(
+    (event) =>
+      (!selectedStatus || event.status === selectedStatus) &&
+      (!selectedType || event.type === selectedType)
+  );
+
   return (
     <AdminLayout>
       <div className="flex flex-col gap-8">
@@ -56,12 +64,28 @@ export function AdminEvents() {
             <Eyebrow withRule>Manage · Events</Eyebrow>
             <h1 className="type-display-md text-burgundy">Events</h1>
             <p className="type-body-sm text-ink-muted">
-              {events.length} {events.length === 1 ? "event" : "events"} in the
+              {filteredEvents.length} {filteredEvents.length === 1 ? "event" : "events"} in the
               calendar.
             </p>
           </div>
           <Button onClick={() => setIsAddModalOpen(true)}>Add Event</Button>
         </header>
+
+        <div className="flex flex-col sm:flex-row gap-3 p-4 bg-surface-elevated border border-rule-hairline">
+          <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value as "" | Event["status"])} className="h-10 px-3 bg-surface-canvas-warm border border-rule-hairline text-body-sm text-burgundy focus:outline-none focus:ring-2 focus:ring-marigold">
+            <option value="">All statuses</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="completed">Completed</option>
+          </select>
+          <select value={selectedType} onChange={(event) => setSelectedType(event.target.value as "" | Event["type"])} className="h-10 px-3 bg-surface-canvas-warm border border-rule-hairline text-body-sm text-burgundy focus:outline-none focus:ring-2 focus:ring-marigold">
+            <option value="">All types</option>
+            <option value="competition">Competition</option>
+            <option value="festival">Festival</option>
+            <option value="masterclass">Masterclass</option>
+            <option value="group class">Group Class</option>
+          </select>
+        </div>
 
         {/* Desktop table */}
         <div className="hidden lg:block bg-surface-elevated border border-rule-hairline overflow-hidden">
@@ -81,12 +105,12 @@ export function AdminEvents() {
             <tbody className="divide-y divide-rule-hairline">
               {isLoading ? (
                 <TableMessageRow colSpan={8}>Loading events…</TableMessageRow>
-              ) : events.length === 0 ? (
+              ) : filteredEvents.length === 0 ? (
                 <TableMessageRow colSpan={8}>
                   No events yet. Use <strong>Add Event</strong> to create one.
                 </TableMessageRow>
               ) : (
-                events.map((event) => (
+                filteredEvents.map((event) => (
                   <tr
                     key={event.id}
                     className="hover:bg-surface-canvas-warm/40 transition-colors"
@@ -136,12 +160,12 @@ export function AdminEvents() {
         <div className="lg:hidden flex flex-col gap-3">
           {isLoading ? (
             <EmptyCard>Loading events…</EmptyCard>
-          ) : events.length === 0 ? (
+          ) : filteredEvents.length === 0 ? (
             <EmptyCard>
               No events yet. Use <strong>Add Event</strong> to create one.
             </EmptyCard>
           ) : (
-            events.map((event) => (
+            filteredEvents.map((event) => (
               <article
                 key={event.id}
                 className="bg-surface-elevated border border-rule-hairline p-4 flex flex-col gap-3"

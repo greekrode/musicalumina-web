@@ -23,6 +23,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { name: "Events", href: "/admin/events" },
   { name: "Event Categories", href: "/admin/event-categories" },
   { name: "Event Jury", href: "/admin/jury" },
+  { name: "Artists in Residence", href: "/admin/artists-in-residence" },
   { name: "Registrations", href: "/admin/registrations" },
   { name: "Customers", href: "/admin/customers" },
   { name: "Masterclass", href: "/admin/masterclass" },

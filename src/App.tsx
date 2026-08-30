@@ -59,6 +59,7 @@ const AdminMasterclass = lazy(() =>
 const AdminJury = lazy(() =>
   import("./pages/admin/Jury").then((m) => ({ default: m.AdminJury }))
 );
+const AdminArtistsInResidence = lazy(() => import("./pages/admin/ArtistsInResidence"));
 const AdminRegistrations = lazy(() => import("./pages/admin/Registrations"));
 const AdminCustomers = lazy(() => import("./pages/admin/Customers"));
 const AdminEventCategories = lazy(
@@ -318,6 +319,14 @@ function AnimatedRoutes() {
               <ProtectedRoute>
                 <AdminJury />
               </ProtectedRoute>
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/artists-in-residence"
+          element={
+            <Suspense fallback={<LoadingSpinner fullScreen message="Loading admin…" />}>
+              <ProtectedRoute><AdminArtistsInResidence /></ProtectedRoute>
             </Suspense>
           }
         />
