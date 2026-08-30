@@ -10,7 +10,7 @@ import InvitationPasswordModal from "../components/InvitationPasswordModal";
 import { useEvent } from "../hooks/useEvent";
 import {
   formatDateWithLocale,
-  formatMultipleDatesWithLocale,
+  formatEventScheduleWithLocale,
   translateDuration,
   translateAgeRequirement,
 } from "../lib/utils";
@@ -311,7 +311,7 @@ function EventDetails() {
               >
                 <MetaItem label={t("eventDetails.eventDate")}>
                   <span className="whitespace-pre-line">
-                    {formatMultipleDatesWithLocale(event.event_date, language)}
+                    {formatEventScheduleWithLocale(event.event_schedule, event.event_date, language)}
                   </span>
                 </MetaItem>
                 <MetaItem label={t("eventDetails.venue")}>

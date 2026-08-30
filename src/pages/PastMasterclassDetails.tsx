@@ -10,7 +10,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
 import { useLanguage } from "../lib/LanguageContext";
 import { supabase } from "../lib/supabase";
-import { formatMultipleDatesWithLocale } from "../lib/utils";
+import { formatEventScheduleWithLocale } from "../lib/utils";
 import { Section, Container } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,9 +198,7 @@ function PastMasterclassDetails() {
             >
               <MetaItem label={t("eventDetails.eventDate")}>
                 <span className="whitespace-pre-line">
-                  {event.event_date
-                    ? formatMultipleDatesWithLocale(event.event_date, language)
-                    : t("common.tbd")}
+                  {formatEventScheduleWithLocale(event.event_schedule, event.event_date, language)}
                 </span>
               </MetaItem>
               <MetaItem label={t("eventDetails.venue")}>

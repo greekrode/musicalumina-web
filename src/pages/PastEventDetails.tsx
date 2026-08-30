@@ -10,7 +10,7 @@ import { useEventPhotos } from "../hooks/useEventPhotos";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { Database } from "../lib/database.types";
 import { useLanguage } from "../lib/LanguageContext";
-import { formatMultipleDatesWithLocale } from "../lib/utils";
+import { formatEventScheduleWithLocale } from "../lib/utils";
 import { getJuryGridClassName } from "@/lib/juryGrid";
 import { Section, Container } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
@@ -176,7 +176,7 @@ function PastEventDetails() {
             >
               <MetaItem label={t("eventDetails.eventDate")}>
                 <span className="whitespace-pre-line">
-                  {formatMultipleDatesWithLocale(event.event_date, language)}
+                  {formatEventScheduleWithLocale(event.event_schedule, event.event_date, language)}
                 </span>
               </MetaItem>
               <MetaItem label={t("eventDetails.venue")}>

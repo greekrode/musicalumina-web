@@ -8,7 +8,7 @@ import GroupClassRegistrationModal from "../components/GroupClassRegistrationMod
 import { useEvent } from "../hooks/useEvent";
 import {
   formatDateWithLocale,
-  formatMultipleDatesWithLocale,
+  formatEventScheduleWithLocale,
 } from "../lib/utils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import type { Database } from "../lib/database.types";
@@ -241,9 +241,7 @@ function GroupClassDetails() {
               >
                 <MetaItem label={t("eventDetails.eventDate")}>
                   <span className="whitespace-pre-line">
-                    {event.event_date
-                      ? formatMultipleDatesWithLocale(event.event_date, language)
-                      : t("common.tbd")}
+                    {formatEventScheduleWithLocale(event.event_schedule, event.event_date, language)}
                   </span>
                 </MetaItem>
                 <MetaItem label={t("eventDetails.venue")}>

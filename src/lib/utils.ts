@@ -174,6 +174,36 @@ export function formatMultipleDatesWithLocale(
 }
 
 /**
+ * Format submitted event schedule windows. Falls back to the legacy start-only
+ * dates until an administrator has supplied an end time for every session.
+ */
+export function formatEventScheduleWithLocale(
+  schedule: Array<{ start_at: string; end_at: string }> | null | undefined,
+  legacyDates: string[] | null,
+  language: string
+): string {
+  if (!schedule?.length) return formatMultipleDatesWithLocale(legacyDates, language);
+
+  const locale = language === "id" ? "id-ID" : "en-US";
+  return [...schedule]
+    .sort((a, b) => a.start_at.localeCompare(b.start_at))
+    .map(({ start_at, end_at }) => {
+      const start = new Date(start_at);
+      const end = end_at ? new Date(end_at) : null;
+      const date = start.toLocaleDateString(locale, {
+        year: "numeric", month: "long", day: "numeric",
+      });
+      const time = (value: Date) => value.toLocaleTimeString(locale, {
+        hour: language === "id" ? "2-digit" : "numeric",
+        minute: "2-digit",
+        hour12: language !== "id",
+      });
+      return `• ${date}, ${time(start)}${end ? `–${time(end)}` : ""}`;
+    })
+    .join("\n");
+}
+
+/**
  * Format a single ISO date using `Intl.DateTimeFormat("en-US", …)`. Thin
  * convenience around the Intl API; prefer {@link formatDateWithLocale}
  * unless you specifically need Intl locale fallback behaviour.
