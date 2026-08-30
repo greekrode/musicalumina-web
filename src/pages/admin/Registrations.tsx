@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { CheckCircle2, Eye, FileText, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, Eye, FileText, Search, XCircle } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeStatus } from "@/components/ui/badge";
@@ -37,7 +37,8 @@ type Registration = {
   song_title: string | null;
   song_duration: string | null;
   birth_certificate_url: string;
-  song_pdf_url: string | null;
+  song_pdf_url: string[] | null;
+  masterclass?: { repertoire: string[]; duration: number | null; number_of_slots: number | null; preferred_start_at: string | null; preferred_end_at: string | null } | null;
   bank_name: string;
   bank_account_number: string;
   bank_account_name: string;
@@ -46,7 +47,7 @@ type Registration = {
   created_at: string;
 };
 
-type Event = { id: string; title: string };
+type Event = { id: string; title: string; type: "festival" | "competition" | "masterclass" | "group class" };
 type Subcategory = { id: string; name: string };
 type Category = {
   id: string;
@@ -77,6 +78,8 @@ export default function AdminRegistrations() {
   const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
+  const [eventSearch, setEventSearch] = useState("");
+  const [eventMenuOpen, setEventMenuOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -87,12 +90,18 @@ export default function AdminRegistrations() {
     type: string;
   } | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const filteredEvents = useMemo(() => events.filter((event) =>
+    event.title.toLowerCase().includes(eventSearch.toLowerCase()) || event.type.includes(eventSearch.toLowerCase())
+  ), [events, eventSearch]);
+  const eventGroups = useMemo(() => ["competition", "festival", "masterclass", "group class"].map((type) => ({
+    type, events: filteredEvents.filter((event) => event.type === type),
+  })).filter((group) => group.events.length), [filteredEvents]);
 
   const fetchEvents = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("id, title")
+        .select("id, title, type")
         .order("created_at", { ascending: false });
       if (error) throw error;
       setEvents(data || []);
@@ -141,8 +150,9 @@ export default function AdminRegistrations() {
           id,
           event_id,
           events!inner ( title ),
-          event_categories!inner ( name ),
-          event_subcategories!inner ( name ),
+          event_categories ( name ),
+          event_subcategories ( name ),
+          masterclass_participants ( repertoire, duration, number_of_slots, preferred_start_at, preferred_end_at ),
           registrant_name,
           registrant_whatsapp,
           registrant_email,
@@ -180,8 +190,8 @@ export default function AdminRegistrations() {
         id: reg.id,
         event_id: reg.event_id,
         event_title: reg.events.title,
-        category_name: reg.event_categories.name,
-        subcategory_name: reg.event_subcategories.name,
+        category_name: reg.event_categories?.name || "Masterclass",
+        subcategory_name: reg.event_subcategories?.name || "—",
         registrant_name: reg.registrant_name,
         registrant_whatsapp: reg.registrant_whatsapp,
         registrant_email: reg.registrant_email,
@@ -191,6 +201,7 @@ export default function AdminRegistrations() {
         song_duration: reg.song_duration,
         birth_certificate_url: reg.birth_certificate_url,
         song_pdf_url: reg.song_pdf_url,
+        masterclass: reg.masterclass_participants?.[0] || null,
         bank_name: reg.bank_name,
         bank_account_number: reg.bank_account_number,
         bank_account_name: reg.bank_account_name,
@@ -374,19 +385,29 @@ export default function AdminRegistrations() {
         <div className="flex flex-col gap-4 p-5 lg:p-6 bg-surface-elevated border border-rule-hairline">
           <Eyebrow withRule>Filters</Eyebrow>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className={SELECT_CLASSES}
-              aria-label="Filter by event"
-            >
-              <option value="">Select event</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <Search className="absolute left-3 top-3.5 h-4 w-4 text-ink-muted pointer-events-none" />
+              <input
+                value={eventMenuOpen ? eventSearch : (events.find((event) => event.id === selectedEventId)?.title || "")}
+                onChange={(event) => { setEventSearch(event.target.value); setEventMenuOpen(true); }}
+                onFocus={() => setEventMenuOpen(true)}
+                placeholder="Search events…"
+                className={`${SELECT_CLASSES} pl-9`}
+                aria-label="Search and select event"
+              />
+              <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-ink-muted pointer-events-none" />
+              {eventMenuOpen && (
+                <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto border border-rule-hairline bg-surface-elevated shadow-lg">
+                  {eventGroups.map((group) => (
+                    <div key={group.type}>
+                      <div className="px-3 py-2 type-label text-ink-muted bg-surface-canvas-warm capitalize">{group.type}</div>
+                      {group.events.map((event) => <button key={event.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setSelectedEventId(event.id); setEventSearch(""); setEventMenuOpen(false); }} className="w-full px-3 py-2 text-left type-body-sm text-ink-body hover:bg-surface-canvas-warm">{event.title}</button>)}
+                    </div>
+                  ))}
+                  {!eventGroups.length && <p className="px-3 py-4 type-body-sm text-ink-muted">No matching events.</p>}
+                </div>
+              )}
+            </div>
 
             {selectedEventId && (
               <select
@@ -509,6 +530,11 @@ export default function AdminRegistrations() {
           onOpenChange={() => setSelectedDocument(null)}
         >
           <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-0 overflow-hidden border border-rule-hairline">
+            {selectedDocument && (
+              <a href={selectedDocument.url} target="_blank" rel="noreferrer" download className="absolute right-3 top-3 z-10 h-9 px-3 inline-flex items-center bg-surface-elevated border border-rule-hairline type-label text-burgundy hover:bg-surface-canvas-warm">
+                Download
+              </a>
+            )}
             {selectedDocument?.type === "pdf" ? (
               <iframe
                 src={selectedDocument.url}
@@ -596,6 +622,15 @@ function RegistrationDetails({
         {registration.song_duration && (
           <DetailRow label="Duration" value={registration.song_duration} />
         )}
+        {registration.masterclass && (
+          <>
+            <DetailRow label="Duration" value={`${registration.masterclass.duration || "—"} minutes × ${registration.masterclass.number_of_slots || 1} slot(s)`} />
+            <DetailRow label="Preferred time" value={registration.masterclass.preferred_start_at && registration.masterclass.preferred_end_at
+              ? `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(registration.masterclass.preferred_start_at))}–${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date(registration.masterclass.preferred_end_at))} WIB`
+              : "Not scheduled"} />
+            <DetailRow label="Repertoire" value={registration.masterclass.repertoire.join(" · ")} />
+          </>
+        )}
       </DetailSection>
 
       <DetailSection label="Documents">
@@ -603,14 +638,9 @@ function RegistrationDetails({
           label="Birth certificate"
           onClick={() => handleDocumentView(registration.birth_certificate_url)}
         />
-        {registration.song_pdf_url && (
-          <DocumentRow
-            label="Song PDF"
-            onClick={() =>
-              handleDocumentView(registration.song_pdf_url as string)
-            }
-          />
-        )}
+        {registration.song_pdf_url?.map((url, index) => (
+          <DocumentRow key={url} label={`Song PDF ${index + 1}`} onClick={() => handleDocumentView(url)} />
+        ))}
       </DetailSection>
 
       <DetailSection label="Payment">

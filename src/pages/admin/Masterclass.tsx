@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,18 @@ type MasterclassParticipant =
 export function AdminMasterclass() {
   const [participants, setParticipants] = useState<MasterclassParticipant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortByTime, setSortByTime] = useState(true);
+
+  const groupedParticipants = useMemo(() => {
+    const ordered = [...participants].sort((a, b) => sortByTime
+      ? (a.preferred_start_at || "").localeCompare(b.preferred_start_at || "")
+      : a.name.localeCompare(b.name));
+    return ordered.reduce<Record<string, MasterclassParticipant[]>>((groups, participant) => {
+      const key = participant.events?.title || "Unknown event";
+      (groups[key] ||= []).push(participant);
+      return groups;
+    }, {});
+  }, [participants, sortByTime]);
 
   useEffect(() => {
     fetchParticipants();
@@ -87,18 +99,27 @@ export function AdminMasterclass() {
                 <Th>Event</Th>
                 <Th>Name</Th>
                 <Th>Repertoire</Th>
+                <Th>
+                  <button type="button" onClick={() => setSortByTime((value) => !value)} className="hover:text-burgundy transition-colors">
+                    Time slot {sortByTime ? "↑" : "↓"}
+                  </button>
+                </Th>
                 <Th className="text-right">Actions</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-rule-hairline">
               {isLoading ? (
-                <TableMessageRow colSpan={4}>Loading participants…</TableMessageRow>
+                <TableMessageRow colSpan={5}>Loading participants…</TableMessageRow>
               ) : participants.length === 0 ? (
-                <TableMessageRow colSpan={4}>
+                <TableMessageRow colSpan={5}>
                   No masterclass participants registered yet.
                 </TableMessageRow>
               ) : (
-                participants.map((participant) => (
+                Object.entries(groupedParticipants).flatMap(([eventTitle, eventParticipants]) => [
+                  <tr key={`group-${eventTitle}`} className="bg-surface-canvas-warm">
+                    <td colSpan={5} className="px-5 py-2 type-label text-burgundy">{eventTitle}</td>
+                  </tr>,
+                  ...eventParticipants.map((participant) => (
                   <tr
                     key={participant.id}
                     className="hover:bg-surface-canvas-warm/40 transition-colors align-top"
@@ -125,6 +146,11 @@ export function AdminMasterclass() {
                         ))}
                       </ul>
                     </td>
+                    <Td className="text-ink-muted">
+                      {participant.preferred_start_at && participant.preferred_end_at
+                        ? `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(participant.preferred_start_at))}–${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date(participant.preferred_end_at))} WIB`
+                        : "Not scheduled"}
+                    </Td>
                     <Td className="text-right">
                       <div className="inline-flex items-center gap-1">
                         <IconAction
@@ -140,7 +166,8 @@ export function AdminMasterclass() {
                       </div>
                     </Td>
                   </tr>
-                ))
+                  )),
+                ])
               )}
             </tbody>
           </table>

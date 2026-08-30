@@ -73,6 +73,7 @@ function createMasterclassSchema(t: (key: string) => string) {
       }, t("validation.invalidAge")),
     selected_date: z.string().min(1, t("validation.selectDate")),
     selected_duration: z.string().min(1, t("validation.selectDuration")),
+    preferred_start_at: z.string().min(1, "Please select a preferred time"),
     number_of_slots: z
       .string()
       .min(1, t("validation.selectSlots"))
@@ -153,6 +154,9 @@ function MasterclassRegistrationModal({
   const [registeredName, setRegisteredName] = useState("");
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
   const [eventDates, setEventDates] = useState<string[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<
+    { slot_start: string; slot_end: string }[]
+  >([]);
   const [eventDurations, setEventDurations] = useState<number[]>([]);
   const [registrationFees, setRegistrationFees] = useState<
     { uom: string; price: number }[]
@@ -171,6 +175,7 @@ function MasterclassRegistrationModal({
     watch,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<MasterclassForm>({
     resolver: zodResolver(masterclassSchema),
@@ -185,6 +190,7 @@ function MasterclassRegistrationModal({
   const registrantStatus = watch("registrant_status");
   const selectedDuration = watch("selected_duration");
   const selectedSlots = watch("number_of_slots");
+  const selectedDate = watch("selected_date");
 
   const matchedFee = (() => {
     if (!selectedDuration) return null;
@@ -210,11 +216,13 @@ function MasterclassRegistrationModal({
       try {
         const { data: eventData, error } = await supabase
           .from("events")
-          .select("event_date, event_duration")
+          .select("event_date, event_schedule, event_duration")
           .eq("id", eventId)
           .single();
         if (error) throw error;
-        if (eventData?.event_date) setEventDates(eventData.event_date);
+        if (eventData?.event_schedule?.length) {
+          setEventDates(eventData.event_schedule.map((session: { start_at: string }) => session.start_at));
+        } else if (eventData?.event_date) setEventDates(eventData.event_date);
         if (eventData?.event_duration)
           setEventDurations(eventData.event_duration as number[]);
       } catch (error) {
@@ -223,6 +231,30 @@ function MasterclassRegistrationModal({
     };
     if (eventId && isOpen) fetchEventData();
   }, [eventId, isOpen]);
+
+  useEffect(() => {
+    const duration = Number(selectedDuration);
+    const slots = Number(selectedSlots);
+    if (!eventId || !isOpen || !duration || !slots) {
+      setAvailableSlots([]);
+      return;
+    }
+    const loadSlots = async () => {
+      const { data, error } = await supabase.rpc("get_masterclass_available_slots", {
+        p_event_id: eventId,
+        p_duration_minutes: duration,
+        p_number_of_slots: slots,
+      });
+      if (error) {
+        console.error("Error fetching masterclass time slots:", error);
+        setAvailableSlots([]);
+        return;
+      }
+      setAvailableSlots(data || []);
+      setValue("preferred_start_at", "");
+    };
+    loadSlots();
+  }, [eventId, isOpen, selectedDuration, selectedSlots, setValue]);
 
   // Fetch fees
   useEffect(() => {
@@ -407,48 +439,38 @@ function MasterclassRegistrationModal({
         return;
       }
 
-      const { data: registration, error } = await supabase
-        .from("registrations")
-        .insert({
-          id: registrationId,
-          event_id: eventId,
-          registrant_status: data.registrant_status,
-          registrant_name:
-            data.registrant_status === "personal"
-              ? data.participant_name
-              : data.registrant_name,
-          registrant_whatsapp: data.registrant_whatsapp,
-          registrant_email: data.registrant_email,
-          participant_name: data.participant_name,
-          participant_age: parseInt(data.participant_age),
-          selected_date: data.selected_date,
-          song_duration: `${data.selected_duration} minutes`,
-          bank_name: data.bank_name,
-          bank_account_number: data.bank_account_number,
-          bank_account_name: data.bank_account_name,
-          song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
-          payment_receipt_url: paymentReceiptUrl,
-          status: "pending",
-          ref_code: refNumber,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const { error: participantError } = await supabase
-        .from("masterclass_participants")
-        .insert({
-          event_id: eventId,
-          name: data.participant_name,
-          repertoire: filteredRepertoire,
-          duration: parseInt(data.selected_duration),
-          number_of_slots: parseInt(data.number_of_slots),
-        });
-
-      if (participantError) {
-        console.error("Error saving participant data:", participantError);
+      const { data: registrationRows, error } = await supabase.rpc(
+        "create_masterclass_registration",
+        {
+          p_registration_id: registrationId,
+          p_ref_code: refNumber,
+          p_event_id: eventId,
+          p_registrant_status: data.registrant_status,
+          p_registrant_name: data.registrant_status === "personal" ? data.participant_name : data.registrant_name,
+          p_registrant_whatsapp: data.registrant_whatsapp,
+          p_registrant_email: data.registrant_email,
+          p_participant_name: data.participant_name,
+          p_participant_age: parseInt(data.participant_age, 10),
+          p_preferred_start_at: data.preferred_start_at,
+          p_duration_minutes: parseInt(data.selected_duration, 10),
+          p_number_of_slots: parseInt(data.number_of_slots, 10),
+          p_repertoire: filteredRepertoire,
+          p_bank_name: data.bank_name,
+          p_bank_account_number: data.bank_account_number,
+          p_bank_account_name: data.bank_account_name,
+          p_song_pdf_url: songPdfUrls,
+          p_payment_receipt_url: paymentReceiptUrl,
+        }
+      );
+      if (error) {
+        if (error.code === "23P01") {
+          setSubmitError("That time was just booked. Please choose another available time.");
+          setValue("preferred_start_at", "");
+          return;
+        }
+        throw error;
       }
+      const registration = registrationRows?.[0];
 
       if (!import.meta.env.DEV) {
         window.umami?.track("masterclass_registration_submitted", { eventId });
@@ -482,7 +504,7 @@ function MasterclassRegistrationModal({
               registrant_whatsapp: data.registrant_whatsapp,
               participant_name: data.participant_name,
               participant_age: parseInt(data.participant_age),
-              selected_date: data.selected_date,
+              selected_date: data.preferred_start_at,
               number_of_slots: parseInt(data.number_of_slots),
               duration: parseInt(data.selected_duration),
               repertoire: filteredRepertoire.join("; "),
@@ -491,7 +513,7 @@ function MasterclassRegistrationModal({
               bank_name: data.bank_name,
               bank_account_name: data.bank_account_name,
               bank_account_number: data.bank_account_number,
-              created_at: registration.created_at,
+              created_at: registration?.registration_created_at || new Date().toISOString(),
             },
           });
         } catch (error) {
@@ -510,7 +532,7 @@ function MasterclassRegistrationModal({
           registrant_whatsapp: data.registrant_whatsapp,
           participant_name: data.participant_name,
           participant_age: parseInt(data.participant_age),
-          selected_date: data.selected_date,
+          selected_date: data.preferred_start_at,
           number_of_slots: parseInt(data.number_of_slots),
           duration: parseInt(data.selected_duration),
           repertoire: filteredRepertoire,
@@ -700,7 +722,7 @@ function MasterclassRegistrationModal({
               </Field>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <Field>
                 <Label variant="editorial" htmlFor="m_selected_date">
                   Select date {REQ}
@@ -764,6 +786,38 @@ function MasterclassRegistrationModal({
                   <p className={FIELD_ERROR_CLASS}>
                     {errors.number_of_slots.message}
                   </p>
+                )}
+              </Field>
+              <Field>
+                <Label variant="editorial" htmlFor="m_preferred_start_at">
+                  Preferred time {REQ}
+                </Label>
+                <select
+                  id="m_preferred_start_at"
+                  {...register("preferred_start_at")}
+                  className={SELECT_CLASSES}
+                  disabled={!selectedDate || !selectedDuration}
+                >
+                  <option value="">
+                    {!selectedDate ? "Select a date first…" : "Select an available time…"}
+                  </option>
+                  {availableSlots
+                    .filter((slot) =>
+                      new Date(slot.slot_start).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }) ===
+                      new Date(selectedDate).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" })
+                    )
+                    .map((slot) => (
+                      <option key={slot.slot_start} value={slot.slot_start}>
+                        {new Intl.DateTimeFormat("en-GB", {
+                          hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta",
+                        }).format(new Date(slot.slot_start))}–{new Intl.DateTimeFormat("en-GB", {
+                          hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta",
+                        }).format(new Date(slot.slot_end))} WIB
+                      </option>
+                    ))}
+                </select>
+                {errors.preferred_start_at && (
+                  <p className={FIELD_ERROR_CLASS}>{errors.preferred_start_at.message}</p>
                 )}
               </Field>
             </div>

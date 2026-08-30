@@ -25,7 +25,11 @@ import { cn } from "@/lib/utils";
  */
 
 const eventDateSchema = z.object({
-  datetime: z.string().min(1, "Date and time are required"),
+  start: z.string().min(1, "Start time is required"),
+  end: z.string().min(1, "End time is required"),
+}).refine((value) => new Date(value.end) > new Date(value.start), {
+  message: "End time must be after start time",
+  path: ["end"],
 });
 
 const formSchema = z.object({
@@ -42,7 +46,7 @@ const formSchema = z.object({
     })
     .optional(),
   start_date: z.string().min(1, "Start date is required"),
-  event_date: z
+  event_schedule: z
     .array(eventDateSchema)
     .min(1, "At least one event date is required"),
   registration_deadline: z.string().optional(),
@@ -98,8 +102,8 @@ export function AddEventModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [eventDates, setEventDates] = useState<Array<{ datetime: string }>>([
-    { datetime: "" },
+  const [eventDates, setEventDates] = useState<Array<{ start: string; end: string }>>([
+    { start: "", end: "" },
   ]);
   const [durations, setDurations] = useState<number[]>([]);
 
@@ -118,7 +122,7 @@ export function AddEventModal({
       description: { en: "", id: "" },
       terms_and_conditions: { en: "", id: "" },
       start_date: "",
-      event_date: [{ datetime: "" }],
+      event_schedule: [{ start: "", end: "" }],
       registration_deadline: "",
       early_bird_end_date: "",
       location: "",
@@ -135,11 +139,11 @@ export function AddEventModal({
   const termsAndConditions = watch("terms_and_conditions");
 
   useEffect(() => {
-    setValue("event_date", eventDates);
+    setValue("event_schedule", eventDates);
   }, [eventDates, setValue]);
 
   const addEventDate = () => {
-    setEventDates([...eventDates, { datetime: "" }]);
+    setEventDates([...eventDates, { start: "", end: "" }]);
   };
 
   const removeEventDate = (index: number) => {
@@ -148,9 +152,9 @@ export function AddEventModal({
     }
   };
 
-  const updateEventDate = (index: number, value: string) => {
+  const updateEventDate = (index: number, field: "start" | "end", value: string) => {
     const updated = [...eventDates];
-    updated[index].datetime = value;
+    updated[index][field] = value;
     setEventDates(updated);
   };
 
@@ -159,9 +163,10 @@ export function AddEventModal({
     try {
       setIsSubmitting(true);
 
-      const convertedEventDates = eventDates
-        .filter((ed) => ed.datetime)
-        .map((ed) => new Date(ed.datetime).toISOString());
+      const eventSchedule = eventDates.map((ed) => ({
+        start_at: new Date(ed.start).toISOString(),
+        end_at: new Date(ed.end).toISOString(),
+      }));
 
       const registrationDeadlineIso = values.registration_deadline
         ? new Date(values.registration_deadline).toISOString()
@@ -202,7 +207,8 @@ export function AddEventModal({
           description: values.description,
           terms_and_conditions: values.terms_and_conditions,
           start_date: values.start_date,
-          event_date: convertedEventDates,
+          event_date: eventSchedule.map((session) => session.start_at),
+          event_schedule: eventSchedule,
           event_duration: durations.length ? durations : null,
           registration_deadline: registrationDeadlineIso,
           early_bird_end_date: earlyBirdEndDateIso,
@@ -235,7 +241,7 @@ export function AddEventModal({
   const handleClose = () => {
     reset();
     setPosterFile(null);
-    setEventDates([{ datetime: "" }]);
+    setEventDates([{ start: "", end: "" }]);
     setDurations([]);
     setSubmitError(null);
     onClose();
@@ -425,8 +431,21 @@ export function AddEventModal({
                 >
                   <input
                     type="datetime-local"
-                    value={eventDate.datetime}
-                    onChange={(e) => updateEventDate(index, e.target.value)}
+                    value={eventDate.start}
+                    onChange={(e) => updateEventDate(index, "start", e.target.value)}
+                    className={cn(
+                      "flex-1 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
+                      "text-body-sm text-ink-body",
+                      "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
+                      "transition-colors"
+                    )}
+                    required
+                  />
+                  <span className="type-caption text-ink-muted">to</span>
+                  <input
+                    type="datetime-local"
+                    value={eventDate.end}
+                    onChange={(e) => updateEventDate(index, "end", e.target.value)}
                     className={cn(
                       "flex-1 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
                       "text-body-sm text-ink-body",

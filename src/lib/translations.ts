@@ -274,6 +274,11 @@ export const translations = {
         description:
           "Please fill in the details below to register for this masterclass",
         numberOfSlots: "Number of Slots",
+        preferredTime: "Preferred Time Slot",
+        selectTime: "Select an available time...",
+        loadingTimes: "Loading available times...",
+        noTimesAvailable: "No times are available for this date, duration, and number of slots.",
+        timeNoLongerAvailable: "That time was just booked. Please choose another available time.",
         repertoire: "Repertoire Titles",
         repertoirePlaceholder: "Enter repertoire title",
         addRepertoire: "Add Another Repertoire",
@@ -685,6 +690,11 @@ export const translations = {
         description:
           "Silakan isi detail di bawah ini untuk mendaftar ke masterclass ini",
         numberOfSlots: "Jumlah Slot",
+        preferredTime: "Pilihan Waktu",
+        selectTime: "Pilih waktu yang tersedia...",
+        loadingTimes: "Memuat waktu yang tersedia...",
+        noTimesAvailable: "Tidak ada waktu tersedia untuk tanggal, durasi, dan jumlah slot ini.",
+        timeNoLongerAvailable: "Waktu tersebut baru saja dipesan. Silakan pilih waktu lain yang tersedia.",
         repertoire: "Judul Repertoire",
         repertoirePlaceholder: "Masukkan judul repertoire",
         addRepertoire: "Tambah Repertoire Lain",

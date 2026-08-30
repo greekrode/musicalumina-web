@@ -45,6 +45,7 @@ export interface Database {
           lark_table: string | null;
           max_quota: number | null;
           event_date: string[] | null;
+          event_schedule: { start_at: string; end_at: string }[] | null;
           event_duration: number[] | null;
           early_bird_end_date: string | null;
         };
@@ -66,6 +67,7 @@ export interface Database {
           lark_table?: string | null;
           max_quota?: number | null;
           event_date?: string[] | null;
+          event_schedule?: { start_at: string; end_at: string }[] | null;
           event_duration?: number[] | null;
           early_bird_end_date?: string | null;
         };
@@ -87,6 +89,7 @@ export interface Database {
           lark_table?: string | null;
           max_quota?: number | null;
           event_date?: string[] | null;
+          event_schedule?: { start_at: string; end_at: string }[] | null;
           event_duration?: number[] | null;
           early_bird_end_date?: string | null;
         };
@@ -387,6 +390,9 @@ export interface Database {
           repertoire: string[];
           duration: number | null;
           number_of_slots: number | null;
+          registration_id: string | null;
+          preferred_start_at: string | null;
+          preferred_end_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -397,6 +403,9 @@ export interface Database {
           repertoire: string[];
           duration?: number | null;
           number_of_slots?: number | null;
+          registration_id?: string | null;
+          preferred_start_at?: string | null;
+          preferred_end_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -407,6 +416,9 @@ export interface Database {
           repertoire?: string[];
           duration?: number | null;
           number_of_slots?: number | null;
+          registration_id?: string | null;
+          preferred_start_at?: string | null;
+          preferred_end_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
