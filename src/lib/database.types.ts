@@ -356,6 +356,38 @@ export interface Database {
           created_at?: string;
         };
       };
+      artists_in_residence: {
+        Row: {
+          id: string;
+          name: string;
+          title: string;
+          description: string | null;
+          avatar_url: string | null;
+          credentials: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          title: string;
+          description?: string | null;
+          avatar_url?: string | null;
+          credentials?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          title?: string;
+          description?: string | null;
+          avatar_url?: string | null;
+          credentials?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       event_registration_fees: {
         Row: {
           id: string;

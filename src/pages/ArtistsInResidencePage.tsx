@@ -23,8 +23,8 @@ import { cn } from "@/lib/utils";
  *  1. Hero — eyebrow + editorial headline + lede over a wireframe wave
  *  2. Artist grid — editorial cards (portrait, title, credentials, bio)
  *
- * Data comes from `event_jury` rows with `role = 'artist_in_residence'
- * via `getArtistsInResidence()`.
+ * Data comes from the standalone `artists_in_residence` table via
+ * `getArtistsInResidence()`.
  */
 
 const EASE = [0.19, 1, 0.22, 1] as const;

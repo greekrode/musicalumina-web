@@ -18,8 +18,6 @@ interface JuryModalProps {
   onClose: () => void;
   juryMember?: EventJury;
   eventId?: string;
-  eventOptions?: Array<{ id: string; title: string }>;
-  forceRole?: "jury" | "artist_in_residence";
   onSuccess: () => void;
 }
 
@@ -35,8 +33,6 @@ export function JuryModal({
   onClose,
   juryMember,
   eventId,
-  eventOptions,
-  forceRole,
   onSuccess,
 }: JuryModalProps) {
   const { toast } = useToast();
@@ -44,14 +40,12 @@ export function JuryModal({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     title: "",
     description: "",
     avatar_url: "",
     credentials: {} as Record<string, string>,
-    role: "jury",
   });
   const [credentialFields, setCredentialFields] = useState<
     { key: string; value: string }[]
@@ -65,7 +59,6 @@ export function JuryModal({
         description: juryMember.description || "",
         avatar_url: juryMember.avatar_url || "",
         credentials: (juryMember.credentials as Record<string, string>) || {},
-        role: forceRole || juryMember.role || "jury",
       });
       if (juryMember.avatar_url) {
         setImagePreview(juryMember.avatar_url);
@@ -91,15 +84,13 @@ export function JuryModal({
         description: "",
         avatar_url: "",
         credentials: {},
-        role: forceRole || "jury",
       });
       setCredentialFields([{ key: "", value: "" }]);
       setImageFile(null);
       setImagePreview(null);
     }
     setError(null);
-    setSelectedEventId(juryMember?.event_id || eventId || "");
-  }, [juryMember, isOpen, eventId, forceRole]);
+  }, [juryMember, isOpen]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -159,7 +150,8 @@ export function JuryModal({
         ...formData,
         avatar_url: avatarUrl,
         credentials,
-        event_id: eventId || selectedEventId || juryMember?.event_id,
+        event_id: eventId || juryMember?.event_id,
+        role: "jury",
       };
 
       if (juryMember) {
@@ -229,8 +221,8 @@ export function JuryModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? `Edit ${forceRole === "artist_in_residence" ? "artist" : "jury member"}` : `New ${forceRole === "artist_in_residence" ? "artist in residence" : "jury member"}`}
-      eyebrow={forceRole === "artist_in_residence" ? "Artists in Residence" : isEdit ? "Jury · Edit" : "Jury · New"}
+      title={isEdit ? "Edit jury member" : "New jury member"}
+      eyebrow={isEdit ? "Jury · Edit" : "Jury · New"}
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -312,16 +304,6 @@ export function JuryModal({
                 placeholder="e.g. Prof. Maria Tipo"
               />
             </div>
-            {eventOptions && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="artist-event">Associated event</Label>
-                <select id="artist-event" value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} required className="h-10 px-3 py-2 text-body-md bg-surface-canvas-warm border border-rule-hairline text-burgundy focus:outline-none focus:ring-2 focus:ring-marigold focus:border-marigold">
-                  <option value="">Select event…</option>
-                  {eventOptions.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
-                </select>
-              </div>
-            )}
-            {!forceRole && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="jury-title">Title</Label>
               <Input
@@ -334,23 +316,6 @@ export function JuryModal({
                 required
                 placeholder="e.g. Professor of Piano, Conservatorio Cherubini"
               />
-            </div>
-            )}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="jury-role">Role</Label>
-              <select
-                id="jury-role"
-                value={formData.role}
-                onChange={(e) =>
-                  setFormData({ ...formData, role: e.target.value })
-                }
-                className="h-10 px-3 py-2 text-body-md bg-surface-canvas-warm border border-rule-hairline text-burgundy focus:outline-none focus:ring-2 focus:ring-marigold focus:border-marigold"
-              >
-                <option value="jury">Jury Member</option>
-                <option value="artist_in_residence">
-                  Artist in Residence
-                </option>
-              </select>
             </div>
           </div>
         </div>

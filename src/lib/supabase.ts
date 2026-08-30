@@ -510,7 +510,7 @@ export async function deleteMasterclassParticipant(id: string) {
 export async function getArtistsInResidence() {
   try {
     const { data, error } = await supabase
-      .from("event_jury")
+      .from("artists_in_residence")
       .select(
         `
         id,
@@ -519,17 +519,9 @@ export async function getArtistsInResidence() {
         description,
         avatar_url,
         credentials,
-        role,
-        created_at,
-        event_id,
-        events!inner (
-          id,
-          title,
-          status
-        )
+        created_at
       `
       )
-      .eq("role", "artist_in_residence")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
