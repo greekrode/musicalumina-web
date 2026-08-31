@@ -8,6 +8,10 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
+import {
+  CALENDAR_HOUR_HEIGHT,
+  getCalendarBlockPosition,
+} from "@/lib/masterclassCalendar";
 
 type MasterclassParticipant =
   Database["public"]["Tables"]["masterclass_participants"]["Row"] & {
@@ -425,8 +429,6 @@ function formatDateForTimeline(value: string) {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date(`${value}T12:00:00+07:00`));
 }
 
-const CALENDAR_HOUR_HEIGHT = 56;
-
 function CalendarLegend({ className, label }: { className: string; label: string }) {
   return <span className="inline-flex items-center gap-2"><span className={cn("h-3 w-3", className)} />{label}</span>;
 }
@@ -479,22 +481,22 @@ function MasterclassDayCalendar({ event, participants }: { event: MasterclassEve
                   const start = jakartaMinutes(block.start_at);
                   const end = jakartaMinutes(block.end_at);
                   return (
-                    <div key={`${block.start_at}-${index}`} className="absolute inset-x-2 z-10 overflow-hidden border border-burgundy/15 bg-surface-canvas-warm px-2 py-1 text-ink-muted" style={calendarPosition(start, end, calendarStart)} title={`${block.label || "Unavailable"} · ${formatWindow(block.start_at)}–${formatWindow(block.end_at)} WIB`}>
+                    <div key={`${block.start_at}-${index}`} className="absolute inset-x-2 z-10 overflow-hidden border border-burgundy/15 bg-surface-canvas-warm px-2 py-1 text-ink-muted" style={getCalendarBlockPosition(start, end, calendarStart)} title={`${block.label || "Unavailable"} · ${formatWindow(block.start_at)}–${formatWindow(block.end_at)} WIB`}>
                       <p className="type-label truncate">{block.label || "Unavailable"}</p>
                       <p className="type-caption tabular-nums">{formatWindow(block.start_at)}–{formatWindow(block.end_at)}</p>
                     </div>
                   );
                 })}
                 {automaticBreaks.map((block, index) => (
-                  <div key={`break-${block.start}-${index}`} className="absolute inset-x-2 z-10 overflow-hidden border border-dashed border-ink-muted/40 bg-ink-muted/10 px-2 py-0.5 text-ink-muted" style={calendarPosition(block.start, block.end, calendarStart)} title={`Automatic break · ${formatMinuteOfDay(block.start)}–${formatMinuteOfDay(block.end)} WIB`}>
-                    <p className="type-caption tabular-nums">Break · {formatMinuteOfDay(block.start)}–{formatMinuteOfDay(block.end)}</p>
+                  <div key={`break-${block.start}-${index}`} className="absolute inset-x-2 z-10 flex items-center overflow-hidden border border-dashed border-ink-muted/40 bg-ink-muted/10 px-2 text-ink-muted" style={getCalendarBlockPosition(block.start, block.end, calendarStart)} title={`Automatic break · ${formatMinuteOfDay(block.start)}–${formatMinuteOfDay(block.end)} WIB`}>
+                    <p className="truncate text-[10px] leading-none tabular-nums">Break · {formatMinuteOfDay(block.start)}–{formatMinuteOfDay(block.end)}</p>
                   </div>
                 ))}
                 {scheduled.map((participant) => {
                   const start = jakartaMinutes(participant.preferred_start_at!);
                   const end = jakartaMinutes(participant.preferred_end_at!);
                   return (
-                    <div key={participant.id} className={cn("absolute inset-x-2 z-20 overflow-hidden border-l-4 px-2 py-1.5 text-burgundy shadow-sm", participant.is_hold ? "border-marigold bg-marigold/50" : "border-burgundy bg-burgundy/15")} style={calendarPosition(start, end, calendarStart)} title={`${participant.is_hold ? "Reserved hold" : "Registration"} · ${formatWindow(participant.preferred_start_at!)}–${formatWindow(participant.preferred_end_at!)} WIB`}>
+                    <div key={participant.id} className={cn("absolute inset-x-2 z-20 overflow-hidden border-l-4 px-2 py-1.5 text-burgundy shadow-sm", participant.is_hold ? "border-marigold bg-marigold/50" : "border-burgundy bg-burgundy/15")} style={getCalendarBlockPosition(start, end, calendarStart)} title={`${participant.is_hold ? "Reserved hold" : "Registration"} · ${formatWindow(participant.preferred_start_at!)}–${formatWindow(participant.preferred_end_at!)} WIB`}>
                       <p className="type-label truncate">{participant.is_hold ? participant.hold_label || participant.name : participant.name}</p>
                       <p className="type-caption tabular-nums">{formatWindow(participant.preferred_start_at!)}–{formatWindow(participant.preferred_end_at!)} · {participant.number_of_slots || 1} slot{(participant.number_of_slots || 1) === 1 ? "" : "s"}</p>
                     </div>
@@ -507,13 +509,6 @@ function MasterclassDayCalendar({ event, participants }: { event: MasterclassEve
       </div>
     </article>
   );
-}
-
-function calendarPosition(start: number, end: number, calendarStart: number) {
-  return {
-    top: (start - calendarStart) / 60 * CALENDAR_HOUR_HEIGHT,
-    height: Math.max((end - start) / 60 * CALENDAR_HOUR_HEIGHT, 24),
-  };
 }
 
 function formatMinuteOfDay(minutes: number) {
