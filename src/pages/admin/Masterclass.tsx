@@ -322,7 +322,7 @@ export function AdminMasterclass() {
                   </button>
                 </Th>
                 <Th>Slots</Th>
-                <Th className="text-right">Actions</Th>
+                <Th className="sticky right-0 z-20 bg-surface-canvas-warm text-right">Actions</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-rule-hairline">
@@ -366,7 +366,7 @@ export function AdminMasterclass() {
                         : "Not scheduled"}
                     </Td>
                     <Td className="text-ink-muted">{participant.number_of_slots || 1}</Td>
-                    <Td className="text-right">
+                    <Td className="sticky right-0 z-10 bg-surface-elevated text-right">
                       <div className="inline-flex items-center gap-1">
                         <IconAction
                           destructive

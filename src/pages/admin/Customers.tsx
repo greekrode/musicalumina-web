@@ -590,7 +590,7 @@ export default function AdminCustomers() {
                   </Th>
                   <Th
                     rowSpan={2}
-                    className="min-w-[7rem] border-b border-l border-rule-hairline align-middle text-center"
+                    className="sticky right-0 z-30 min-w-[7rem] border-b border-l border-rule-hairline bg-surface-canvas-warm align-middle text-center"
                   >
                     Actions
                   </Th>
@@ -789,7 +789,7 @@ export default function AdminCustomers() {
                             customer.address || "—"
                           )}
                         </Td>
-                        <Td className="border-b border-l border-rule-hairline text-center">
+                        <Td className="sticky right-0 z-20 border-b border-l border-rule-hairline bg-surface-elevated text-center">
                           {isEditing ? (
                             <div className="inline-flex items-center gap-1">
                               <IconAction

@@ -88,7 +88,7 @@ export function AdminEvents() {
         </div>
 
         {/* Desktop table */}
-        <div className="hidden lg:block bg-surface-elevated border border-rule-hairline overflow-hidden">
+        <div className="hidden 2xl:block bg-surface-elevated border border-rule-hairline overflow-hidden">
           <table className="min-w-full">
             <thead className="bg-surface-canvas-warm border-b border-rule-hairline">
               <tr>
@@ -159,7 +159,7 @@ export function AdminEvents() {
         </div>
 
         {/* Mobile cards */}
-        <div className="lg:hidden flex flex-col gap-3">
+        <div className="2xl:hidden flex flex-col gap-3">
           {isLoading ? (
             <EmptyCard>Loading events…</EmptyCard>
           ) : filteredEvents.length === 0 ? (

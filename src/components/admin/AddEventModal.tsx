@@ -62,6 +62,8 @@ const formSchema = z.object({
 });
 
 type EventFormData = z.infer<typeof formSchema>;
+type EventDate = { start: string; end: string; maxSlots: string; breakAfterSlots: string; breakDurationMinutes: string };
+const emptyEventDate: EventDate = { start: "", end: "", maxSlots: "", breakAfterSlots: "", breakDurationMinutes: "" };
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -102,9 +104,7 @@ export function AddEventModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [eventDates, setEventDates] = useState<Array<{ start: string; end: string; maxSlots: string }>>([
-    { start: "", end: "", maxSlots: "" },
-  ]);
+  const [eventDates, setEventDates] = useState<EventDate[]>([emptyEventDate]);
   const [durations, setDurations] = useState<number[]>([]);
   const [durationPrices, setDurationPrices] = useState<string[]>([]);
 
@@ -145,7 +145,7 @@ export function AddEventModal({
   }, [eventDates, setValue]);
 
   const addEventDate = () => {
-    setEventDates([...eventDates, { start: "", end: "", maxSlots: "" }]);
+    setEventDates([...eventDates, { ...emptyEventDate }]);
   };
 
   const removeEventDate = (index: number) => {
@@ -154,7 +154,7 @@ export function AddEventModal({
     }
   };
 
-  const updateEventDate = (index: number, field: "start" | "end" | "maxSlots", value: string) => {
+  const updateEventDate = (index: number, field: keyof EventDate, value: string) => {
     const updated = [...eventDates];
     updated[index][field] = value;
     setEventDates(updated);
@@ -168,11 +168,17 @@ export function AddEventModal({
       if (values.type === "masterclass" && eventDates.some((date) => !Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1)) {
         throw new Error("Set a maximum slot count for every masterclass date.");
       }
+      if (values.type === "masterclass" && eventDates.some((date) => (Boolean(date.breakAfterSlots) !== Boolean(date.breakDurationMinutes)) || (Boolean(date.breakAfterSlots) && (!Number.isInteger(Number(date.breakAfterSlots)) || Number(date.breakAfterSlots) < 1 || !Number.isInteger(Number(date.breakDurationMinutes)) || Number(date.breakDurationMinutes) < 1)))) {
+        throw new Error("For each break rule, enter both the number of slots and break length as positive whole numbers.");
+      }
 
       const eventSchedule = eventDates.map((ed) => ({
         start_at: new Date(ed.start).toISOString(),
         end_at: new Date(ed.end).toISOString(),
-        ...(values.type === "masterclass" ? { max_slots: Number(ed.maxSlots) } : {}),
+        ...(values.type === "masterclass" ? {
+          max_slots: Number(ed.maxSlots),
+          ...(ed.breakAfterSlots ? { break_after_slots: Number(ed.breakAfterSlots), break_duration_minutes: Number(ed.breakDurationMinutes) } : {}),
+        } : {}),
       }));
 
       const registrationDeadlineIso = values.registration_deadline
@@ -261,7 +267,7 @@ export function AddEventModal({
   const handleClose = () => {
     reset();
     setPosterFile(null);
-    setEventDates([{ start: "", end: "", maxSlots: "" }]);
+    setEventDates([{ ...emptyEventDate }]);
     setDurations([]);
     setDurationPrices([]);
     setSubmitError(null);
@@ -442,7 +448,7 @@ export function AddEventModal({
                 <Label className="mb-0">Event dates &amp; times</Label>
                 {eventType === "masterclass" && (
                   <p className="type-caption text-ink-muted">
-                    Start and end define the bookable time block for that date. Add each available date separately.
+                    Start and end define the bookable time block for that date. Optionally add a repeating break after a set number of session slots.
                   </p>
                 )}
               </div>
@@ -455,7 +461,7 @@ export function AddEventModal({
               {eventDates.map((eventDate, index) => (
                 <div
                   key={index}
-                  className="flex gap-2 items-center bg-surface-canvas-warm border border-rule-hairline px-3 py-2"
+                  className="flex flex-col gap-2 bg-surface-canvas-warm border border-rule-hairline px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center"
                 >
                   <input
                     type="datetime-local"
@@ -483,21 +489,11 @@ export function AddEventModal({
                     required
                   />
                   {eventType === "masterclass" && (
-                    <input
-                      type="number"
-                      min={1}
-                      value={eventDate.maxSlots}
-                      onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)}
-                      className={cn(
-                        "w-28 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
-                        "text-body-sm text-ink-body",
-                        "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
-                        "transition-colors"
-                      )}
-                      placeholder="Max slots"
-                      aria-label={`Maximum slots for date ${index + 1}`}
-                      required
-                    />
+                    <>
+                      <input type="number" min={1} value={eventDate.maxSlots} onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)} className={cn("w-full sm:w-28 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Max slots" aria-label={`Maximum slots for date ${index + 1}`} required />
+                      <input type="number" min={1} value={eventDate.breakAfterSlots} onChange={(e) => updateEventDate(index, "breakAfterSlots", e.target.value)} className={cn("w-full sm:w-36 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Break after slots" aria-label={`Break after slots for date ${index + 1}`} />
+                      <input type="number" min={1} value={eventDate.breakDurationMinutes} onChange={(e) => updateEventDate(index, "breakDurationMinutes", e.target.value)} className={cn("w-full sm:w-32 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Break minutes" aria-label={`Break duration for date ${index + 1}`} />
+                    </>
                   )}
                   <button
                     type="button"

@@ -65,14 +65,14 @@ export default function AdminArtistsInResidence() {
           <div className="overflow-x-auto overscroll-x-contain pb-2">
           <table className="min-w-[40rem] w-full">
             <thead className="bg-surface-canvas-warm border-b border-rule-hairline">
-              <tr><Th>Artist</Th><Th>Title</Th><Th className="text-right">Actions</Th></tr>
+              <tr><Th>Artist</Th><Th>Title</Th><Th className="sticky right-0 z-20 bg-surface-canvas-warm text-right">Actions</Th></tr>
             </thead>
             <tbody className="divide-y divide-rule-hairline">
               {loading ? <MessageRow>Loading artists…</MessageRow> : artists.length === 0 ? <MessageRow>No artist profiles yet. Add the first one above.</MessageRow> : artists.map((artist) => (
                 <tr key={artist.id} className="hover:bg-surface-canvas-warm/40 transition-colors">
                   <td className="px-5 py-3"><div className="flex items-center gap-3"><div className="h-10 w-10 overflow-hidden bg-surface-canvas-warm border border-rule-hairline">{artist.avatar_url && <img src={artist.avatar_url} alt="" className="h-full w-full object-cover" />}</div><span className="type-body-sm text-burgundy font-medium">{artist.name}</span></div></td>
                   <td className="px-5 py-3 type-body-sm text-ink-body">{artist.title}</td>
-                  <td className="px-5 py-3 text-right"><div className="inline-flex gap-1"><IconButton label="Edit" onClick={() => { setEditingArtist(artist); setIsModalOpen(true); }}><Pencil className="h-3.5 w-3.5" /></IconButton><IconButton label="Delete" destructive onClick={() => deleteArtist(artist)}><Trash2 className="h-3.5 w-3.5" /></IconButton></div></td>
+                  <td className="sticky right-0 z-10 bg-surface-elevated px-5 py-3 text-right"><div className="inline-flex gap-1"><IconButton label="Edit" onClick={() => { setEditingArtist(artist); setIsModalOpen(true); }}><Pencil className="h-3.5 w-3.5" /></IconButton><IconButton label="Delete" destructive onClick={() => deleteArtist(artist)}><Trash2 className="h-3.5 w-3.5" /></IconButton></div></td>
                 </tr>
               ))}
             </tbody>
