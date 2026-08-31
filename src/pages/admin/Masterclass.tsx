@@ -35,6 +35,15 @@ function formatTimeRange(slot: AvailableSlot) {
   return `${formatter.format(new Date(slot.slot_start))}–${formatter.format(new Date(slot.slot_end))} WIB`;
 }
 
+function jakartaMinutes(value: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta",
+  }).formatToParts(new Date(value));
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+  return hour * 60 + minute;
+}
+
 /**
  * AdminMasterclass — each row is one requested masterclass date. A
  * multi-date registration therefore remains schedulable and auditable here.
@@ -305,6 +314,40 @@ export function AdminMasterclass() {
           </section>
         )}
 
+        <section className="bg-surface-elevated border border-rule-hairline p-5 lg:p-6">
+          <div className="flex flex-col gap-1">
+            <Eyebrow withRule>Schedule timeline</Eyebrow>
+            <p className="type-caption text-ink-muted">Each block is a registration or reserved hold positioned within its configured date window.</p>
+          </div>
+          <div className="mt-5 flex min-w-0 flex-col gap-5 overflow-x-auto pb-2">
+            {masterclassEvents.flatMap((event) => (event.event_schedule || []).map((window) => {
+              const date = jakartaDate(window.start_at);
+              const windowStart = jakartaMinutes(window.start_at);
+              const windowEnd = jakartaMinutes(window.end_at);
+              const windowLength = Math.max(windowEnd - windowStart, 1);
+              const scheduled = participants.filter((participant) => participant.event_id === event.id && participant.session_date === date && participant.preferred_start_at && participant.preferred_end_at).sort((a, b) => (a.preferred_start_at || "").localeCompare(b.preferred_start_at || ""));
+              return (
+                <article key={`${event.id}-${date}`} className="min-w-[42rem] border border-rule-hairline bg-surface-canvas-warm p-4">
+                  <div className="mb-3 flex items-center justify-between gap-4">
+                    <div><p className="type-label text-burgundy">{event.title}</p><p className="type-caption text-ink-muted">{formatDateForTimeline(date)}</p></div>
+                    <p className="type-caption text-ink-muted">{formatWindow(window.start_at)}–{formatWindow(window.end_at)} WIB</p>
+                  </div>
+                  <div className="relative h-16 overflow-hidden border border-rule-hairline bg-surface-elevated">
+                    {scheduled.map((participant) => {
+                      const start = jakartaMinutes(participant.preferred_start_at!);
+                      const end = jakartaMinutes(participant.preferred_end_at!);
+                      const left = Math.max(0, ((start - windowStart) / windowLength) * 100);
+                      const width = Math.min(100 - left, Math.max(4, ((end - start) / windowLength) * 100));
+                      return <div key={participant.id} title={`${participant.is_hold ? "Hold" : participant.name} · ${formatWindow(participant.preferred_start_at!)}–${formatWindow(participant.preferred_end_at!)} WIB`} className={cn("absolute inset-y-2 flex min-w-0 items-center px-2 type-caption font-semibold text-burgundy", participant.is_hold ? "bg-marigold/45" : "bg-burgundy/15")} style={{ left: `${left}%`, width: `${width}%` }}><span className="truncate">{participant.is_hold ? participant.hold_label || "Hold" : participant.name}</span></div>;
+                    })}
+                    {scheduled.length === 0 && <p className="flex h-full items-center justify-center type-caption text-ink-muted">No sessions scheduled</p>}
+                  </div>
+                </article>
+              );
+            }))}
+          </div>
+        </section>
+
         <section className="bg-surface-elevated border border-rule-hairline overflow-hidden">
           <p className="px-5 pt-3 type-caption text-ink-muted lg:hidden">
             Swipe horizontally to view all columns and actions.
@@ -387,6 +430,14 @@ export function AdminMasterclass() {
       </div>
     </AdminLayout>
   );
+}
+
+function formatWindow(value: string) {
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta" }).format(new Date(value));
+}
+
+function formatDateForTimeline(value: string) {
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date(`${value}T12:00:00+07:00`));
 }
 
 const SELECT_CLASSES = "h-11 w-full appearance-none border border-burgundy/20 bg-surface-canvas-warm px-3 text-body-sm text-ink-body focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20 disabled:cursor-not-allowed disabled:opacity-50";

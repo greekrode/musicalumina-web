@@ -186,7 +186,7 @@ export function EditEventModal({
       const dates = event.event_schedule.map((session) => ({
         start: formatDateTimeForInput(session.start_at),
         end: formatDateTimeForInput(session.end_at),
-        maxSlots: session.max_slots?.toString() || event.max_quota?.toString() || "",
+        maxSlots: session.max_user_slots?.toString() || "3",
         breakAfterSlots: session.break_after_slots?.toString() || "",
         breakDurationMinutes: session.break_duration_minutes?.toString() || "",
       }));
@@ -252,8 +252,8 @@ export function EditEventModal({
 
     if (values.type === "masterclass" && validEventDates.some((date) => !Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1)) {
       toast({
-        title: "Set every date's capacity",
-        description: "Each masterclass date needs a maximum slot count.",
+        title: "Set every date's registration limit",
+        description: "Each masterclass date needs a maximum slots-per-registrant value.",
         variant: "destructive",
       });
       return;
@@ -270,7 +270,7 @@ export function EditEventModal({
         start_at: new Date(ed.start).toISOString(),
         end_at: new Date(ed.end).toISOString(),
         ...(values.type === "masterclass" ? {
-          max_slots: Number(ed.maxSlots),
+          max_user_slots: Number(ed.maxSlots),
           ...(ed.breakAfterSlots ? { break_after_slots: Number(ed.breakAfterSlots), break_duration_minutes: Number(ed.breakDurationMinutes) } : {}),
         } : {}),
       }));
@@ -594,7 +594,7 @@ export function EditEventModal({
                   />
                   {eventType === "masterclass" && (
                     <>
-                      <input type="number" min={1} value={eventDate.maxSlots} onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)} className={cn("w-full sm:w-28 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Max slots" aria-label={`Maximum slots for date ${index + 1}`} required />
+                      <input type="number" min={1} value={eventDate.maxSlots} onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)} className={cn("w-full sm:w-32 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Max/user" aria-label={`Maximum slots per registrant for date ${index + 1}`} required />
                       <input type="number" min={1} value={eventDate.breakAfterSlots} onChange={(e) => updateEventDate(index, "breakAfterSlots", e.target.value)} className={cn("w-full sm:w-36 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Break after slots" aria-label={`Break after slots for date ${index + 1}`} />
                       <input type="number" min={1} value={eventDate.breakDurationMinutes} onChange={(e) => updateEventDate(index, "breakDurationMinutes", e.target.value)} className={cn("w-full sm:w-32 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Break minutes" aria-label={`Break duration for date ${index + 1}`} />
                     </>

@@ -157,6 +157,7 @@ function MasterclassRegistrationModal({
   const [registeredName, setRegisteredName] = useState("");
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
   const [eventDates, setEventDates] = useState<string[]>([]);
+  const [maxUserSlotsByDate, setMaxUserSlotsByDate] = useState<Record<string, number>>({});
   const [sessionChoices, setSessionChoices] = useState<MasterclassSessionChoice[]>([
     { selected_date: "", number_of_slots: "1", preferred_start_at: "" },
   ]);
@@ -178,6 +179,7 @@ function MasterclassRegistrationModal({
     handleSubmit,
     watch,
     reset,
+    setValue,
     control,
     formState: { errors },
   } = useForm<MasterclassForm>({
@@ -218,21 +220,29 @@ function MasterclassRegistrationModal({
           .eq("id", eventId)
           .single();
         if (error) throw error;
-        const schedule = eventData?.event_schedule as Array<{ start_at: string }> | null;
+        const schedule = eventData?.event_schedule as Array<{ start_at: string; max_user_slots?: number; max_slots?: number }> | null;
         const legacyDates = eventData?.event_date as string[] | null;
         if (schedule?.length) {
-          setEventDates([...new Set(schedule.map((session) => getJakartaDate(session.start_at)))]);
+          const dates = [...new Set(schedule.map((session) => getJakartaDate(session.start_at)))];
+          setEventDates(dates);
+          setMaxUserSlotsByDate(Object.fromEntries(schedule.map((session) => [
+            getJakartaDate(session.start_at),
+            Number(session.max_user_slots ?? 3),
+          ])));
         } else if (legacyDates) {
           setEventDates([...new Set(legacyDates.map(getJakartaDate))]);
         }
-        if (eventData?.event_duration)
-          setEventDurations(eventData.event_duration as number[]);
+        const durations = (eventData?.event_duration || []) as number[];
+        setEventDurations(durations);
+        if (durations.length === 1) {
+          setValue("selected_duration", String(durations[0]), { shouldValidate: true });
+        }
       } catch (error) {
         console.error("Error fetching event data:", error);
       }
     };
     if (eventId && isOpen) fetchEventData();
-  }, [eventId, isOpen]);
+  }, [eventId, isOpen, setValue]);
 
   useEffect(() => {
     const duration = Number(selectedDuration);
@@ -311,17 +321,19 @@ function MasterclassRegistrationModal({
     field: keyof MasterclassSessionChoice,
     value: string
   ) => {
-    setSessionChoices((choices) => choices.map((choice, choiceIndex) =>
-      choiceIndex === index
-        ? {
-            ...choice,
-            [field]: value,
-            ...(field === "selected_date" || field === "number_of_slots"
-              ? { preferred_start_at: "" }
-              : {}),
-          }
-        : choice
-    ));
+    setSessionChoices((choices) => choices.map((choice, choiceIndex) => {
+      if (choiceIndex !== index) return choice;
+      if (field === "selected_date") {
+        const maximum = maxUserSlotsByDate[value] || 1;
+        const numberOfSlots = Math.min(Math.max(Number(choice.number_of_slots) || 1, 1), maximum);
+        return { ...choice, selected_date: value, number_of_slots: String(numberOfSlots), preferred_start_at: "" };
+      }
+      return {
+        ...choice,
+        [field]: value,
+        ...(field === "number_of_slots" ? { preferred_start_at: "" } : {}),
+      };
+    }));
   };
 
   const addSessionChoice = () => {
@@ -448,7 +460,7 @@ function MasterclassRegistrationModal({
           !choice.preferred_start_at ||
           !Number.isInteger(choice.number_of_slots) ||
           choice.number_of_slots < 1 ||
-          choice.number_of_slots > 3
+          choice.number_of_slots > (maxUserSlotsByDate[choice.session_date] || 1)
         ) ||
         new Set(sessionPayload.map((choice) => choice.session_date)).size !== sessionPayload.length
       ) {
@@ -801,8 +813,9 @@ function MasterclassRegistrationModal({
                   id="m_selected_duration"
                   {...register("selected_duration")}
                   className={SELECT_CLASSES}
+                  disabled={eventDurations.length === 1}
                 >
-                  <option value="">Select duration…</option>
+                  {eventDurations.length !== 1 && <option value="">Select duration…</option>}
                   {eventDurations.map((d, index) => (
                     <option key={index} value={d}>
                       {d}
@@ -860,14 +873,16 @@ function MasterclassRegistrationModal({
                   </Field>
                   <Field>
                     <Label htmlFor={`m_slots_${index}`}>{t("masterclass.registration.numberOfSlots")}</Label>
-                    <select
+                    <Input
                       id={`m_slots_${index}`}
+                      type="number"
+                      min={1}
+                      max={maxUserSlotsByDate[choice.selected_date] || 1}
                       value={choice.number_of_slots}
                       onChange={(event) => updateSessionChoice(index, "number_of_slots", event.target.value)}
-                      className={SELECT_CLASSES}
-                    >
-                      {[1, 2, 3].map((num) => <option key={num} value={num}>{num}</option>)}
-                    </select>
+                      variant="boxed"
+                      disabled={!choice.selected_date}
+                    />
                   </Field>
                   <Field>
                     <Label htmlFor={`m_time_${index}`}>Preferred time</Label>
