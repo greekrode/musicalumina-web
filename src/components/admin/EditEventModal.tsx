@@ -64,8 +64,9 @@ const formSchema = z.object({
 });
 
 type EventFormData = z.infer<typeof formSchema>;
-type EventDate = { start: string; end: string; maxSlots: string; breakAfterSlots: string; breakDurationMinutes: string };
-const emptyEventDate: EventDate = { start: "", end: "", maxSlots: "", breakAfterSlots: "", breakDurationMinutes: "" };
+type UnavailableBlock = { start: string; end: string; label: string };
+type EventDate = { start: string; end: string; maxSlots: string; breakAfterSlots: string; breakDurationMinutes: string; unavailableBlocks: UnavailableBlock[] };
+const emptyEventDate: EventDate = { start: "", end: "", maxSlots: "", breakAfterSlots: "", breakDurationMinutes: "", unavailableBlocks: [] };
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -189,15 +190,20 @@ export function EditEventModal({
         maxSlots: session.max_user_slots == null ? "" : session.max_user_slots.toString(),
         breakAfterSlots: session.break_after_slots?.toString() || "",
         breakDurationMinutes: session.break_duration_minutes?.toString() || "",
+        unavailableBlocks: (session.unavailable_blocks || []).map((block) => ({
+          start: formatDateTimeForInput(block.start_at).slice(11, 16),
+          end: formatDateTimeForInput(block.end_at).slice(11, 16),
+          label: block.label || "",
+        })),
       }));
       setEventDates(dates);
     } else if (event.event_date?.length) {
       const dates = event.event_date.map((date) => ({
-        start: formatDateTimeForInput(date), end: "", maxSlots: event.max_quota?.toString() || "", breakAfterSlots: "", breakDurationMinutes: "",
+        start: formatDateTimeForInput(date), end: "", maxSlots: event.max_quota?.toString() || "", breakAfterSlots: "", breakDurationMinutes: "", unavailableBlocks: [],
       }));
       setEventDates(dates);
     } else {
-      setEventDates([{ start: formatDateTimeForInput(event.start_date), end: "", maxSlots: event.max_quota?.toString() || "", breakAfterSlots: "", breakDurationMinutes: "" }]);
+      setEventDates([{ start: formatDateTimeForInput(event.start_date), end: "", maxSlots: event.max_quota?.toString() || "", breakAfterSlots: "", breakDurationMinutes: "", unavailableBlocks: [] }]);
     }
 
     reset({
@@ -262,6 +268,10 @@ export function EditEventModal({
       toast({ title: "Complete the break rule", description: "Enter both values as positive whole numbers, or leave both blank.", variant: "destructive" });
       return;
     }
+    if (values.type === "masterclass" && validEventDates.some(hasInvalidUnavailableBlocks)) {
+      toast({ title: "Check unavailable times", description: "Every unavailable time must be inside its date window and must not overlap another block.", variant: "destructive" });
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -272,6 +282,7 @@ export function EditEventModal({
         ...(values.type === "masterclass" ? {
           ...(ed.maxSlots.trim() ? { max_user_slots: Number(ed.maxSlots) } : {}),
           ...(ed.breakAfterSlots ? { break_after_slots: Number(ed.breakAfterSlots), break_duration_minutes: Number(ed.breakDurationMinutes) } : {}),
+          ...(ed.unavailableBlocks.length ? { unavailable_blocks: serializeUnavailableBlocks(ed) } : {}),
         } : {}),
       }));
       const registrationDeadlineIso = values.registration_deadline
@@ -379,7 +390,7 @@ export function EditEventModal({
   };
 
   const addEventDate = () => {
-    setEventDates([...eventDates, { ...emptyEventDate }]);
+    setEventDates([...eventDates, { ...emptyEventDate, unavailableBlocks: [] }]);
   };
 
   const removeEventDate = (index: number) => {
@@ -388,10 +399,28 @@ export function EditEventModal({
     }
   };
 
-  const updateEventDate = (index: number, field: keyof EventDate, value: string) => {
+  const updateEventDate = (index: number, field: Exclude<keyof EventDate, "unavailableBlocks">, value: string) => {
     const updated = [...eventDates];
     updated[index][field] = value;
     setEventDates(updated);
+  };
+
+  const addUnavailableBlock = (dateIndex: number) => {
+    setEventDates((dates) => dates.map((date, index) => index === dateIndex
+      ? { ...date, unavailableBlocks: [...date.unavailableBlocks, { start: "12:00", end: "13:00", label: "Lunch" }] }
+      : date));
+  };
+
+  const updateUnavailableBlock = (dateIndex: number, blockIndex: number, field: keyof UnavailableBlock, value: string) => {
+    setEventDates((dates) => dates.map((date, index) => index === dateIndex
+      ? { ...date, unavailableBlocks: date.unavailableBlocks.map((block, currentIndex) => currentIndex === blockIndex ? { ...block, [field]: value } : block) }
+      : date));
+  };
+
+  const removeUnavailableBlock = (dateIndex: number, blockIndex: number) => {
+    setEventDates((dates) => dates.map((date, index) => index === dateIndex
+      ? { ...date, unavailableBlocks: date.unavailableBlocks.filter((_, currentIndex) => currentIndex !== blockIndex) }
+      : date));
   };
 
   return (
@@ -576,17 +605,42 @@ export function EditEventModal({
                     </SessionField>
                   </div>
                   {eventType === "masterclass" && (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <SessionField label="Max slots / user">
-                        <input type="number" min={1} value={eventDate.maxSlots} onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Unlimited" aria-label={`Maximum slots per registrant for date ${index + 1}`} />
-                      </SessionField>
-                      <SessionField label="Break after sessions">
-                        <input type="number" min={1} value={eventDate.breakAfterSlots} onChange={(e) => updateEventDate(index, "breakAfterSlots", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Optional" aria-label={`Break after sessions for date ${index + 1}`} />
-                      </SessionField>
-                      <SessionField label="Break duration (minutes)">
-                        <input type="number" min={1} value={eventDate.breakDurationMinutes} onChange={(e) => updateEventDate(index, "breakDurationMinutes", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Optional" aria-label={`Break duration for date ${index + 1}`} />
-                      </SessionField>
-                    </div>
+                    <>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <SessionField label="Max slots / user">
+                          <input type="number" min={1} value={eventDate.maxSlots} onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Unlimited" aria-label={`Maximum slots per registrant for date ${index + 1}`} />
+                        </SessionField>
+                        <SessionField label="Break after sessions">
+                          <input type="number" min={1} value={eventDate.breakAfterSlots} onChange={(e) => updateEventDate(index, "breakAfterSlots", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Optional" aria-label={`Break after sessions for date ${index + 1}`} />
+                        </SessionField>
+                        <SessionField label="Break duration (minutes)">
+                          <input type="number" min={1} value={eventDate.breakDurationMinutes} onChange={(e) => updateEventDate(index, "breakDurationMinutes", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Optional" aria-label={`Break duration for date ${index + 1}`} />
+                        </SessionField>
+                      </div>
+                      <div className="border-t border-rule-hairline pt-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="type-label text-burgundy">Unavailable times</p>
+                            <p className="type-caption text-ink-muted">Add lunch, dinner, room reset, or any other blocked period for this date.</p>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" onClick={() => addUnavailableBlock(index)}>
+                            <Plus className="h-3.5 w-3.5" /> Add unavailable time
+                          </Button>
+                        </div>
+                        {eventDate.unavailableBlocks.length > 0 && (
+                          <div className="mt-3 flex flex-col gap-2">
+                            {eventDate.unavailableBlocks.map((block, blockIndex) => (
+                              <div key={blockIndex} className="grid grid-cols-1 gap-2 border border-rule-hairline bg-surface-elevated p-3 sm:grid-cols-[minmax(8rem,0.8fr)_minmax(8rem,0.8fr)_minmax(10rem,1fr)_2.5rem] sm:items-end">
+                                <SessionField label="From"><input type="time" value={block.start} onChange={(event) => updateUnavailableBlock(index, blockIndex, "start", event.target.value)} className={SESSION_INPUT_CLASSES} /></SessionField>
+                                <SessionField label="Until"><input type="time" value={block.end} onChange={(event) => updateUnavailableBlock(index, blockIndex, "end", event.target.value)} className={SESSION_INPUT_CLASSES} /></SessionField>
+                                <SessionField label="Label"><input type="text" value={block.label} onChange={(event) => updateUnavailableBlock(index, blockIndex, "label", event.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Lunch, dinner, room reset…" /></SessionField>
+                                <button type="button" onClick={() => removeUnavailableBlock(index, blockIndex)} aria-label={`Remove unavailable time ${blockIndex + 1}`} className="flex h-10 w-10 items-center justify-center rounded-sm text-ink-muted transition-colors hover:bg-[color:var(--status-error-bg)] hover:text-[color:var(--status-error)]"><Trash2 className="h-4 w-4" /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                   <button
                     type="button"
@@ -856,6 +910,33 @@ function SessionField({ label, children }: { label: string; children: React.Reac
       <span className="type-label text-ink-muted">{label}</span>
       {children}
     </label>
+  );
+}
+
+function blockDateTime(date: EventDate, time: string) {
+  const datePart = date.start.slice(0, 10);
+  return new Date(`${datePart}T${time}`);
+}
+
+function serializeUnavailableBlocks(date: EventDate) {
+  return date.unavailableBlocks.map((block) => ({
+    start_at: blockDateTime(date, block.start).toISOString(),
+    end_at: blockDateTime(date, block.end).toISOString(),
+    ...(block.label.trim() ? { label: block.label.trim() } : {}),
+  }));
+}
+
+function hasInvalidUnavailableBlocks(date: EventDate) {
+  const windowStart = new Date(date.start).getTime();
+  const windowEnd = new Date(date.end).getTime();
+  const blocks = date.unavailableBlocks.map((block) => ({
+    start: block.start ? blockDateTime(date, block.start).getTime() : Number.NaN,
+    end: block.end ? blockDateTime(date, block.end).getTime() : Number.NaN,
+  })).sort((a, b) => a.start - b.start);
+  return blocks.some((block, index) =>
+    !Number.isFinite(block.start) || !Number.isFinite(block.end) ||
+    block.start < windowStart || block.end > windowEnd || block.end <= block.start ||
+    (index > 0 && block.start < blocks[index - 1].end)
   );
 }
 

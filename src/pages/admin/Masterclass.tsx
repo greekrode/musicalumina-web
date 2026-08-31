@@ -316,35 +316,20 @@ export function AdminMasterclass() {
 
         <section className="bg-surface-elevated border border-rule-hairline p-5 lg:p-6">
           <div className="flex flex-col gap-1">
-            <Eyebrow withRule>Schedule timeline</Eyebrow>
-            <p className="type-caption text-ink-muted">Each block is a registration or reserved hold positioned within its configured date window.</p>
+            <Eyebrow withRule>Schedule calendar</Eyebrow>
+            <p className="type-caption text-ink-muted">WIB day view with scheduled sessions, reserved holds, and configured unavailable times.</p>
           </div>
-          <div className="mt-5 flex min-w-0 flex-col gap-5 overflow-x-auto pb-2">
-            {masterclassEvents.flatMap((event) => (event.event_schedule || []).map((window) => {
-              const date = jakartaDate(window.start_at);
-              const windowStart = jakartaMinutes(window.start_at);
-              const windowEnd = jakartaMinutes(window.end_at);
-              const windowLength = Math.max(windowEnd - windowStart, 1);
-              const scheduled = participants.filter((participant) => participant.event_id === event.id && participant.session_date === date && participant.preferred_start_at && participant.preferred_end_at).sort((a, b) => (a.preferred_start_at || "").localeCompare(b.preferred_start_at || ""));
-              return (
-                <article key={`${event.id}-${date}`} className="min-w-[42rem] border border-rule-hairline bg-surface-canvas-warm p-4">
-                  <div className="mb-3 flex items-center justify-between gap-4">
-                    <div><p className="type-label text-burgundy">{event.title}</p><p className="type-caption text-ink-muted">{formatDateForTimeline(date)}</p></div>
-                    <p className="type-caption text-ink-muted">{formatWindow(window.start_at)}–{formatWindow(window.end_at)} WIB</p>
-                  </div>
-                  <div className="relative h-16 overflow-hidden border border-rule-hairline bg-surface-elevated">
-                    {scheduled.map((participant) => {
-                      const start = jakartaMinutes(participant.preferred_start_at!);
-                      const end = jakartaMinutes(participant.preferred_end_at!);
-                      const left = Math.max(0, ((start - windowStart) / windowLength) * 100);
-                      const width = Math.min(100 - left, Math.max(4, ((end - start) / windowLength) * 100));
-                      return <div key={participant.id} title={`${participant.is_hold ? "Hold" : participant.name} · ${formatWindow(participant.preferred_start_at!)}–${formatWindow(participant.preferred_end_at!)} WIB`} className={cn("absolute inset-y-2 flex min-w-0 items-center px-2 type-caption font-semibold text-burgundy", participant.is_hold ? "bg-marigold/45" : "bg-burgundy/15")} style={{ left: `${left}%`, width: `${width}%` }}><span className="truncate">{participant.is_hold ? participant.hold_label || "Hold" : participant.name}</span></div>;
-                    })}
-                    {scheduled.length === 0 && <p className="flex h-full items-center justify-center type-caption text-ink-muted">No sessions scheduled</p>}
-                  </div>
-                </article>
-              );
-            }))}
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 type-caption text-ink-muted">
+            <CalendarLegend className="bg-burgundy/15" label="Registration" />
+            <CalendarLegend className="bg-marigold/50" label="Reserved hold" />
+            <CalendarLegend className="border border-burgundy/15 bg-surface-canvas-warm" label="Unavailable" />
+            <CalendarLegend className="border border-dashed border-ink-muted/40 bg-ink-muted/10" label="Automatic break" />
+          </div>
+          <div className="mt-5 flex flex-col gap-6">
+            {masterclassEvents.map((event) => (
+              <MasterclassDayCalendar key={event.id} event={event} participants={participants.filter((participant) => participant.event_id === event.id)} />
+            ))}
+            {masterclassEvents.length === 0 && <p className="py-10 text-center type-body-sm text-ink-muted">No ongoing masterclass schedule.</p>}
           </div>
         </section>
 
@@ -438,6 +423,131 @@ function formatWindow(value: string) {
 
 function formatDateForTimeline(value: string) {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date(`${value}T12:00:00+07:00`));
+}
+
+const CALENDAR_HOUR_HEIGHT = 56;
+
+function CalendarLegend({ className, label }: { className: string; label: string }) {
+  return <span className="inline-flex items-center gap-2"><span className={cn("h-3 w-3", className)} />{label}</span>;
+}
+
+function MasterclassDayCalendar({ event, participants }: { event: MasterclassEvent; participants: MasterclassParticipant[] }) {
+  const windows = [...(event.event_schedule || [])].sort((a, b) => a.start_at.localeCompare(b.start_at));
+  if (windows.length === 0) return null;
+  const calendarStart = Math.floor(Math.min(...windows.map((window) => jakartaMinutes(window.start_at))) / 60) * 60;
+  const calendarEnd = Math.ceil(Math.max(...windows.map((window) => jakartaMinutes(window.end_at))) / 60) * 60;
+  const calendarHeight = ((calendarEnd - calendarStart) / 60) * CALENDAR_HOUR_HEIGHT;
+  const ticks = Array.from({ length: Math.floor((calendarEnd - calendarStart) / 60) + 1 }, (_, index) => calendarStart + index * 60);
+  const columns = `5rem repeat(${windows.length}, minmax(15rem, 1fr))`;
+
+  return (
+    <article className="overflow-hidden border border-rule-hairline bg-surface-canvas-warm">
+      <div className="border-b border-rule-hairline px-4 py-3">
+        <p className="type-label text-burgundy">{event.title}</p>
+      </div>
+      <div className="max-w-full overflow-x-auto overscroll-x-contain">
+        <div className="grid min-w-max" style={{ gridTemplateColumns: columns, width: `max(100%, ${80 + windows.length * 240}px)` }}>
+          <div className="sticky left-0 z-30 border-b border-r border-rule-hairline bg-surface-elevated" />
+          {windows.map((window) => {
+            const date = jakartaDate(window.start_at);
+            return (
+              <div key={`header-${date}`} className="sticky top-0 z-20 border-b border-r border-rule-hairline bg-surface-elevated px-3 py-3 text-center last:border-r-0">
+                <p className="type-label text-burgundy">{formatDateForTimeline(date)}</p>
+                <p className="mt-0.5 type-caption text-ink-muted">{formatWindow(window.start_at)}–{formatWindow(window.end_at)} WIB</p>
+              </div>
+            );
+          })}
+
+          <div className="sticky left-0 z-20 border-r border-rule-hairline bg-surface-elevated" style={{ height: calendarHeight }}>
+            {ticks.map((minute, index) => (
+              <span key={minute} className="absolute right-3 type-caption tabular-nums text-ink-muted" style={{ top: Math.min((minute - calendarStart) / 60 * CALENDAR_HOUR_HEIGHT, calendarHeight - 16), transform: index === 0 ? "none" : "translateY(-50%)" }}>{formatMinuteOfDay(minute)}</span>
+            ))}
+          </div>
+
+          {windows.map((window) => {
+            const date = jakartaDate(window.start_at);
+            const windowStart = jakartaMinutes(window.start_at);
+            const windowEnd = jakartaMinutes(window.end_at);
+            const scheduled = participants.filter((participant) => participant.session_date === date && participant.preferred_start_at && participant.preferred_end_at).sort((a, b) => (a.preferred_start_at || "").localeCompare(b.preferred_start_at || ""));
+            const automaticBreaks = buildAutomaticBreaks(window, event.event_duration?.length === 1 ? event.event_duration[0] : null);
+            return (
+              <div key={`day-${date}`} className="relative border-r border-rule-hairline bg-surface-elevated last:border-r-0" style={{ height: calendarHeight }}>
+                {ticks.map((minute) => <div key={minute} className="absolute inset-x-0 border-t border-rule-hairline" style={{ top: (minute - calendarStart) / 60 * CALENDAR_HOUR_HEIGHT }} />)}
+                {windowStart > calendarStart && <div className="absolute inset-x-0 bg-surface-canvas-warm/80" style={{ top: 0, height: (windowStart - calendarStart) / 60 * CALENDAR_HOUR_HEIGHT }} />}
+                {windowEnd < calendarEnd && <div className="absolute inset-x-0 bg-surface-canvas-warm/80" style={{ top: (windowEnd - calendarStart) / 60 * CALENDAR_HOUR_HEIGHT, bottom: 0 }} />}
+                {(window.unavailable_blocks || []).map((block, index) => {
+                  const start = jakartaMinutes(block.start_at);
+                  const end = jakartaMinutes(block.end_at);
+                  return (
+                    <div key={`${block.start_at}-${index}`} className="absolute inset-x-2 z-10 overflow-hidden border border-burgundy/15 bg-surface-canvas-warm px-2 py-1 text-ink-muted" style={calendarPosition(start, end, calendarStart)} title={`${block.label || "Unavailable"} · ${formatWindow(block.start_at)}–${formatWindow(block.end_at)} WIB`}>
+                      <p className="type-label truncate">{block.label || "Unavailable"}</p>
+                      <p className="type-caption tabular-nums">{formatWindow(block.start_at)}–{formatWindow(block.end_at)}</p>
+                    </div>
+                  );
+                })}
+                {automaticBreaks.map((block, index) => (
+                  <div key={`break-${block.start}-${index}`} className="absolute inset-x-2 z-10 overflow-hidden border border-dashed border-ink-muted/40 bg-ink-muted/10 px-2 py-0.5 text-ink-muted" style={calendarPosition(block.start, block.end, calendarStart)} title={`Automatic break · ${formatMinuteOfDay(block.start)}–${formatMinuteOfDay(block.end)} WIB`}>
+                    <p className="type-caption tabular-nums">Break · {formatMinuteOfDay(block.start)}–{formatMinuteOfDay(block.end)}</p>
+                  </div>
+                ))}
+                {scheduled.map((participant) => {
+                  const start = jakartaMinutes(participant.preferred_start_at!);
+                  const end = jakartaMinutes(participant.preferred_end_at!);
+                  return (
+                    <div key={participant.id} className={cn("absolute inset-x-2 z-20 overflow-hidden border-l-4 px-2 py-1.5 text-burgundy shadow-sm", participant.is_hold ? "border-marigold bg-marigold/50" : "border-burgundy bg-burgundy/15")} style={calendarPosition(start, end, calendarStart)} title={`${participant.is_hold ? "Reserved hold" : "Registration"} · ${formatWindow(participant.preferred_start_at!)}–${formatWindow(participant.preferred_end_at!)} WIB`}>
+                      <p className="type-label truncate">{participant.is_hold ? participant.hold_label || participant.name : participant.name}</p>
+                      <p className="type-caption tabular-nums">{formatWindow(participant.preferred_start_at!)}–{formatWindow(participant.preferred_end_at!)} · {participant.number_of_slots || 1} slot{(participant.number_of_slots || 1) === 1 ? "" : "s"}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function calendarPosition(start: number, end: number, calendarStart: number) {
+  return {
+    top: (start - calendarStart) / 60 * CALENDAR_HOUR_HEIGHT,
+    height: Math.max((end - start) / 60 * CALENDAR_HOUR_HEIGHT, 24),
+  };
+}
+
+function formatMinuteOfDay(minutes: number) {
+  const normalized = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+}
+
+function buildAutomaticBreaks(
+  window: NonNullable<MasterclassEvent["event_schedule"]>[number],
+  duration: number | null
+) {
+  const afterSlots = window.break_after_slots || 0;
+  const breakMinutes = window.break_duration_minutes || 0;
+  if (!duration || afterSlots <= 0 || breakMinutes <= 0) return [];
+  const windowStart = jakartaMinutes(window.start_at);
+  const windowEnd = jakartaMinutes(window.end_at);
+  const unavailable = (window.unavailable_blocks || []).map((block) => ({ start: jakartaMinutes(block.start_at), end: jakartaMinutes(block.end_at) })).sort((a, b) => a.start - b.start);
+  const segments: { start: number; end: number }[] = [];
+  let segmentStart = windowStart;
+  unavailable.forEach((block) => {
+    if (block.start > segmentStart) segments.push({ start: segmentStart, end: Math.min(block.start, windowEnd) });
+    segmentStart = Math.max(segmentStart, block.end);
+  });
+  if (segmentStart < windowEnd) segments.push({ start: segmentStart, end: windowEnd });
+  return segments.flatMap((segment) => {
+    const blocks: { start: number; end: number }[] = [];
+    let start = segment.start + duration * afterSlots;
+    while (start < segment.end) {
+      const end = Math.min(start + breakMinutes, segment.end);
+      blocks.push({ start, end });
+      start = end + duration * afterSlots;
+    }
+    return blocks;
+  });
 }
 
 const SELECT_CLASSES = "h-11 w-full appearance-none border border-burgundy/20 bg-surface-canvas-warm px-3 text-body-sm text-ink-body focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20 disabled:cursor-not-allowed disabled:opacity-50";
