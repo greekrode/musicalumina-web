@@ -327,7 +327,7 @@ begin
       event_id, registration_id, name, repertoire, duration, number_of_slots,
       session_date, preferred_start_at, preferred_end_at
     ) values (
-      p_event_id, v_registration.id, p_participant_name, p_repertoire,
+      p_event_id, v_registration.id, p_participant_name, to_jsonb(p_repertoire),
       p_duration_minutes, v_number_of_slots, v_session_date,
       v_preferred_start_at, v_preferred_end_at
     );
@@ -396,7 +396,7 @@ begin
     event_id, name, repertoire, duration, number_of_slots, session_date,
     preferred_start_at, preferred_end_at, is_hold, hold_label, hold_notes
   ) values (
-    p_event_id, trim(p_hold_label), array[]::text[], p_duration_minutes,
+    p_event_id, trim(p_hold_label), '[]'::jsonb, p_duration_minutes,
     p_number_of_slots, p_session_date, p_preferred_start_at,
     v_preferred_end_at, true, trim(p_hold_label), nullif(trim(p_hold_notes), '')
   ) returning id into v_hold_id;
