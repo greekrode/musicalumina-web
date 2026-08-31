@@ -36,7 +36,7 @@ interface FileStates {
 }
 
 function formatDateForDisplay(dateString: string): string {
-  const date = new Date(dateString);
+  const date = new Date(`${dateString}T12:00:00+07:00`);
   const day = date.getDate();
   const month = date.toLocaleDateString("en-US", { month: "long" });
   const year = date.getFullYear();
@@ -47,6 +47,18 @@ function formatDateForDisplay(dateString: string): string {
   };
   return `${getOrdinal(day)} ${month} ${year}`;
 }
+
+function getJakartaDate(value: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(value));
+}
+
+type MasterclassSessionChoice = {
+  selected_date: string;
+  number_of_slots: string;
+  preferred_start_at: string;
+};
 
 function createMasterclassSchema(t: (key: string) => string) {
   return z.object({
@@ -71,16 +83,7 @@ function createMasterclassSchema(t: (key: string) => string) {
         const age = parseInt(val);
         return !isNaN(age) && age >= 1 && age <= 100;
       }, t("validation.invalidAge")),
-    selected_date: z.string().min(1, t("validation.selectDate")),
     selected_duration: z.string().min(1, t("validation.selectDuration")),
-    preferred_start_at: z.string().min(1, "Please select a preferred time"),
-    number_of_slots: z
-      .string()
-      .min(1, t("validation.selectSlots"))
-      .refine((val) => {
-        const slots = parseInt(val);
-        return !isNaN(slots) && slots >= 1 && slots <= 3;
-      }, t("validation.invalidSlots")),
     bank_name: z
       .string()
       .min(1, t("validation.enterBankName"))
@@ -154,9 +157,10 @@ function MasterclassRegistrationModal({
   const [registeredName, setRegisteredName] = useState("");
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
   const [eventDates, setEventDates] = useState<string[]>([]);
-  const [availableSlots, setAvailableSlots] = useState<
-    { slot_start: string; slot_end: string }[]
-  >([]);
+  const [sessionChoices, setSessionChoices] = useState<MasterclassSessionChoice[]>([
+    { selected_date: "", number_of_slots: "1", preferred_start_at: "" },
+  ]);
+  const [availableSlots, setAvailableSlots] = useState<Record<number, { slot_start: string; slot_end: string }[]>>({});
   const [eventDurations, setEventDurations] = useState<number[]>([]);
   const [registrationFees, setRegistrationFees] = useState<
     { uom: string; price: number }[]
@@ -175,22 +179,17 @@ function MasterclassRegistrationModal({
     watch,
     reset,
     control,
-    setValue,
     formState: { errors },
   } = useForm<MasterclassForm>({
     resolver: zodResolver(masterclassSchema),
     defaultValues: {
       registrant_status: "personal",
       registrant_whatsapp: "",
-      number_of_slots: "1",
-      selected_date: "",
     },
   });
 
   const registrantStatus = watch("registrant_status");
   const selectedDuration = watch("selected_duration");
-  const selectedSlots = watch("number_of_slots");
-  const selectedDate = watch("selected_date");
 
   const matchedFee = (() => {
     if (!selectedDuration) return null;
@@ -205,9 +204,8 @@ function MasterclassRegistrationModal({
 
   const computedTotal = (() => {
     if (!matchedFee) return null;
-    const slots = parseInt(selectedSlots || "1", 10);
-    if (isNaN(slots)) return null;
-    return matchedFee.price * slots;
+    const slots = sessionChoices.reduce((total, choice) => total + Number(choice.number_of_slots || 0), 0);
+    return slots > 0 ? matchedFee.price * slots : null;
   })();
 
   // Fetch event dates + durations
@@ -220,9 +218,13 @@ function MasterclassRegistrationModal({
           .eq("id", eventId)
           .single();
         if (error) throw error;
-        if (eventData?.event_schedule?.length) {
-          setEventDates(eventData.event_schedule.map((session: { start_at: string }) => session.start_at));
-        } else if (eventData?.event_date) setEventDates(eventData.event_date);
+        const schedule = eventData?.event_schedule as Array<{ start_at: string }> | null;
+        const legacyDates = eventData?.event_date as string[] | null;
+        if (schedule?.length) {
+          setEventDates([...new Set(schedule.map((session) => getJakartaDate(session.start_at)))]);
+        } else if (legacyDates) {
+          setEventDates([...new Set(legacyDates.map(getJakartaDate))]);
+        }
         if (eventData?.event_duration)
           setEventDurations(eventData.event_duration as number[]);
       } catch (error) {
@@ -234,27 +236,30 @@ function MasterclassRegistrationModal({
 
   useEffect(() => {
     const duration = Number(selectedDuration);
-    const slots = Number(selectedSlots);
-    if (!eventId || !isOpen || !duration || !slots) {
-      setAvailableSlots([]);
+    if (!eventId || !isOpen || !duration) {
+      setAvailableSlots({});
       return;
     }
     const loadSlots = async () => {
-      const { data, error } = await supabase.rpc("get_masterclass_available_slots", {
-        p_event_id: eventId,
-        p_duration_minutes: duration,
-        p_number_of_slots: slots,
-      });
-      if (error) {
-        console.error("Error fetching masterclass time slots:", error);
-        setAvailableSlots([]);
-        return;
-      }
-      setAvailableSlots(data || []);
-      setValue("preferred_start_at", "");
+      const entries = await Promise.all(sessionChoices.map(async (choice, index) => {
+        const slots = Number(choice.number_of_slots);
+        if (!choice.selected_date || !slots) return [index, []] as const;
+        const { data, error } = await supabase.rpc("get_masterclass_available_slots", {
+          p_event_id: eventId,
+          p_session_date: choice.selected_date,
+          p_duration_minutes: duration,
+          p_number_of_slots: slots,
+        });
+        if (error) {
+          console.error("Error fetching masterclass time slots:", error);
+          return [index, []] as const;
+        }
+        return [index, data || []] as const;
+      }));
+      setAvailableSlots(Object.fromEntries(entries));
     };
     loadSlots();
-  }, [eventId, isOpen, selectedDuration, selectedSlots, setValue]);
+  }, [eventId, isOpen, selectedDuration, sessionChoices]);
 
   // Fetch fees
   useEffect(() => {
@@ -283,6 +288,8 @@ function MasterclassRegistrationModal({
     });
     setShowThankYou(false);
     setSubmitError(null);
+    setSessionChoices([{ selected_date: "", number_of_slots: "1", preferred_start_at: "" }]);
+    setAvailableSlots({});
     reset();
     onClose();
   };
@@ -297,6 +304,35 @@ function MasterclassRegistrationModal({
     const next = [...repertoireList];
     next[index] = value;
     setRepertoireList(next);
+  };
+
+  const updateSessionChoice = (
+    index: number,
+    field: keyof MasterclassSessionChoice,
+    value: string
+  ) => {
+    setSessionChoices((choices) => choices.map((choice, choiceIndex) =>
+      choiceIndex === index
+        ? {
+            ...choice,
+            [field]: value,
+            ...(field === "selected_date" || field === "number_of_slots"
+              ? { preferred_start_at: "" }
+              : {}),
+          }
+        : choice
+    ));
+  };
+
+  const addSessionChoice = () => {
+    setSessionChoices((choices) => [
+      ...choices,
+      { selected_date: "", number_of_slots: "1", preferred_start_at: "" },
+    ]);
+  };
+
+  const removeSessionChoice = (index: number) => {
+    setSessionChoices((choices) => choices.filter((_, choiceIndex) => choiceIndex !== index));
   };
 
   const handleFileChange =
@@ -392,6 +428,35 @@ function MasterclassRegistrationModal({
       const filteredRepertoire = repertoireList.filter(
         (title) => title.trim() !== ""
       );
+      const sessionPayload = sessionChoices.map((choice) => ({
+        session_date: choice.selected_date,
+        number_of_slots: Number(choice.number_of_slots),
+        preferred_start_at: choice.preferred_start_at,
+      }));
+      const sessionSummary = sessionPayload.map((session) => {
+        const time = new Intl.DateTimeFormat("en-GB", {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "Asia/Jakarta",
+        }).format(new Date(session.preferred_start_at));
+        return `${time} WIB · ${session.number_of_slots} slot(s)`;
+      }).join("<br />");
+
+      if (
+        sessionPayload.some((choice) =>
+          !choice.session_date ||
+          !choice.preferred_start_at ||
+          !Number.isInteger(choice.number_of_slots) ||
+          choice.number_of_slots < 1 ||
+          choice.number_of_slots > 3
+        ) ||
+        new Set(sessionPayload.map((choice) => choice.session_date)).size !== sessionPayload.length
+      ) {
+        setSubmitError("Choose one date, number of slots, and preferred time for every session. Each date can only be selected once.");
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
 
       if (filteredRepertoire.length === 0) {
         setSubmitError(t("masterclass.registration.addAtLeastOneRepertoire"));
@@ -451,9 +516,8 @@ function MasterclassRegistrationModal({
           p_registrant_email: data.registrant_email,
           p_participant_name: data.participant_name,
           p_participant_age: parseInt(data.participant_age, 10),
-          p_preferred_start_at: data.preferred_start_at,
           p_duration_minutes: parseInt(data.selected_duration, 10),
-          p_number_of_slots: parseInt(data.number_of_slots, 10),
+          p_sessions: sessionPayload,
           p_repertoire: filteredRepertoire,
           p_bank_name: data.bank_name,
           p_bank_account_number: data.bank_account_number,
@@ -465,7 +529,7 @@ function MasterclassRegistrationModal({
       if (error) {
         if (error.code === "23P01") {
           setSubmitError("That time was just booked. Please choose another available time.");
-          setValue("preferred_start_at", "");
+          setSessionChoices((choices) => choices.map((choice) => ({ ...choice, preferred_start_at: "" })));
           return;
         }
         throw error;
@@ -504,8 +568,8 @@ function MasterclassRegistrationModal({
               registrant_whatsapp: data.registrant_whatsapp,
               participant_name: data.participant_name,
               participant_age: parseInt(data.participant_age),
-              selected_date: data.preferred_start_at,
-              number_of_slots: parseInt(data.number_of_slots),
+              selected_date: sessionPayload[0].preferred_start_at,
+              number_of_slots: sessionPayload.reduce((total, choice) => total + choice.number_of_slots, 0),
               duration: parseInt(data.selected_duration),
               repertoire: filteredRepertoire.join("; "),
               song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
@@ -532,8 +596,9 @@ function MasterclassRegistrationModal({
           registrant_whatsapp: data.registrant_whatsapp,
           participant_name: data.participant_name,
           participant_age: parseInt(data.participant_age),
-          selected_date: data.preferred_start_at,
-          number_of_slots: parseInt(data.number_of_slots),
+          selected_date: sessionPayload[0].preferred_start_at,
+          session_summary: sessionSummary,
+          number_of_slots: sessionPayload.reduce((total, choice) => total + choice.number_of_slots, 0),
           duration: parseInt(data.selected_duration),
           repertoire: filteredRepertoire,
           registration_ref_code: refNumber,
@@ -548,6 +613,8 @@ function MasterclassRegistrationModal({
       setRegisteredName(data.participant_name);
       setShowThankYou(true);
       reset();
+      setSessionChoices([{ selected_date: "", number_of_slots: "1", preferred_start_at: "" }]);
+      setAvailableSlots({});
       setRepertoireList([""]);
       setFiles({
         song_pdfs: [{ file: null }],
@@ -727,28 +794,6 @@ function MasterclassRegistrationModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <Field>
-                <Label variant="editorial" htmlFor="m_selected_date">
-                  Select date {REQ}
-                </Label>
-                <select
-                  id="m_selected_date"
-                  {...register("selected_date")}
-                  className={SELECT_CLASSES}
-                >
-                  <option value="">Select a date…</option>
-                  {eventDates.map((date, index) => (
-                    <option key={index} value={date}>
-                      {formatDateForDisplay(date)}
-                    </option>
-                  ))}
-                </select>
-                {errors.selected_date && (
-                  <p className={FIELD_ERROR_CLASS}>
-                    {errors.selected_date.message}
-                  </p>
-                )}
-              </Field>
-              <Field>
                 <Label variant="editorial" htmlFor="m_selected_duration">
                   Duration (min) {REQ}
                 </Label>
@@ -770,59 +815,90 @@ function MasterclassRegistrationModal({
                   </p>
                 )}
               </Field>
-              <Field>
-                <Label variant="editorial" htmlFor="m_number_of_slots">
-                  {t("masterclass.registration.numberOfSlots")} {REQ}
-                </Label>
-                <select
-                  id="m_number_of_slots"
-                  {...register("number_of_slots")}
-                  className={SELECT_CLASSES}
-                >
-                  {[1, 2, 3].map((num) => (
-                    <option key={num} value={num}>
-                      {num}
-                    </option>
-                  ))}
-                </select>
-                {errors.number_of_slots && (
-                  <p className={FIELD_ERROR_CLASS}>
-                    {errors.number_of_slots.message}
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <Label variant="editorial">Session preferences {REQ}</Label>
+                  <p className="mt-1 type-caption text-ink-muted">
+                    Choose a date, the number of consecutive slots, and a preferred time for each session.
                   </p>
-                )}
-              </Field>
-              <Field>
-                <Label variant="editorial" htmlFor="m_preferred_start_at">
-                  Preferred time {REQ}
-                </Label>
-                <select
-                  id="m_preferred_start_at"
-                  {...register("preferred_start_at")}
-                  className={SELECT_CLASSES}
-                  disabled={!selectedDate || !selectedDuration}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addSessionChoice}
+                  disabled={sessionChoices.length >= eventDates.length}
                 >
-                  <option value="">
-                    {!selectedDate ? "Select a date first…" : "Select an available time…"}
-                  </option>
-                  {availableSlots
-                    .filter((slot) =>
-                      new Date(slot.slot_start).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }) ===
-                      new Date(selectedDate).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" })
-                    )
-                    .map((slot) => (
-                      <option key={slot.slot_start} value={slot.slot_start}>
-                        {new Intl.DateTimeFormat("en-GB", {
-                          hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta",
-                        }).format(new Date(slot.slot_start))}–{new Intl.DateTimeFormat("en-GB", {
-                          hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta",
-                        }).format(new Date(slot.slot_end))} WIB
+                  <Plus className="h-3.5 w-3.5" />
+                  Add date
+                </Button>
+              </div>
+              {sessionChoices.map((choice, index) => (
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-[1.2fr_0.8fr_1.3fr_auto] gap-3 items-end border border-rule-hairline bg-surface-canvas-warm p-3">
+                  <Field>
+                    <Label htmlFor={`m_session_date_${index}`}>Date</Label>
+                    <select
+                      id={`m_session_date_${index}`}
+                      value={choice.selected_date}
+                      onChange={(event) => updateSessionChoice(index, "selected_date", event.target.value)}
+                      className={SELECT_CLASSES}
+                    >
+                      <option value="">Select a date…</option>
+                      {eventDates.map((date) => (
+                        <option
+                          key={date}
+                          value={date}
+                          disabled={sessionChoices.some((other, otherIndex) => otherIndex !== index && other.selected_date === date)}
+                        >
+                          {formatDateForDisplay(date)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field>
+                    <Label htmlFor={`m_slots_${index}`}>{t("masterclass.registration.numberOfSlots")}</Label>
+                    <select
+                      id={`m_slots_${index}`}
+                      value={choice.number_of_slots}
+                      onChange={(event) => updateSessionChoice(index, "number_of_slots", event.target.value)}
+                      className={SELECT_CLASSES}
+                    >
+                      {[1, 2, 3].map((num) => <option key={num} value={num}>{num}</option>)}
+                    </select>
+                  </Field>
+                  <Field>
+                    <Label htmlFor={`m_time_${index}`}>Preferred time</Label>
+                    <select
+                      id={`m_time_${index}`}
+                      value={choice.preferred_start_at}
+                      onChange={(event) => updateSessionChoice(index, "preferred_start_at", event.target.value)}
+                      className={SELECT_CLASSES}
+                      disabled={!choice.selected_date || !selectedDuration}
+                    >
+                      <option value="">
+                        {!choice.selected_date ? "Select a date first…" : "Select an available time…"}
                       </option>
-                    ))}
-                </select>
-                {errors.preferred_start_at && (
-                  <p className={FIELD_ERROR_CLASS}>{errors.preferred_start_at.message}</p>
-                )}
-              </Field>
+                      {(availableSlots[index] || []).map((slot) => (
+                        <option key={slot.slot_start} value={slot.slot_start}>
+                          {new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta" }).format(new Date(slot.slot_start))}–{new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta" }).format(new Date(slot.slot_end))} WIB
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <button
+                    type="button"
+                    onClick={() => removeSessionChoice(index)}
+                    disabled={sessionChoices.length === 1}
+                    className="h-11 w-11 inline-flex items-center justify-center text-ink-muted hover:text-[color:var(--status-error)] disabled:opacity-30"
+                    aria-label={`Remove session ${index + 1}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
             </div>
 
             {/* Computed price */}

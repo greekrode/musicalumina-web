@@ -38,7 +38,7 @@ type Registration = {
   song_duration: string | null;
   birth_certificate_url: string;
   song_pdf_url: string[] | null;
-  masterclass?: { repertoire: string[]; duration: number | null; number_of_slots: number | null; preferred_start_at: string | null; preferred_end_at: string | null } | null;
+  masterclass?: Array<{ repertoire: string[]; duration: number | null; number_of_slots: number | null; session_date: string | null; preferred_start_at: string | null; preferred_end_at: string | null }>;
   bank_name: string;
   bank_account_number: string;
   bank_account_name: string;
@@ -154,7 +154,7 @@ export default function AdminRegistrations() {
           events!inner ( title ),
           event_categories ( name ),
           event_subcategories ( name ),
-          masterclass_participants ( repertoire, duration, number_of_slots, preferred_start_at, preferred_end_at ),
+          masterclass_participants ( repertoire, duration, number_of_slots, session_date, preferred_start_at, preferred_end_at ),
           registrant_name,
           registrant_whatsapp,
           registrant_email,
@@ -203,7 +203,7 @@ export default function AdminRegistrations() {
         song_duration: reg.song_duration,
         birth_certificate_url: reg.birth_certificate_url,
         song_pdf_url: reg.song_pdf_url,
-        masterclass: reg.masterclass_participants?.[0] || null,
+        masterclass: reg.masterclass_participants || [],
         bank_name: reg.bank_name,
         bank_account_number: reg.bank_account_number,
         bank_account_name: reg.bank_account_name,
@@ -639,13 +639,24 @@ function RegistrationDetails({
         {registration.song_duration && (
           <DetailRow label="Duration" value={registration.song_duration} />
         )}
-        {registration.masterclass && (
+        {registration.masterclass && registration.masterclass.length > 0 && (
           <>
-            <DetailRow label="Duration" value={`${registration.masterclass.duration || "—"} minutes × ${registration.masterclass.number_of_slots || 1} slot(s)`} />
-            <DetailRow label="Preferred time" value={registration.masterclass.preferred_start_at && registration.masterclass.preferred_end_at
-              ? `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(registration.masterclass.preferred_start_at))}–${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date(registration.masterclass.preferred_end_at))} WIB`
-              : "Not scheduled"} />
-            <DetailRow label="Repertoire" value={registration.masterclass.repertoire.join(" · ")} />
+            <DetailRow label="Duration" value={`${registration.masterclass[0].duration || "—"} minutes`} />
+            <DetailRow
+              label="Selected sessions"
+              value={
+                <ul className="space-y-1">
+                  {registration.masterclass.map((session, index) => (
+                    <li key={`${session.session_date || session.preferred_start_at || "session"}-${index}`}>
+                      {session.preferred_start_at && session.preferred_end_at
+                        ? `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(session.preferred_start_at))}–${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date(session.preferred_end_at))} WIB`
+                        : session.session_date || "Not scheduled"} · {session.number_of_slots || 1} slot(s)
+                    </li>
+                  ))}
+                </ul>
+              }
+            />
+            <DetailRow label="Repertoire" value={registration.masterclass[0].repertoire.join(" · ")} />
           </>
         )}
       </DetailSection>

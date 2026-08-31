@@ -57,6 +57,7 @@ interface EmailMessageData {
   number_of_slots?: number | null;
   repertoire?: string[] | null;
   selected_date?: string | null;
+  session_summary?: string | null;
   duration?: number | null;
   event_name: string;
   language: string;
@@ -444,11 +445,11 @@ export class EmailService {
               <div class="detail-value">${data.participant_age}</div>
             </div>
             ${
-              data.selected_date
+              data.session_summary || data.selected_date
                 ? `
             <div class="detail-row">
-              <div class="detail-label">Tanggal yang Dipilih:</div>
-              <div class="detail-value">${formatDateForEmail(data.selected_date)}</div>
+              <div class="detail-label">Sesi yang Dipilih:</div>
+              <div class="detail-value">${data.session_summary || formatDateForEmail(data.selected_date!)}</div>
             </div>
             `
                 : ""
@@ -501,11 +502,11 @@ export class EmailService {
               <div class="detail-value">${data.participant_age}</div>
             </div>
             ${
-              data.selected_date
+              data.session_summary || data.selected_date
                 ? `
             <div class="detail-row">
-              <div class="detail-label">Selected Date:</div>
-              <div class="detail-value">${formatDateForEmail(data.selected_date)}</div>
+              <div class="detail-label">Selected sessions:</div>
+              <div class="detail-value">${data.session_summary || formatDateForEmail(data.selected_date!)}</div>
             </div>
             `
                 : ""

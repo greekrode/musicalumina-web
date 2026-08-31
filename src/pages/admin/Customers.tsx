@@ -542,8 +542,11 @@ export default function AdminCustomers() {
         </p>
 
         <div className="bg-surface-elevated border border-rule-hairline overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-separate border-spacing-0">
+          <p className="px-5 pt-3 type-caption text-ink-muted sm:hidden">
+            Swipe horizontally to view every customer field and action.
+          </p>
+          <div className="overflow-x-auto overscroll-x-contain pb-2">
+            <table className="min-w-max border-separate border-spacing-0">
               <thead className="bg-surface-canvas-warm">
                 <tr>
                   <Th

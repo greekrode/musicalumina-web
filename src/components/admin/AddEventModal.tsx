@@ -102,8 +102,8 @@ export function AddEventModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [eventDates, setEventDates] = useState<Array<{ start: string; end: string }>>([
-    { start: "", end: "" },
+  const [eventDates, setEventDates] = useState<Array<{ start: string; end: string; maxSlots: string }>>([
+    { start: "", end: "", maxSlots: "" },
   ]);
   const [durations, setDurations] = useState<number[]>([]);
   const [durationPrices, setDurationPrices] = useState<string[]>([]);
@@ -145,7 +145,7 @@ export function AddEventModal({
   }, [eventDates, setValue]);
 
   const addEventDate = () => {
-    setEventDates([...eventDates, { start: "", end: "" }]);
+    setEventDates([...eventDates, { start: "", end: "", maxSlots: "" }]);
   };
 
   const removeEventDate = (index: number) => {
@@ -154,7 +154,7 @@ export function AddEventModal({
     }
   };
 
-  const updateEventDate = (index: number, field: "start" | "end", value: string) => {
+  const updateEventDate = (index: number, field: "start" | "end" | "maxSlots", value: string) => {
     const updated = [...eventDates];
     updated[index][field] = value;
     setEventDates(updated);
@@ -165,9 +165,14 @@ export function AddEventModal({
     try {
       setIsSubmitting(true);
 
+      if (values.type === "masterclass" && eventDates.some((date) => !Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1)) {
+        throw new Error("Set a maximum slot count for every masterclass date.");
+      }
+
       const eventSchedule = eventDates.map((ed) => ({
         start_at: new Date(ed.start).toISOString(),
         end_at: new Date(ed.end).toISOString(),
+        ...(values.type === "masterclass" ? { max_slots: Number(ed.maxSlots) } : {}),
       }));
 
       const registrationDeadlineIso = values.registration_deadline
@@ -256,7 +261,7 @@ export function AddEventModal({
   const handleClose = () => {
     reset();
     setPosterFile(null);
-    setEventDates([{ start: "", end: "" }]);
+    setEventDates([{ start: "", end: "", maxSlots: "" }]);
     setDurations([]);
     setDurationPrices([]);
     setSubmitError(null);
@@ -433,7 +438,14 @@ export function AddEventModal({
           {/* Event dates array */}
           <div className="flex flex-col gap-2">
             <div className="flex items-end justify-between gap-3 flex-wrap">
-              <Label className="mb-0">Event dates &amp; times</Label>
+              <div className="flex flex-col gap-1">
+                <Label className="mb-0">Event dates &amp; times</Label>
+                {eventType === "masterclass" && (
+                  <p className="type-caption text-ink-muted">
+                    Start and end define the bookable time block for that date. Add each available date separately.
+                  </p>
+                )}
+              </div>
               <Eyebrow tone="muted">
                 {eventDates.length}{" "}
                 {eventDates.length === 1 ? "session" : "sessions"}
@@ -470,6 +482,23 @@ export function AddEventModal({
                     )}
                     required
                   />
+                  {eventType === "masterclass" && (
+                    <input
+                      type="number"
+                      min={1}
+                      value={eventDate.maxSlots}
+                      onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)}
+                      className={cn(
+                        "w-28 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
+                        "text-body-sm text-ink-body",
+                        "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
+                        "transition-colors"
+                      )}
+                      placeholder="Max slots"
+                      aria-label={`Maximum slots for date ${index + 1}`}
+                      required
+                    />
+                  )}
                   <button
                     type="button"
                     onClick={() => removeEventDate(index)}

@@ -98,7 +98,7 @@ export function AdminEvents() {
                 <Th>Date</Th>
                 <Th>Early bird</Th>
                 <Th>Location</Th>
-                <Th className="text-right">Quota</Th>
+                <Th className="text-right">Capacity</Th>
                 <Th className="text-right">Actions</Th>
               </tr>
             </thead>
@@ -126,9 +126,11 @@ export function AdminEvents() {
                     <Td>{formatEarlyBirdDate(event)}</Td>
                     <Td>{event.location}</Td>
                     <Td className="text-right">
-                      {event.max_quota
-                        ? event.max_quota.toLocaleString()
-                        : "—"}
+                      {event.type === "masterclass"
+                        ? formatMasterclassCapacity(event)
+                        : event.max_quota
+                          ? event.max_quota.toLocaleString()
+                          : "—"}
                     </Td>
                     <Td className="text-right">
                       <div className="inline-flex items-center gap-1">
@@ -200,11 +202,13 @@ export function AdminEvents() {
                     <dd className="text-burgundy mt-0.5">{event.location}</dd>
                   </div>
                   <div>
-                    <dt className="type-label text-ink-muted">Quota</dt>
+                    <dt className="type-label text-ink-muted">{event.type === "masterclass" ? "Date capacities" : "Quota"}</dt>
                     <dd className="text-burgundy mt-0.5">
-                      {event.max_quota
-                        ? event.max_quota.toLocaleString()
-                        : "Unlimited"}
+                      {event.type === "masterclass"
+                        ? formatMasterclassCapacity(event)
+                        : event.max_quota
+                          ? event.max_quota.toLocaleString()
+                          : "Unlimited"}
                     </dd>
                   </div>
                 </dl>
@@ -374,6 +378,13 @@ function formatEventDates(event: Event): string {
       .join(", ");
   }
   return new Date(event.start_date).toLocaleDateString();
+}
+
+function formatMasterclassCapacity(event: Event): string {
+  if (!event.event_schedule?.length) return "Not configured";
+  return event.event_schedule
+    .map((session) => `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" }).format(new Date(session.start_at))}: ${session.max_slots ?? "—"}`)
+    .join(" · ");
 }
 
 function formatEarlyBirdDate(event: Event): string {

@@ -45,7 +45,7 @@ export interface Database {
           lark_table: string | null;
           max_quota: number | null;
           event_date: string[] | null;
-          event_schedule: { start_at: string; end_at: string }[] | null;
+          event_schedule: { start_at: string; end_at: string; max_slots?: number }[] | null;
           event_duration: number[] | null;
           early_bird_end_date: string | null;
         };
@@ -67,7 +67,7 @@ export interface Database {
           lark_table?: string | null;
           max_quota?: number | null;
           event_date?: string[] | null;
-          event_schedule?: { start_at: string; end_at: string }[] | null;
+          event_schedule?: { start_at: string; end_at: string; max_slots?: number }[] | null;
           event_duration?: number[] | null;
           early_bird_end_date?: string | null;
         };
@@ -89,7 +89,7 @@ export interface Database {
           lark_table?: string | null;
           max_quota?: number | null;
           event_date?: string[] | null;
-          event_schedule?: { start_at: string; end_at: string }[] | null;
+          event_schedule?: { start_at: string; end_at: string; max_slots?: number }[] | null;
           event_duration?: number[] | null;
           early_bird_end_date?: string | null;
         };
@@ -423,6 +423,10 @@ export interface Database {
           duration: number | null;
           number_of_slots: number | null;
           registration_id: string | null;
+          session_date: string | null;
+          is_hold: boolean;
+          hold_label: string | null;
+          hold_notes: string | null;
           preferred_start_at: string | null;
           preferred_end_at: string | null;
           created_at: string;
@@ -436,6 +440,10 @@ export interface Database {
           duration?: number | null;
           number_of_slots?: number | null;
           registration_id?: string | null;
+          session_date?: string | null;
+          is_hold?: boolean;
+          hold_label?: string | null;
+          hold_notes?: string | null;
           preferred_start_at?: string | null;
           preferred_end_at?: string | null;
           created_at?: string;
@@ -449,6 +457,10 @@ export interface Database {
           duration?: number | null;
           number_of_slots?: number | null;
           registration_id?: string | null;
+          session_date?: string | null;
+          is_hold?: boolean;
+          hold_label?: string | null;
+          hold_notes?: string | null;
           preferred_start_at?: string | null;
           preferred_end_at?: string | null;
           created_at?: string;

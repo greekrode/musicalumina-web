@@ -62,8 +62,11 @@ export function DataTable<T>({
 
       {/* Table */}
       <div className="rounded-md border">
-        <div className="overflow-x-auto">
-          <table className="w-full divide-y divide-gray-200">
+        <p className="px-4 pt-3 text-xs text-gray-500 sm:hidden">
+          Swipe horizontally to view all columns and actions.
+        </p>
+        <div className="overflow-x-auto overscroll-x-contain pb-2">
+          <table className="min-w-[52rem] w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 {columns.map((column, index) => (
@@ -193,4 +196,4 @@ export function DataTable<T>({
       )}
     </div>
   );
-} 
+}

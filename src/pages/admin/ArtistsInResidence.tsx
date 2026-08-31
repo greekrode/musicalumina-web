@@ -58,8 +58,12 @@ export default function AdminArtistsInResidence() {
           </Button>
         </header>
 
-        <div className="bg-surface-elevated border border-rule-hairline overflow-hidden">
-          <table className="min-w-full">
+        <section className="bg-surface-elevated border border-rule-hairline overflow-hidden">
+          <p className="px-5 pt-3 type-caption text-ink-muted sm:hidden">
+            Swipe horizontally to reach all actions.
+          </p>
+          <div className="overflow-x-auto overscroll-x-contain pb-2">
+          <table className="min-w-[40rem] w-full">
             <thead className="bg-surface-canvas-warm border-b border-rule-hairline">
               <tr><Th>Artist</Th><Th>Title</Th><Th className="text-right">Actions</Th></tr>
             </thead>
@@ -73,7 +77,8 @@ export default function AdminArtistsInResidence() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </section>
       </div>
       <ArtistInResidenceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} artist={editingArtist} onSuccess={fetchArtists} />
     </AdminLayout>

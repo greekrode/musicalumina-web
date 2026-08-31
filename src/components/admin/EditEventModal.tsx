@@ -113,8 +113,8 @@ export function EditEventModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [eventDates, setEventDates] = useState<Array<{ start: string; end: string }>>([
-    { start: "", end: "" },
+  const [eventDates, setEventDates] = useState<Array<{ start: string; end: string; maxSlots: string }>>([
+    { start: "", end: "", maxSlots: "" },
   ]);
   const [durations, setDurations] = useState<number[]>([]);
   const [durationPrices, setDurationPrices] = useState<string[]>([]);
@@ -186,15 +186,16 @@ export function EditEventModal({
       const dates = event.event_schedule.map((session) => ({
         start: formatDateTimeForInput(session.start_at),
         end: formatDateTimeForInput(session.end_at),
+        maxSlots: session.max_slots?.toString() || event.max_quota?.toString() || "",
       }));
       setEventDates(dates);
     } else if (event.event_date?.length) {
       const dates = event.event_date.map((date) => ({
-        start: formatDateTimeForInput(date), end: "",
+        start: formatDateTimeForInput(date), end: "", maxSlots: event.max_quota?.toString() || "",
       }));
       setEventDates(dates);
     } else {
-      setEventDates([{ start: formatDateTimeForInput(event.start_date), end: "" }]);
+      setEventDates([{ start: formatDateTimeForInput(event.start_date), end: "", maxSlots: event.max_quota?.toString() || "" }]);
     }
 
     reset({
@@ -247,12 +248,22 @@ export function EditEventModal({
       return;
     }
 
+    if (values.type === "masterclass" && validEventDates.some((date) => !Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1)) {
+      toast({
+        title: "Set every date's capacity",
+        description: "Each masterclass date needs a maximum slot count.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
       const eventSchedule = validEventDates.map((ed) => ({
         start_at: new Date(ed.start).toISOString(),
         end_at: new Date(ed.end).toISOString(),
+        ...(values.type === "masterclass" ? { max_slots: Number(ed.maxSlots) } : {}),
       }));
       const registrationDeadlineIso = values.registration_deadline
         ? new Date(values.registration_deadline).toISOString()
@@ -359,7 +370,7 @@ export function EditEventModal({
   };
 
   const addEventDate = () => {
-    setEventDates([...eventDates, { start: "", end: "" }]);
+    setEventDates([...eventDates, { start: "", end: "", maxSlots: "" }]);
   };
 
   const removeEventDate = (index: number) => {
@@ -368,7 +379,7 @@ export function EditEventModal({
     }
   };
 
-  const updateEventDate = (index: number, field: "start" | "end", value: string) => {
+  const updateEventDate = (index: number, field: "start" | "end" | "maxSlots", value: string) => {
     const updated = [...eventDates];
     updated[index][field] = value;
     setEventDates(updated);
@@ -530,7 +541,14 @@ export function EditEventModal({
           {/* Event dates array */}
           <div className="flex flex-col gap-2">
             <div className="flex items-end justify-between gap-3 flex-wrap">
-              <Label className="mb-0">Event dates &amp; times</Label>
+              <div className="flex flex-col gap-1">
+                <Label className="mb-0">Event dates &amp; times</Label>
+                {eventType === "masterclass" && (
+                  <p className="type-caption text-ink-muted">
+                    Start and end define the bookable time block for that date. Add each available date separately.
+                  </p>
+                )}
+              </div>
               <Eyebrow tone="muted">
                 {eventDates.length}{" "}
                 {eventDates.length === 1 ? "session" : "sessions"}
@@ -565,6 +583,23 @@ export function EditEventModal({
                       "transition-colors"
                     )}
                   />
+                  {eventType === "masterclass" && (
+                    <input
+                      type="number"
+                      min={1}
+                      value={eventDate.maxSlots}
+                      onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)}
+                      className={cn(
+                        "w-28 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
+                        "text-body-sm text-ink-body",
+                        "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
+                        "transition-colors"
+                      )}
+                      placeholder="Max slots"
+                      aria-label={`Maximum slots for date ${index + 1}`}
+                      required
+                    />
+                  )}
                   <button
                     type="button"
                     onClick={() => removeEventDate(index)}
