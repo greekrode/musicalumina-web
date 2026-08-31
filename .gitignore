@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
+.vite
 *.local
 
 # Editor directories and files
@@ -26,6 +28,10 @@ dist-ssr
 .env
 
 supabase/.temp/*
+
+# Local AI/editor workspaces
+.bolt/
+MEMORY/
 
 CLAUDE.md
 .cursor/

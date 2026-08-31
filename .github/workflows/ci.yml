@@ -17,6 +17,13 @@ jobs:
     name: Lint · Typecheck · Test · Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Public-safe placeholders keep modules that initialize browser clients
+    # importable during tests and builds. CI never connects to these values.
+    env:
+      VITE_SUPABASE_URL: "https://ci.supabase.invalid"
+      VITE_SUPABASE_ANON_KEY: "ci-placeholder"
+      VITE_CLERK_PUBLISHABLE_KEY: "pk_test_ci-placeholder"
+      VITE_TINYMCE_API_KEY: "ci-placeholder"
 
     steps:
       - name: Checkout
@@ -41,12 +48,4 @@ jobs:
         run: npm run test:run
 
       - name: Build
-        # Supplies placeholder env so `import.meta.env.*` reads don't crash
-        # the production build. These are never used at CI time — they
-        # just need to be non-empty strings for the Vite build to succeed.
-        env:
-          VITE_SUPABASE_URL: "https://ci.supabase.invalid"
-          VITE_SUPABASE_ANON_KEY: "ci-placeholder"
-          VITE_CLERK_PUBLISHABLE_KEY: "pk_test_ci-placeholder"
-          VITE_TINYMCE_API_KEY: "ci-placeholder"
         run: npm run build

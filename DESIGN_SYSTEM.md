@@ -1,8 +1,6 @@
 # Musical Lumina — Design System Reference
 
-_Phase 1 deliverable. This file documents the tokens and primitives that every subsequent page and component should consume. If something isn't here, it isn't part of the system yet._
-
-Preview all primitives live at: [`/design-system`](http://localhost:5173/design-system)
+This file documents the tokens and primitives used across the public website and admin portal. If something is not defined here, it is not part of the design system yet.
 
 ---
 
@@ -186,15 +184,3 @@ Lightweight standalone uppercase marker. Optional leading rule for editorial flo
 - Reach for marigold outside CTAs, eyebrows, or the WaveDivider. It loses impact at volume.
 - Use `rounded-lg` or larger. Default is `rounded-sm` (4px). Containers stay sharp at `rounded-none`.
 - Animate height directly — use `grid-template-rows` transition or framer-motion.
-
----
-
-## 10. Open Questions — to be resolved in later phases
-
-- **Content-type accent colors**: currently `burgundy / marigold / charcoal / muted` for event / masterclass / group / past. Do we want a fourth distinct color for festivals? (Phase 3 decision.)
-- **Admin density mode**: boxed inputs are already wired, but a future `density="compact"` prop on `Section` could tighten spacing in admin tables. Defer to Phase 6.
-- **Dark mode**: explicitly deferred. All tokens use direct CSS values, not HSL triplets, to keep light-mode-first simple. Adding dark later = introduce a parallel `[data-theme="dark"]` block with the same token names.
-
----
-
-_Last updated: 2026-04-24 • Phase 1 complete • Phase 2 (Navigation + Footer) pending approval._
