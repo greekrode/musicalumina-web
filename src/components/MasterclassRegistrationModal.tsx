@@ -60,6 +60,15 @@ type MasterclassSessionChoice = {
   preferred_start_at: string;
 };
 
+type MasterclassSlotFieldProps = {
+  id: string;
+  label: string;
+  selectedDate: string;
+  value: string;
+  maximum: number | null | undefined;
+  onChange: (value: string) => void;
+};
+
 function createMasterclassSchema(t: (key: string) => string) {
   return z.object({
     registrant_status: z.enum(["personal", "parents", "teacher"]),
@@ -137,6 +146,54 @@ const REQ = (
     *
   </span>
 );
+
+export function MasterclassSlotField({
+  id,
+  label,
+  selectedDate,
+  value,
+  maximum,
+  onChange,
+}: MasterclassSlotFieldProps) {
+  return (
+    <Field>
+      <Label htmlFor={id}>{label}</Label>
+      {maximum != null ? (
+        <select
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={SELECT_CLASSES}
+        >
+          {Array.from({ length: maximum }, (_, index) => index + 1).map(
+            (slots) => (
+              <option key={slots} value={slots}>
+                {slots}
+              </option>
+            )
+          )}
+        </select>
+      ) : (
+        <Input
+          id={id}
+          type="number"
+          min={1}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          variant="boxed"
+          disabled={!selectedDate}
+        />
+      )}
+      {selectedDate && (
+        <p className="type-caption text-ink-muted">
+          {maximum == null
+            ? "No booking limit for this date."
+            : `Maximum ${maximum} consecutive slot${maximum === 1 ? "" : "s"} for this date.`}
+        </p>
+      )}
+    </Field>
+  );
+}
 
 /* ============================================================================
    Page component
@@ -455,14 +512,27 @@ function MasterclassRegistrationModal({
         return `${time} WIB · ${session.number_of_slots} slot(s)`;
       }).join("<br />");
 
+      const sessionOverLimit = sessionPayload.find((choice) => {
+        const maximum = maxUserSlotsByDate[choice.session_date];
+        return maximum != null && choice.number_of_slots > maximum;
+      });
+
+      if (sessionOverLimit) {
+        const maximum = maxUserSlotsByDate[sessionOverLimit.session_date];
+        setSubmitError(
+          `You can select up to ${maximum} consecutive slot${maximum === 1 ? "" : "s"} on ${formatDateForDisplay(sessionOverLimit.session_date)}.`
+        );
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
+
       if (
         sessionPayload.some((choice) => {
-          const maximum = maxUserSlotsByDate[choice.session_date];
           return !choice.session_date ||
             !choice.preferred_start_at ||
             !Number.isInteger(choice.number_of_slots) ||
-            choice.number_of_slots < 1 ||
-            (maximum != null && choice.number_of_slots > maximum);
+            choice.number_of_slots < 1;
         }) ||
         new Set(sessionPayload.map((choice) => choice.session_date)).size !== sessionPayload.length
       ) {
@@ -873,19 +943,14 @@ function MasterclassRegistrationModal({
                       ))}
                     </select>
                   </Field>
-                  <Field>
-                    <Label htmlFor={`m_slots_${index}`}>{t("masterclass.registration.numberOfSlots")}</Label>
-                    <Input
-                      id={`m_slots_${index}`}
-                      type="number"
-                      min={1}
-                      max={maxUserSlotsByDate[choice.selected_date] ?? undefined}
-                      value={choice.number_of_slots}
-                      onChange={(event) => updateSessionChoice(index, "number_of_slots", event.target.value)}
-                      variant="boxed"
-                      disabled={!choice.selected_date}
-                    />
-                  </Field>
+                  <MasterclassSlotField
+                    id={`m_slots_${index}`}
+                    label={t("masterclass.registration.numberOfSlots")}
+                    selectedDate={choice.selected_date}
+                    value={choice.number_of_slots}
+                    maximum={maxUserSlotsByDate[choice.selected_date]}
+                    onChange={(value) => updateSessionChoice(index, "number_of_slots", value)}
+                  />
                   <Field>
                     <Label htmlFor={`m_time_${index}`}>Preferred time</Label>
                     <select
