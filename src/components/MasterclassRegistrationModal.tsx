@@ -157,7 +157,7 @@ function MasterclassRegistrationModal({
   const [registeredName, setRegisteredName] = useState("");
   const [repertoireList, setRepertoireList] = useState<string[]>([""]);
   const [eventDates, setEventDates] = useState<string[]>([]);
-  const [maxUserSlotsByDate, setMaxUserSlotsByDate] = useState<Record<string, number>>({});
+  const [maxUserSlotsByDate, setMaxUserSlotsByDate] = useState<Record<string, number | null>>({});
   const [sessionChoices, setSessionChoices] = useState<MasterclassSessionChoice[]>([
     { selected_date: "", number_of_slots: "1", preferred_start_at: "" },
   ]);
@@ -220,14 +220,14 @@ function MasterclassRegistrationModal({
           .eq("id", eventId)
           .single();
         if (error) throw error;
-        const schedule = eventData?.event_schedule as Array<{ start_at: string; max_user_slots?: number; max_slots?: number }> | null;
+        const schedule = eventData?.event_schedule as Array<{ start_at: string; max_user_slots?: number | null }> | null;
         const legacyDates = eventData?.event_date as string[] | null;
         if (schedule?.length) {
           const dates = [...new Set(schedule.map((session) => getJakartaDate(session.start_at)))];
           setEventDates(dates);
           setMaxUserSlotsByDate(Object.fromEntries(schedule.map((session) => [
             getJakartaDate(session.start_at),
-            Number(session.max_user_slots ?? 3),
+            session.max_user_slots == null ? null : Number(session.max_user_slots),
           ])));
         } else if (legacyDates) {
           setEventDates([...new Set(legacyDates.map(getJakartaDate))]);
@@ -324,8 +324,9 @@ function MasterclassRegistrationModal({
     setSessionChoices((choices) => choices.map((choice, choiceIndex) => {
       if (choiceIndex !== index) return choice;
       if (field === "selected_date") {
-        const maximum = maxUserSlotsByDate[value] || 1;
-        const numberOfSlots = Math.min(Math.max(Number(choice.number_of_slots) || 1, 1), maximum);
+        const maximum = maxUserSlotsByDate[value];
+        const requestedSlots = Math.max(Number(choice.number_of_slots) || 1, 1);
+        const numberOfSlots = maximum == null ? requestedSlots : Math.min(requestedSlots, maximum);
         return { ...choice, selected_date: value, number_of_slots: String(numberOfSlots), preferred_start_at: "" };
       }
       return {
@@ -455,13 +456,14 @@ function MasterclassRegistrationModal({
       }).join("<br />");
 
       if (
-        sessionPayload.some((choice) =>
-          !choice.session_date ||
-          !choice.preferred_start_at ||
-          !Number.isInteger(choice.number_of_slots) ||
-          choice.number_of_slots < 1 ||
-          choice.number_of_slots > (maxUserSlotsByDate[choice.session_date] || 1)
-        ) ||
+        sessionPayload.some((choice) => {
+          const maximum = maxUserSlotsByDate[choice.session_date];
+          return !choice.session_date ||
+            !choice.preferred_start_at ||
+            !Number.isInteger(choice.number_of_slots) ||
+            choice.number_of_slots < 1 ||
+            (maximum != null && choice.number_of_slots > maximum);
+        }) ||
         new Set(sessionPayload.map((choice) => choice.session_date)).size !== sessionPayload.length
       ) {
         setSubmitError("Choose one date, number of slots, and preferred time for every session. Each date can only be selected once.");
@@ -877,7 +879,7 @@ function MasterclassRegistrationModal({
                       id={`m_slots_${index}`}
                       type="number"
                       min={1}
-                      max={maxUserSlotsByDate[choice.selected_date] || 1}
+                      max={maxUserSlotsByDate[choice.selected_date] ?? undefined}
                       value={choice.number_of_slots}
                       onChange={(event) => updateSessionChoice(index, "number_of_slots", event.target.value)}
                       variant="boxed"

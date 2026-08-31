@@ -88,8 +88,8 @@ export function AdminEvents() {
         </div>
 
         {/* Desktop table */}
-        <div className="hidden 2xl:block bg-surface-elevated border border-rule-hairline overflow-hidden">
-          <table className="min-w-full">
+        <div className="hidden 2xl:block max-w-full overflow-x-auto overscroll-x-contain bg-surface-elevated border border-rule-hairline [scrollbar-gutter:stable]">
+          <table className="w-full min-w-[96rem]">
             <thead className="bg-surface-canvas-warm border-b border-rule-hairline">
               <tr>
                 <Th>Title</Th>
@@ -99,7 +99,7 @@ export function AdminEvents() {
                 <Th>Early bird</Th>
                 <Th>Location</Th>
                 <Th className="text-right">Capacity</Th>
-                <Th className="text-right">Actions</Th>
+                <Th className="sticky right-0 z-20 border-l border-rule-hairline bg-surface-canvas-warm text-right shadow-[-8px_0_12px_-12px_rgba(91,20,37,0.35)]">Actions</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-rule-hairline">
@@ -113,7 +113,7 @@ export function AdminEvents() {
                 filteredEvents.map((event) => (
                   <tr
                     key={event.id}
-                    className="hover:bg-surface-canvas-warm/40 transition-colors"
+                    className="group hover:bg-surface-canvas-warm/40 transition-colors"
                   >
                     <Td className="text-burgundy font-medium">
                       {event.title}
@@ -132,7 +132,7 @@ export function AdminEvents() {
                           ? event.max_quota.toLocaleString()
                           : "—"}
                     </Td>
-                    <Td className="text-right">
+                    <Td className="sticky right-0 z-10 border-l border-rule-hairline bg-surface-elevated text-right shadow-[-8px_0_12px_-12px_rgba(91,20,37,0.35)] group-hover:bg-surface-canvas-warm">
                       <div className="inline-flex items-center gap-1">
                         <IconAction
                           onClick={() => setEditingEvent(event)}
@@ -202,7 +202,7 @@ export function AdminEvents() {
                     <dd className="text-burgundy mt-0.5">{event.location}</dd>
                   </div>
                   <div>
-                    <dt className="type-label text-ink-muted">{event.type === "masterclass" ? "Date capacities" : "Quota"}</dt>
+                    <dt className="type-label text-ink-muted">{event.type === "masterclass" ? "Max / user" : "Quota"}</dt>
                     <dd className="text-burgundy mt-0.5">
                       {event.type === "masterclass"
                         ? formatMasterclassCapacity(event)
@@ -348,7 +348,7 @@ function IconAction({
       onClick={onClick}
       aria-label={label}
       className={cn(
-        "h-8 w-8 flex items-center justify-center rounded-sm transition-colors duration-fast ease-out-quart",
+        "h-10 w-10 flex items-center justify-center rounded-sm transition-colors duration-fast ease-out-quart",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2",
         destructive
           ? "text-ink-muted hover:text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)]"
@@ -383,7 +383,7 @@ function formatEventDates(event: Event): string {
 function formatMasterclassCapacity(event: Event): string {
   if (!event.event_schedule?.length) return "Not configured";
   return event.event_schedule
-    .map((session) => `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" }).format(new Date(session.start_at))}: ${session.max_slots ?? "—"}`)
+    .map((session) => `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" }).format(new Date(session.start_at))}: ${session.max_user_slots ?? "Unlimited"}`)
     .join(" · ");
 }
 

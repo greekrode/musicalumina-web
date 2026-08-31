@@ -186,7 +186,7 @@ export function EditEventModal({
       const dates = event.event_schedule.map((session) => ({
         start: formatDateTimeForInput(session.start_at),
         end: formatDateTimeForInput(session.end_at),
-        maxSlots: session.max_user_slots?.toString() || "3",
+        maxSlots: session.max_user_slots == null ? "" : session.max_user_slots.toString(),
         breakAfterSlots: session.break_after_slots?.toString() || "",
         breakDurationMinutes: session.break_duration_minutes?.toString() || "",
       }));
@@ -250,10 +250,10 @@ export function EditEventModal({
       return;
     }
 
-    if (values.type === "masterclass" && validEventDates.some((date) => !Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1)) {
+    if (values.type === "masterclass" && validEventDates.some((date) => date.maxSlots.trim() !== "" && (!Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1))) {
       toast({
-        title: "Set every date's registration limit",
-        description: "Each masterclass date needs a maximum slots-per-registrant value.",
+        title: "Check the registration limit",
+        description: "Use a positive whole number, or leave it blank for unlimited.",
         variant: "destructive",
       });
       return;
@@ -270,7 +270,7 @@ export function EditEventModal({
         start_at: new Date(ed.start).toISOString(),
         end_at: new Date(ed.end).toISOString(),
         ...(values.type === "masterclass" ? {
-          max_user_slots: Number(ed.maxSlots),
+          ...(ed.maxSlots.trim() ? { max_user_slots: Number(ed.maxSlots) } : {}),
           ...(ed.breakAfterSlots ? { break_after_slots: Number(ed.breakAfterSlots), break_duration_minutes: Number(ed.breakDurationMinutes) } : {}),
         } : {}),
       }));
@@ -565,39 +565,28 @@ export function EditEventModal({
             </div>
             <div className="flex flex-col gap-2">
               {eventDates.map((eventDate, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col gap-2 bg-surface-canvas-warm border border-rule-hairline px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center"
-                >
-                  <input
-                    type="datetime-local"
-                    value={eventDate.start}
-                    onChange={(e) => updateEventDate(index, "start", e.target.value)}
-                    className={cn(
-                      "flex-1 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
-                      "text-body-sm text-ink-body",
-                      "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
-                      "transition-colors"
-                    )}
-                  />
-                  <span className="type-caption text-ink-muted">to</span>
-                  <input
-                    type="datetime-local"
-                    value={eventDate.end}
-                    onChange={(e) => updateEventDate(index, "end", e.target.value)}
-                    className={cn(
-                      "flex-1 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm",
-                      "text-body-sm text-ink-body",
-                      "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
-                      "transition-colors"
-                    )}
-                  />
+                <div key={index} className="relative grid grid-cols-1 gap-3 bg-surface-canvas-warm border border-rule-hairline p-4 pr-14">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
+                    <SessionField label="Starts">
+                      <input type="datetime-local" value={eventDate.start} onChange={(e) => updateEventDate(index, "start", e.target.value)} className={SESSION_INPUT_CLASSES} />
+                    </SessionField>
+                    <span className="hidden h-10 items-center type-caption text-ink-muted md:flex">to</span>
+                    <SessionField label="Ends">
+                      <input type="datetime-local" value={eventDate.end} onChange={(e) => updateEventDate(index, "end", e.target.value)} className={SESSION_INPUT_CLASSES} />
+                    </SessionField>
+                  </div>
                   {eventType === "masterclass" && (
-                    <>
-                      <input type="number" min={1} value={eventDate.maxSlots} onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)} className={cn("w-full sm:w-32 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Max/user" aria-label={`Maximum slots per registrant for date ${index + 1}`} required />
-                      <input type="number" min={1} value={eventDate.breakAfterSlots} onChange={(e) => updateEventDate(index, "breakAfterSlots", e.target.value)} className={cn("w-full sm:w-36 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Break after slots" aria-label={`Break after slots for date ${index + 1}`} />
-                      <input type="number" min={1} value={eventDate.breakDurationMinutes} onChange={(e) => updateEventDate(index, "breakDurationMinutes", e.target.value)} className={cn("w-full sm:w-32 h-10 px-3 bg-surface-elevated border border-burgundy/20 rounded-sm", "text-body-sm text-ink-body", "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20", "transition-colors")} placeholder="Break minutes" aria-label={`Break duration for date ${index + 1}`} />
-                    </>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <SessionField label="Max slots / user">
+                        <input type="number" min={1} value={eventDate.maxSlots} onChange={(e) => updateEventDate(index, "maxSlots", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Unlimited" aria-label={`Maximum slots per registrant for date ${index + 1}`} />
+                      </SessionField>
+                      <SessionField label="Break after sessions">
+                        <input type="number" min={1} value={eventDate.breakAfterSlots} onChange={(e) => updateEventDate(index, "breakAfterSlots", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Optional" aria-label={`Break after sessions for date ${index + 1}`} />
+                      </SessionField>
+                      <SessionField label="Break duration (minutes)">
+                        <input type="number" min={1} value={eventDate.breakDurationMinutes} onChange={(e) => updateEventDate(index, "breakDurationMinutes", e.target.value)} className={SESSION_INPUT_CLASSES} placeholder="Optional" aria-label={`Break duration for date ${index + 1}`} />
+                      </SessionField>
+                    </div>
                   )}
                   <button
                     type="button"
@@ -605,7 +594,7 @@ export function EditEventModal({
                     disabled={eventDates.length === 1}
                     aria-label="Remove date"
                     className={cn(
-                      "h-9 w-9 flex items-center justify-center rounded-sm",
+                      "absolute right-2 top-2 h-10 w-10 flex items-center justify-center rounded-sm",
                       "text-ink-muted hover:text-[color:var(--status-error)]",
                       "hover:bg-[color:var(--status-error-bg)] transition-colors",
                       "disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-muted"
@@ -851,6 +840,22 @@ export function EditEventModal({
 function FieldError({ children }: { children: React.ReactNode }) {
   return (
     <p className="type-caption text-[color:var(--status-error)]">{children}</p>
+  );
+}
+
+const SESSION_INPUT_CLASSES = cn(
+  "h-11 w-full min-w-0 rounded-sm border border-burgundy/20 bg-surface-elevated px-3",
+  "text-body-sm text-ink-body placeholder:text-ink-muted",
+  "focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20",
+  "transition-colors"
+);
+
+function SessionField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1.5">
+      <span className="type-label text-ink-muted">{label}</span>
+      {children}
+    </label>
   );
 }
 
