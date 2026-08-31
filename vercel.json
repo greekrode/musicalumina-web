@@ -27,6 +27,17 @@
       ],
       "destination": "https://www.musicalumina.com/event/7d267705-c591-4b98-8151-d8c91ebf2e31",
       "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "mc-ab.musicalumina.com"
+        }
+      ],
+      "destination": "https://www.musicalumina.com/masterclass/c8393050-5b0e-4da0-86c2-0a7c5ec53cee",
+      "permanent": true
     }
   ]
 }
