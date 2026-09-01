@@ -37,6 +37,9 @@ export const translations = {
       title: "Artists in Residence",
       subtitle: "Meet our resident artists.",
       lede: "Distinguished musicians whose work we're proud to champion — on stage, in residence, and across the year.",
+      profile: "Profile",
+      credentials: "Credentials",
+      close: "Close",
     },
     partners: {
       title: "In good company.",
@@ -452,6 +455,9 @@ export const translations = {
       title: "Artis dalam Residensi",
       subtitle: "Kenali artis residensi kami.",
       lede: "Musisi terhormat yang karya-karyanya dengan bangga kami dukung — di atas panggung, dalam residensi, dan sepanjang tahun.",
+      profile: "Profil",
+      credentials: "Kredensial",
+      close: "Tutup",
     },
     partners: {
       title: "Bersama mitra terbaik.",

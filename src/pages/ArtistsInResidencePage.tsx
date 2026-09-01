@@ -1,10 +1,13 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useLanguage } from "../lib/LanguageContext";
 import { getArtistsInResidence } from "../lib/supabase";
-import { sanitizeHtml } from "../lib/sanitize";
 import LoadingSpinner from "../components/LoadingSpinner";
+import ArtistProfileModal, {
+  type ArtistProfile,
+} from "../components/ArtistProfileModal";
 import { Section, Container } from "@/components/ui/section";
 import {
   PageHeader,
@@ -12,8 +15,10 @@ import {
   PageHeaderLede,
   PageHeaderTitle,
 } from "@/components/ui/page-header";
-import { WireframeWave } from "@/components/ui/wireframe-wave";
+import { WireframeWave, NoteGlyph } from "@/components/ui/wireframe-wave";
+import { Image } from "@/components/ui/image";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,7 +26,13 @@ import { cn } from "@/lib/utils";
  *
  * Dedicated page for the artists Musica Lumina represents in residence.
  *  1. Hero — eyebrow + editorial headline + lede over a wireframe wave
- *  2. Artist grid — editorial cards (portrait, title, credentials, bio)
+ *  2. Artist grid — portrait, title, name, and a Profile cue
+ *
+ * Credentials and biography open in ArtistProfileModal so the grid stays
+ * scannable. `?artist=<id>` keeps the open profile in the URL.
+ *
+ * HERO: each card is a single quiet hit-target — portrait, title, name,
+ * Profile — no résumé on the floor.
  *
  * Data comes from the standalone `artists_in_residence` table via
  * `getArtistsInResidence()`.
@@ -57,35 +68,30 @@ const gridStagger = {
 
 const viewportOnce = { once: true, margin: "-80px" } as const;
 
-interface ArtistProfile {
-  id: string;
-  name: string;
-  title: string;
-  description: string | null;
-  avatar_url: string | null;
-  credentials: Record<string, string> | null;
-}
-
 function ArtistsInResidencePage() {
   const { t } = useLanguage();
   usePageTitle(t("artistsInResidence.title"));
   const reduceMotion = useReducedMotion();
   const initial = reduceMotion ? false : "hidden";
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [artists, setArtists] = useState<ArtistProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayedArtist, setDisplayedArtist] = useState<ArtistProfile | null>(
+    null
+  );
 
   useEffect(() => {
     getArtistsInResidence()
-      .then(({ artists }) => {
+      .then(({ artists: rows }) => {
         setArtists(
-          artists.map((a) => ({
-            id: a.id,
-            name: a.name,
-            title: a.title,
-            description: a.description,
-            avatar_url: a.avatar_url,
-            credentials: a.credentials as Record<string, string> | null,
+          rows.map((artist) => ({
+            id: artist.id,
+            name: artist.name,
+            title: artist.title,
+            description: artist.description,
+            avatar_url: artist.avatar_url,
+            credentials: artist.credentials as Record<string, string> | null,
           }))
         );
       })
@@ -94,6 +100,26 @@ function ArtistsInResidencePage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const selectedId = searchParams.get("artist");
+  const selectedArtist =
+    artists.find((artist) => artist.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (selectedArtist) setDisplayedArtist(selectedArtist);
+  }, [selectedArtist]);
+
+  const openArtist = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("artist", id);
+    setSearchParams(next);
+  };
+
+  const closeArtist = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("artist");
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <div className="bg-surface-canvas">
@@ -144,56 +170,63 @@ function ArtistsInResidencePage() {
                 whileInView="visible"
                 viewport={viewportOnce}
                 className={cn(
-                  "grid gap-8",
+                  "grid gap-10 md:gap-12",
                   artists.length === 1
-                    ? "grid-cols-1 max-w-2xl mx-auto"
+                    ? "grid-cols-1 max-w-sm mx-auto"
                     : artists.length === 2
-                      ? "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto"
+                      ? "grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto"
                       : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
                 )}
               >
                 {artists.map((artist) => (
-                  <motion.article
-                    key={artist.id}
-                    variants={fadeUp}
-                    className="flex flex-col gap-6 border-t border-rule-hairline pt-8"
-                  >
-                    {artist.avatar_url && (
-                      <div className="aspect-[3/4] overflow-hidden bg-surface-canvas-warm border border-rule-hairline">
-                        <img
+                  <motion.article key={artist.id} variants={fadeUp}>
+                    <button
+                      type="button"
+                      onClick={() => openArtist(artist.id)}
+                      aria-haspopup="dialog"
+                      aria-expanded={selectedArtist?.id === artist.id}
+                      className={cn(
+                        "group flex w-full flex-col gap-5 text-left",
+                        "border-t border-rule-hairline pt-8",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-4 focus-visible:ring-offset-surface-canvas"
+                      )}
+                    >
+                      {artist.avatar_url ? (
+                        <Image
                           src={artist.avatar_url}
-                          alt={artist.name}
-                          loading="lazy"
-                          className="h-full w-full object-cover"
+                          alt=""
+                          aspect="3/4"
+                          containerClassName="w-full border border-rule-hairline outline outline-1 outline-black/10"
+                          className="motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out-quart group-hover:scale-[1.04]"
+                          fit="cover"
                         />
+                      ) : (
+                        <div className="flex aspect-[3/4] w-full items-center justify-center bg-surface-canvas-warm border border-rule-hairline outline outline-1 outline-black/10">
+                          <NoteGlyph
+                            size={48}
+                            className="text-marigold/25"
+                            aria-hidden
+                          />
+                        </div>
+                      )}
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <Eyebrow>{artist.title}</Eyebrow>
+                        <h3 className="type-headline-md text-burgundy text-balance">
+                          {artist.name}
+                        </h3>
+                        <span
+                          className={cn(
+                            buttonVariants({
+                              variant: "secondary",
+                              size: "sm",
+                            }),
+                            "mt-3 uppercase tracking-[0.16em] active:scale-[0.96]"
+                          )}
+                        >
+                          {t("artistsInResidence.profile")}
+                        </span>
                       </div>
-                    )}
-                    <div className="flex flex-col gap-2">
-                      <Eyebrow>{artist.title}</Eyebrow>
-                      <h3 className="type-headline-md text-burgundy">
-                        {artist.name}
-                      </h3>
-                      {artist.credentials && (
-                        <ul className="flex flex-col gap-1 mt-1">
-                          {Object.entries(artist.credentials).map(([k, v]) => (
-                            <li
-                              key={k}
-                              className="type-caption text-ink-muted italic"
-                            >
-                              {k}: {v}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {artist.description && (
-                        <div
-                          className="type-body-sm text-ink-body prose prose-sm max-w-none mt-3"
-                          dangerouslySetInnerHTML={{
-                            __html: sanitizeHtml(artist.description),
-                          }}
-                        />
-                      )}
-                    </div>
+                    </button>
                   </motion.article>
                 ))}
               </motion.div>
@@ -201,6 +234,12 @@ function ArtistsInResidencePage() {
           )}
         </Container>
       </Section>
+
+      <ArtistProfileModal
+        isOpen={selectedArtist !== null}
+        onClose={closeArtist}
+        artist={displayedArtist}
+      />
     </div>
   );
 }
