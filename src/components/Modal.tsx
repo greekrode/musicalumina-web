@@ -38,6 +38,8 @@ interface ModalProps {
   headerContent?: React.ReactNode;
   /** Hide the close button entirely (e.g. for a forced-loading state). */
   hideClose?: boolean;
+  /** Snappy is for click-to-open profiles: shorter motion, lighter blur. */
+  speed?: "default" | "snappy";
   children: React.ReactNode;
 }
 
@@ -61,33 +63,65 @@ function Modal({
   children,
   headerContent,
   hideClose = false,
+  speed = "default",
 }: ModalProps) {
+  const snappy = speed === "snappy";
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         {/* Backdrop — burgundy tint at low alpha + frosted blur, not a dark scrim */}
         <TransitionChild
           as={Fragment}
-          enter="ease-out duration-300"
+          enter={
+            snappy
+              ? "ease-out-quart duration-fast motion-reduce:duration-0"
+              : "ease-out duration-300"
+          }
           enterFrom="opacity-0"
           enterTo="opacity-100"
-          leave="ease-in duration-200"
+          leave={
+            snappy
+              ? "ease-in duration-instant motion-reduce:duration-0"
+              : "ease-in duration-200"
+          }
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-burgundy-700/25 backdrop-blur-md" />
+          <div
+            className={cn(
+              "fixed inset-0 bg-burgundy-700/25",
+              snappy ? "backdrop-blur-sm" : "backdrop-blur-md"
+            )}
+          />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-3 sm:p-6">
             <TransitionChild
               as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-3 scale-[0.98]"
+              enter={
+                snappy
+                  ? "ease-out-quart duration-fast motion-reduce:duration-0"
+                  : "ease-out duration-300"
+              }
+              enterFrom={
+                snappy
+                  ? "opacity-0 translate-y-2 scale-[0.985]"
+                  : "opacity-0 translate-y-3 scale-[0.98]"
+              }
               enterTo="opacity-100 translate-y-0 scale-100"
-              leave="ease-in duration-200"
+              leave={
+                snappy
+                  ? "ease-in duration-instant motion-reduce:duration-0"
+                  : "ease-in duration-200"
+              }
               leaveFrom="opacity-100 translate-y-0 scale-100"
-              leaveTo="opacity-0 translate-y-3 scale-[0.98]"
+              leaveTo={
+                snappy
+                  ? "opacity-0 translate-y-1.5 scale-[0.99]"
+                  : "opacity-0 translate-y-3 scale-[0.98]"
+              }
             >
               <DialogPanel
                 className={cn(

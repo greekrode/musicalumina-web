@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useLanguage } from "../lib/LanguageContext";
@@ -80,6 +80,8 @@ function ArtistsInResidencePage() {
   const [displayedArtist, setDisplayedArtist] = useState<ArtistProfile | null>(
     null
   );
+  const [profileOpen, setProfileOpen] = useState(false);
+  const skipUrlHydrate = useRef(false);
 
   useEffect(() => {
     getArtistsInResidence()
@@ -102,23 +104,42 @@ function ArtistsInResidencePage() {
   }, []);
 
   const selectedId = searchParams.get("artist");
-  const selectedArtist =
-    artists.find((artist) => artist.id === selectedId) ?? null;
 
   useEffect(() => {
-    if (selectedArtist) setDisplayedArtist(selectedArtist);
-  }, [selectedArtist]);
+    if (skipUrlHydrate.current) {
+      skipUrlHydrate.current = false;
+      return;
+    }
+    if (!selectedId) {
+      setProfileOpen(false);
+      return;
+    }
+    const found = artists.find((artist) => artist.id === selectedId);
+    if (found) {
+      setDisplayedArtist(found);
+      setProfileOpen(true);
+    }
+  }, [artists, selectedId]);
 
-  const openArtist = (id: string) => {
+  const syncArtistParam = (id: string | null) => {
+    skipUrlHydrate.current = true;
     const next = new URLSearchParams(searchParams);
-    next.set("artist", id);
-    setSearchParams(next);
+    if (id) next.set("artist", id);
+    else next.delete("artist");
+    startTransition(() => {
+      setSearchParams(next, { replace: true });
+    });
+  };
+
+  const openArtist = (artist: ArtistProfile) => {
+    setDisplayedArtist(artist);
+    setProfileOpen(true);
+    syncArtistParam(artist.id);
   };
 
   const closeArtist = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("artist");
-    setSearchParams(next, { replace: true });
+    setProfileOpen(false);
+    syncArtistParam(null);
   };
 
   return (
@@ -182,9 +203,9 @@ function ArtistsInResidencePage() {
                   <motion.article key={artist.id} variants={fadeUp}>
                     <button
                       type="button"
-                      onClick={() => openArtist(artist.id)}
+                      onClick={() => openArtist(artist)}
                       aria-haspopup="dialog"
-                      aria-expanded={selectedArtist?.id === artist.id}
+                      aria-expanded={profileOpen && displayedArtist?.id === artist.id}
                       className={cn(
                         "group flex w-full flex-col gap-5 text-left",
                         "border-t border-rule-hairline pt-8",
@@ -236,7 +257,7 @@ function ArtistsInResidencePage() {
       </Section>
 
       <ArtistProfileModal
-        isOpen={selectedArtist !== null}
+        isOpen={profileOpen}
         onClose={closeArtist}
         artist={displayedArtist}
       />
