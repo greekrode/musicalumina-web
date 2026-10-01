@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Editor } from "@tinymce/tinymce-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,13 +24,16 @@ import { cn } from "@/lib/utils";
  * and `upcoming` is the default.
  */
 
-const eventDateSchema = z.object({
-  start: z.string().min(1, "Start time is required"),
-  end: z.string().min(1, "End time is required"),
-}).refine((value) => new Date(value.end) > new Date(value.start), {
-  message: "End time must be after start time",
-  path: ["end"],
-});
+// Session rows are validated in onSubmit. Keeping that check in Zod blocked
+// Save whenever a row was still blank, and the error was not shown on screen.
+const eventDateSchema = z
+  .object({
+    start: z.string(),
+    end: z.string(),
+  })
+  .passthrough();
+
+const optionalText = z.string().nullish();
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -41,24 +44,22 @@ const formSchema = z.object({
   }),
   terms_and_conditions: z
     .object({
-      en: z.string().optional(),
-      id: z.string().optional(),
+      en: optionalText,
+      id: optionalText,
     })
-    .optional(),
+    .nullish(),
   start_date: z.string().min(1, "Start date is required"),
-  event_schedule: z
-    .array(eventDateSchema)
-    .min(1, "At least one event date is required"),
-  registration_deadline: z.string().optional(),
-  early_bird_end_date: z.string().optional(),
+  event_schedule: z.array(eventDateSchema).optional(),
+  registration_deadline: optionalText,
+  early_bird_end_date: optionalText,
   location: z.string().min(1, "Location is required"),
-  venue_details: z.string().optional(),
+  venue_details: optionalText,
   status: z.enum(["upcoming", "ongoing", "completed"]),
-  poster_image: z.string().optional(),
-  max_quota: z.number().optional(),
-  lark_base: z.string().optional(),
-  lark_table: z.string().optional(),
-  event_duration: z.array(z.number().int().positive()).optional(),
+  poster_image: optionalText,
+  max_quota: z.union([z.number(), z.nan(), z.string()]).optional(),
+  lark_base: optionalText,
+  lark_table: optionalText,
+  event_duration: z.array(z.number()).nullish(),
 });
 
 type EventFormData = z.infer<typeof formSchema>;
@@ -181,20 +182,29 @@ export function AddEventModal({
 
   const onSubmit = async (values: EventFormData) => {
     setSubmitError(null);
+    const validEventDates = eventDates.filter((ed) => ed.start && ed.end);
+    if (validEventDates.length === 0) {
+      setSubmitError("Add at least one event date with a start and end time.");
+      return;
+    }
+    if (validEventDates.some((date) => new Date(date.end) <= new Date(date.start))) {
+      setSubmitError("Each event date must end after it starts.");
+      return;
+    }
     try {
       setIsSubmitting(true);
 
-      if (values.type === "masterclass" && eventDates.some((date) => date.maxSlots.trim() !== "" && (!Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1))) {
+      if (values.type === "masterclass" && validEventDates.some((date) => date.maxSlots.trim() !== "" && (!Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1))) {
         throw new Error("Maximum slots per registrant must be a positive whole number, or blank for unlimited.");
       }
-      if (values.type === "masterclass" && eventDates.some((date) => (Boolean(date.breakAfterSlots) !== Boolean(date.breakDurationMinutes)) || (Boolean(date.breakAfterSlots) && (!Number.isInteger(Number(date.breakAfterSlots)) || Number(date.breakAfterSlots) < 1 || !Number.isInteger(Number(date.breakDurationMinutes)) || Number(date.breakDurationMinutes) < 1)))) {
+      if (values.type === "masterclass" && validEventDates.some((date) => (Boolean(date.breakAfterSlots) !== Boolean(date.breakDurationMinutes)) || (Boolean(date.breakAfterSlots) && (!Number.isInteger(Number(date.breakAfterSlots)) || Number(date.breakAfterSlots) < 1 || !Number.isInteger(Number(date.breakDurationMinutes)) || Number(date.breakDurationMinutes) < 1)))) {
         throw new Error("For each break rule, enter both the number of slots and break length as positive whole numbers.");
       }
-      if (values.type === "masterclass" && eventDates.some(hasInvalidUnavailableBlocks)) {
+      if (values.type === "masterclass" && validEventDates.some(hasInvalidUnavailableBlocks)) {
         throw new Error("Unavailable times must be complete, inside their date window, and must not overlap.");
       }
 
-      const eventSchedule = eventDates.map((ed) => ({
+      const eventSchedule = validEventDates.map((ed) => ({
         start_at: new Date(ed.start).toISOString(),
         end_at: new Date(ed.end).toISOString(),
         ...(values.type === "masterclass" ? {
@@ -214,6 +224,7 @@ export function AddEventModal({
       // `valueAsNumber: true` turns an empty input into NaN — normalize so we
       // never forward NaN to the `max_quota` column.
       const maxQuota =
+        values.max_quota === "" ||
         values.max_quota === undefined ||
         (typeof values.max_quota === "number" &&
           Number.isNaN(values.max_quota))
@@ -312,7 +323,12 @@ export function AddEventModal({
       maxWidth="3xl"
     >
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmit, (formErrors) => {
+          setSubmitError(
+            firstFormError(formErrors) ??
+              "Check the highlighted fields and try again."
+          );
+        })}
         className="flex flex-col gap-7"
       >
         {submitError && (
@@ -772,6 +788,27 @@ export function AddEventModal({
 /* ------------------------------------------------------------------ */
 /*  Internal primitives                                                */
 /* ------------------------------------------------------------------ */
+
+function firstFormError(errors: FieldErrors): string | null {
+  for (const [key, value] of Object.entries(errors)) {
+    if (!value || key === "ref" || key === "type") continue;
+    if (typeof value.message === "string" && value.message) return value.message;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item && typeof item === "object") {
+          const nested = firstFormError(item as FieldErrors);
+          if (nested) return nested;
+        }
+      }
+      continue;
+    }
+    if (typeof value === "object") {
+      const nested = firstFormError(value as FieldErrors);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
 
 function FieldError({ children }: { children: React.ReactNode }) {
   return (

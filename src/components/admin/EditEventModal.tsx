@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Editor } from "@tinymce/tinymce-react";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { cn } from "@/lib/utils";
 
@@ -26,41 +26,45 @@ type Event = Database["public"]["Tables"]["events"]["Row"];
  * is removed — react-hook-form's Zod resolver handles it natively now.
  */
 
-const eventDateSchema = z.object({
-  start: z.string().min(1, "Start time is required"),
-  end: z.string().min(1, "End time is required"),
-}).refine((value) => new Date(value.end) > new Date(value.start), {
-  message: "End time must be after start time",
-  path: ["end"],
-});
+// Session rows live in component state and are checked in onSubmit. A strict
+// schema here rejected blank or legacy rows (and never rendered the error),
+// so Save did nothing — including when only the registration deadline changed.
+const eventDateSchema = z
+  .object({
+    start: z.string(),
+    end: z.string(),
+  })
+  .passthrough();
+
+const optionalText = z.string().nullish();
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   type: z.enum(["festival", "competition", "masterclass", "group class"]),
   description: z.object({
-    en: z.string().optional(),
-    id: z.string().optional(),
+    en: optionalText,
+    id: optionalText,
   }),
   terms_and_conditions: z
     .object({
-      en: z.string().optional(),
-      id: z.string().optional(),
+      en: optionalText,
+      id: optionalText,
     })
-    .optional(),
+    .nullish(),
   start_date: z.string().min(1, "Start date is required"),
-  event_schedule: z
-    .array(eventDateSchema)
-    .min(1, "At least one event date is required"),
-  registration_deadline: z.string().optional(),
-  early_bird_end_date: z.string().optional(),
+  event_schedule: z.array(eventDateSchema).optional(),
+  registration_deadline: optionalText,
+  early_bird_end_date: optionalText,
   location: z.string().min(1, "Location is required"),
-  venue_details: z.string().optional(),
+  venue_details: optionalText,
   status: z.enum(["upcoming", "ongoing", "completed"]),
-  poster_image: z.string().optional(),
-  max_quota: z.union([z.number(), z.string()]).optional(),
-  lark_base: z.string().optional(),
-  lark_table: z.string().optional(),
-  event_duration: z.array(z.number().int().positive()).optional(),
+  poster_image: optionalText,
+  // valueAsNumber yields NaN for an empty quota. z.number() rejects NaN, and
+  // this form did not render that error, so the whole save was swallowed.
+  max_quota: z.union([z.number(), z.nan(), z.string()]).optional(),
+  lark_base: optionalText,
+  lark_table: optionalText,
+  event_duration: z.array(z.number()).nullish(),
 });
 
 type EventFormData = z.infer<typeof formSchema>;
@@ -248,28 +252,46 @@ export function EditEventModal({
 
     const validEventDates = eventDates.filter((ed) => ed.start && ed.end);
     if (validEventDates.length === 0) {
+      const message = "Add at least one event date with a start and end time.";
+      setSubmitError(message);
       toast({
         title: "Add an event date",
-        description: "Please add at least one event date and time.",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (validEventDates.some((date) => new Date(date.end) <= new Date(date.start))) {
+      const message = "Each event date must end after it starts.";
+      setSubmitError(message);
+      toast({
+        title: "Check the event dates",
+        description: message,
         variant: "destructive",
       });
       return;
     }
 
     if (values.type === "masterclass" && validEventDates.some((date) => date.maxSlots.trim() !== "" && (!Number.isInteger(Number(date.maxSlots)) || Number(date.maxSlots) < 1))) {
+      const message = "Use a positive whole number, or leave it blank for unlimited.";
+      setSubmitError(message);
       toast({
         title: "Check the registration limit",
-        description: "Use a positive whole number, or leave it blank for unlimited.",
+        description: message,
         variant: "destructive",
       });
       return;
     }
     if (values.type === "masterclass" && validEventDates.some((date) => (Boolean(date.breakAfterSlots) !== Boolean(date.breakDurationMinutes)) || (Boolean(date.breakAfterSlots) && (!Number.isInteger(Number(date.breakAfterSlots)) || Number(date.breakAfterSlots) < 1 || !Number.isInteger(Number(date.breakDurationMinutes)) || Number(date.breakDurationMinutes) < 1)))) {
-      toast({ title: "Complete the break rule", description: "Enter both values as positive whole numbers, or leave both blank.", variant: "destructive" });
+      const message = "Enter both values as positive whole numbers, or leave both blank.";
+      setSubmitError(message);
+      toast({ title: "Complete the break rule", description: message, variant: "destructive" });
       return;
     }
     if (values.type === "masterclass" && validEventDates.some(hasInvalidUnavailableBlocks)) {
-      toast({ title: "Check unavailable times", description: "Every unavailable time must be inside its date window and must not overlap another block.", variant: "destructive" });
+      const message = "Every unavailable time must be inside its date window and must not overlap another block.";
+      setSubmitError(message);
+      toast({ title: "Check unavailable times", description: message, variant: "destructive" });
       return;
     }
 
@@ -349,11 +371,15 @@ export function EditEventModal({
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("events")
         .update(updateData)
-        .eq("id", event.id);
+        .eq("id", event.id)
+        .select("id");
       if (error) throw error;
+      if (!updated?.length) {
+        throw new Error("The event was not saved. Refresh the page and try again.");
+      }
 
       if (values.type === "masterclass") {
         const { error: deleteFeesError } = await supabase.from("event_registration_fees").delete().eq("event_id", event.id);
@@ -431,7 +457,15 @@ export function EditEventModal({
       eyebrow="Events · Edit"
       maxWidth="3xl"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-7">
+      <form
+        onSubmit={handleSubmit(onSubmit, (formErrors) => {
+          setSubmitError(
+            firstFormError(formErrors) ??
+              "Check the highlighted fields and try again."
+          );
+        })}
+        className="flex flex-col gap-7"
+      >
         {submitError && (
           <div className="flex items-start gap-3 border-l-2 border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] px-4 py-3">
             <AlertCircle
@@ -767,8 +801,12 @@ export function EditEventModal({
                 id="edit-quota"
                 type="number"
                 variant="boxed"
+                aria-invalid={!!errors.max_quota}
                 {...register("max_quota", { valueAsNumber: true })}
               />
+              {errors.max_quota && (
+                <FieldError>{errors.max_quota.message}</FieldError>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-2">
@@ -890,6 +928,27 @@ export function EditEventModal({
 /* ------------------------------------------------------------------ */
 /*  Shared primitives                                                   */
 /* ------------------------------------------------------------------ */
+
+function firstFormError(errors: FieldErrors): string | null {
+  for (const [key, value] of Object.entries(errors)) {
+    if (!value || key === "ref" || key === "type") continue;
+    if (typeof value.message === "string" && value.message) return value.message;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item && typeof item === "object") {
+          const nested = firstFormError(item as FieldErrors);
+          if (nested) return nested;
+        }
+      }
+      continue;
+    }
+    if (typeof value === "object") {
+      const nested = firstFormError(value as FieldErrors);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
 
 function FieldError({ children }: { children: React.ReactNode }) {
   return (

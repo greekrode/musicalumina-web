@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useLayoutEffect, useRef } from "react";
 import {
   Dialog,
   DialogPanel,
@@ -54,6 +54,31 @@ const MAX_WIDTH_CLASSES: Record<NonNullable<ModalProps["maxWidth"]>, string> = {
   "4xl": "max-w-4xl",
 };
 
+const TINYMCE_FLOATING_UI = ".tox-tinymce-aux, .tox-dialog-wrap";
+
+/**
+ * TinyMCE draws toolbar menus on document.body. This dialog marks everything
+ * outside its panel as inert and treats those clicks as "outside", so the
+ * menus never open. Park that UI inside the panel while the dialog is open.
+ */
+function parkTinyMceUi(panel: HTMLElement) {
+  document.querySelectorAll(TINYMCE_FLOATING_UI).forEach((node) => {
+    if (!(node instanceof HTMLElement)) return;
+    node.inert = false;
+    if (node.getAttribute("aria-hidden") === "true") {
+      node.removeAttribute("aria-hidden");
+    }
+    if (!panel.contains(node)) panel.appendChild(node);
+  });
+}
+
+function returnTinyMceUi(panel: HTMLElement | null) {
+  if (!panel) return;
+  panel.querySelectorAll(TINYMCE_FLOATING_UI).forEach((node) => {
+    document.body.appendChild(node);
+  });
+}
+
 function Modal({
   isOpen,
   onClose,
@@ -66,6 +91,32 @@ function Modal({
   speed = "default",
 }: ModalProps) {
   const snappy = speed === "snappy";
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+
+    let observer: MutationObserver | null = null;
+    let frame = 0;
+
+    const start = () => {
+      const panel = panelRef.current;
+      if (!panel) {
+        frame = requestAnimationFrame(start);
+        return;
+      }
+      parkTinyMceUi(panel);
+      observer = new MutationObserver(() => parkTinyMceUi(panel));
+      observer.observe(document.body, { childList: true });
+    };
+
+    start();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      returnTinyMceUi(panelRef.current);
+    };
+  }, [isOpen]);
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -124,8 +175,9 @@ function Modal({
               }
             >
               <DialogPanel
+                ref={panelRef}
                 className={cn(
-                  "relative w-full transform overflow-hidden text-left align-middle",
+                  "relative w-full overflow-visible text-left align-middle",
                   "bg-surface-elevated border border-rule-hairline",
                   "max-h-[90vh] flex flex-col",
                   MAX_WIDTH_CLASSES[maxWidth]
