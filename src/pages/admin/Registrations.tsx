@@ -32,6 +32,11 @@ type Registration = {
   registrant_name: string;
   registrant_whatsapp: string;
   participant_name: string;
+  participants: Array<{
+    slot: number;
+    participant_name: string;
+    birth_certificate_url: string | null;
+  }>;
   registrant_status: "personal" | "parents" | "teacher";
   registrant_email: string;
   song_title: string | null;
@@ -155,6 +160,7 @@ export default function AdminRegistrations() {
           event_categories ( name ),
           event_subcategories ( name ),
           masterclass_participants ( repertoire, duration, number_of_slots, session_date, preferred_start_at, preferred_end_at ),
+          registration_participants ( slot, participant_name, birth_certificate_url ),
           registrant_name,
           registrant_whatsapp,
           registrant_email,
@@ -188,7 +194,13 @@ export default function AdminRegistrations() {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase nested join response; properly typing the shape is a separate refactor
-      const formatted: Registration[] = data.map((reg: any) => ({
+      const formatted: Registration[] = data.map((reg: any) => {
+        const participants = (reg.registration_participants || [])
+          .slice()
+          .sort(
+            (a: { slot: number }, b: { slot: number }) => a.slot - b.slot
+          );
+        return {
         id: reg.id,
         event_id: reg.event_id,
         event_title: reg.events.title,
@@ -198,7 +210,10 @@ export default function AdminRegistrations() {
         registrant_whatsapp: reg.registrant_whatsapp,
         registrant_email: reg.registrant_email,
         registrant_status: reg.registrant_status,
-        participant_name: reg.participant_name,
+        participant_name: participants.length
+          ? participants.map((person: { participant_name: string }) => person.participant_name).join(" & ")
+          : reg.participant_name,
+        participants,
         song_title: reg.song_title,
         song_duration: reg.song_duration,
         birth_certificate_url: reg.birth_certificate_url,
@@ -210,7 +225,8 @@ export default function AdminRegistrations() {
         payment_receipt_url: reg.payment_receipt_url,
         status: reg.status,
         created_at: reg.created_at,
-      }));
+      };
+      });
 
       setRegistrations(formatted);
     } catch (error) {
@@ -607,6 +623,16 @@ function RegistrationDetails({
   onStatusChange,
   handleDocumentView,
 }: RegistrationDetailsProps) {
+  const performers = registration.participants.length
+    ? registration.participants
+    : [
+        {
+          slot: 1,
+          participant_name: registration.participant_name,
+          birth_certificate_url: registration.birth_certificate_url,
+        },
+      ];
+
   return (
     <div className="flex flex-col gap-7">
       <DetailSection label="Event">
@@ -631,8 +657,14 @@ function RegistrationDetails({
         <DetailRow label="Email" value={registration.registrant_email} />
       </DetailSection>
 
-      <DetailSection label="Participant">
-        <DetailRow label="Name" value={registration.participant_name} />
+      <DetailSection label={performers.length > 1 ? "Participants" : "Participant"}>
+        {performers.map((performer) => (
+          <DetailRow
+            key={performer.slot}
+            label={performers.length > 1 ? `Participant ${performer.slot}` : "Name"}
+            value={performer.participant_name}
+          />
+        ))}
         {registration.song_title && (
           <DetailRow label="Song title" value={registration.song_title} />
         )}
@@ -662,10 +694,19 @@ function RegistrationDetails({
       </DetailSection>
 
       <DetailSection label="Documents">
-        <DocumentRow
-          label="Birth certificate"
-          onClick={() => handleDocumentView(registration.birth_certificate_url)}
-        />
+        {performers.map((performer) =>
+          performer.birth_certificate_url ? (
+            <DocumentRow
+              key={performer.slot}
+              label={
+                performers.length > 1
+                  ? `Birth certificate ${performer.slot}`
+                  : "Birth certificate"
+              }
+              onClick={() => handleDocumentView(performer.birth_certificate_url!)}
+            />
+          ) : null
+        )}
         {registration.song_pdf_url?.map((url, index) => (
           <DocumentRow key={url} label={`Song PDF ${index + 1}`} onClick={() => handleDocumentView(url)} />
         ))}

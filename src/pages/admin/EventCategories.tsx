@@ -136,6 +136,7 @@ export default function AdminEventCategories() {
       description: string | null;
       repertoire: string[] | null;
       order_index: number;
+      participant_count: number;
     },
     isEdit: boolean
   ) => {
@@ -149,6 +150,7 @@ export default function AdminEventCategories() {
             description: data.description,
             repertoire: data.repertoire,
             order_index: data.order_index,
+            participant_count: data.participant_count,
           })
           .eq("id", categoryModal.initialData.id)
           .select();
@@ -389,6 +391,7 @@ export default function AdminEventCategories() {
                   ? (categoryModal.initialData.repertoire as string[])
                   : null,
                 order_index: categoryModal.initialData.order_index,
+                participant_count: categoryModal.initialData.participant_count ?? 1,
               }
             : null
         }
@@ -531,6 +534,10 @@ function CategoryRow({
         {/* Category name + description */}
         <div className="flex flex-col gap-2">
           <h3 className="type-title-lg text-burgundy">{category.name}</h3>
+          <p className="type-caption text-ink-muted">
+            {category.participant_count}{" "}
+            {category.participant_count === 1 ? "participant" : "participants"}
+          </p>
           {category.description ? (
             <div
               className="type-body-sm text-ink-muted prose prose-sm max-w-none"

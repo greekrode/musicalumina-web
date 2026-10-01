@@ -204,6 +204,35 @@ export interface Database {
           selected_date?: string | null;
         };
       };
+      registration_participants: {
+        Row: {
+          id: string;
+          registration_id: string;
+          slot: number;
+          participant_name: string;
+          birth_certificate_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          registration_id: string;
+          slot: number;
+          participant_name: string;
+          birth_certificate_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          registration_id?: string;
+          slot?: number;
+          participant_name?: string;
+          birth_certificate_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       contact_messages: {
         Row: {
           id: string;
@@ -242,6 +271,7 @@ export interface Database {
           created_at: string;
           repertoire: Json | null;
           order_index: number;
+          participant_count: number;
           updated_at: string;
         };
         Insert: {
@@ -252,6 +282,7 @@ export interface Database {
           created_at?: string;
           repertoire?: Json | null;
           order_index: number;
+          participant_count?: number;
           updated_at?: string;
         };
         Update: {
@@ -262,6 +293,7 @@ export interface Database {
           created_at?: string;
           repertoire?: Json | null;
           order_index?: number;
+          participant_count?: number;
           updated_at?: string;
         };
       };

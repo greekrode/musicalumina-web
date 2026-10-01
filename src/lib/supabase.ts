@@ -42,6 +42,7 @@ export async function getEvents({
           name,
           description,
           repertoire,
+          participant_count,
           event_subcategories (
             id,
             name,
@@ -123,6 +124,7 @@ export async function getEventById(id: string) {
           description,
           repertoire,
           order_index,
+          participant_count,
           event_subcategories (
             id,
             name,

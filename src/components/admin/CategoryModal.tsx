@@ -40,6 +40,11 @@ const categorySchema = z.object({
   description: z.string().nullable(),
   repertoire: z.array(z.string()).nullable(),
   order_index: z.coerce.number().int().min(0, "Order is required"),
+  participant_count: z.coerce
+    .number()
+    .int()
+    .min(1, "At least 1 participant")
+    .max(4, "At most 4 participants"),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -135,6 +140,7 @@ export function CategoryModal({
     description: initialData?.description || "",
     repertoire: initialData?.repertoire || [],
     order_index: initialData?.order_index ?? 0,
+    participant_count: initialData?.participant_count ?? 1,
   });
   const [newRepertoireItem, setNewRepertoireItem] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -154,6 +160,7 @@ export function CategoryModal({
       description: initialData?.description || "",
       repertoire: initialData?.repertoire || [],
       order_index: initialData?.order_index ?? 0,
+      participant_count: initialData?.participant_count ?? 1,
     });
     setNewRepertoireItem("");
     setEditingIndex(null);
@@ -266,7 +273,7 @@ export function CategoryModal({
         )}
 
         {/* Name + order */}
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px] gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_160px] gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="cat-name">Category name</Label>
             <Input
@@ -276,6 +283,19 @@ export function CategoryModal({
               value={form.name}
               onChange={handleChange}
               placeholder="e.g. Junior Solo Piano"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="cat-participants">Participants</Label>
+            <Input
+              id="cat-participants"
+              name="participant_count"
+              type="number"
+              min={1}
+              max={4}
+              variant="boxed"
+              value={form.participant_count}
+              onChange={handleChange}
             />
           </div>
           <div className="flex flex-col gap-2">

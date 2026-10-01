@@ -42,12 +42,36 @@ function formatDateForEmail(dateString: string): string {
   return `${getOrdinal(day)} ${month} ${year}`;
 }
 
+function competitionParticipantRows(data: EmailMessageData): string {
+  const names = (data.participant_names ?? []).map((name) => name.trim()).filter(Boolean);
+  const list = names.length > 0 ? names : [data.participant_name];
+  const indonesian = data.language === "id";
+  return list
+    .map((name, index) => {
+      const label =
+        list.length === 1
+          ? indonesian
+            ? "Nama Peserta:"
+            : "Participant Name:"
+          : indonesian
+            ? `Peserta ${index + 1}:`
+            : `Participant ${index + 1}:`;
+      return `
+            <div class="detail-row">
+              <div class="detail-label">${label}</div>
+              <div class="detail-value">${name}</div>
+            </div>`;
+    })
+    .join("");
+}
+
 interface EmailMessageData {
   registrant_status?: string;
   registrant_name: string;
   registrant_email: string;
   registrant_whatsapp?: string;
   participant_name: string;
+  participant_names?: string[];
   participant_age?: number;
   song_title?: string;
   song_duration?: string;
@@ -238,10 +262,7 @@ export class EmailService {
               <div class="detail-label">Status Pendaftar:</div>
               <div class="detail-value">${registrantType}</div>
             </div>
-            <div class="detail-row">
-              <div class="detail-label">Nama Peserta:</div>
-              <div class="detail-value">${data.participant_name}</div>
-            </div>
+            ${competitionParticipantRows(data)}
             <div class="detail-row">
               <div class="detail-label">Kategori:</div>
               <div class="detail-value">${data.category}</div>
@@ -295,10 +316,7 @@ export class EmailService {
               <div class="detail-label">Registrant Status:</div>
               <div class="detail-value">${registrantType}</div>
             </div>
-            <div class="detail-row">
-              <div class="detail-label">Participant Name:</div>
-              <div class="detail-value">${data.participant_name}</div>
-            </div>
+            ${competitionParticipantRows(data)}
             <div class="detail-row">
               <div class="detail-label">Category:</div>
               <div class="detail-value">${data.category}</div>

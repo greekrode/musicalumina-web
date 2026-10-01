@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -31,7 +31,6 @@ interface FileState {
 }
 
 interface FileStates {
-  birth_certificate: FileState;
   song_pdf: FileState;
   payment_receipt: FileState;
 }
@@ -51,10 +50,16 @@ function createRegistrationSchema(
       .string()
       .regex(/^\+[1-9]\d{1,14}$/, t("validation.invalidPhone")),
     registrant_email: z.string().email(t("validation.invalidEmail")),
-    participant_name: z
-      .string()
-      .min(3, t("validation.minName"))
-      .max(100, t("validation.maxNameLength")),
+    participants: z
+      .array(
+        z.object({
+          name: z
+            .string()
+            .min(3, t("validation.minName"))
+            .max(100, t("validation.maxNameLength")),
+        })
+      )
+      .min(1),
     category_id: z.string().uuid(t("validation.selectCategory")),
     subcategory_id: z.string().uuid(t("validation.selectSubCategory")),
     song_title: z
@@ -101,6 +106,7 @@ type RegistrationForm = z.infer<ReturnType<typeof createRegistrationSchema>>;
 interface Category {
   id: string;
   name: string;
+  participant_count?: number;
   repertoire?: string[];
   event_subcategories: Array<{
     id: string;
@@ -174,10 +180,13 @@ function RegistrationModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [files, setFiles] = useState<FileStates>({
-    birth_certificate: { file: null },
     song_pdf: { file: null },
     payment_receipt: { file: null },
   });
+  const [birthCertificates, setBirthCertificates] = useState<FileState[]>([
+    { file: null },
+  ]);
+  const [activeParticipant, setActiveParticipant] = useState(0);
 
   const isOnlineEvent = eventVenue.toLowerCase() === "online";
   const registrationSchema = createRegistrationSchema(t, isOnlineEvent);
@@ -189,15 +198,21 @@ function RegistrationModal({
     setError,
     control,
     reset,
+    getValues,
     formState: { errors },
   } = useForm<RegistrationForm>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
       registrant_status: "personal",
       registrant_whatsapp: "",
+      participants: [{ name: "" }],
       song_duration: "",
       video_url: "",
     },
+  });
+  const { fields, replace } = useFieldArray({
+    control,
+    name: "participants",
   });
 
   const registrantStatus = watch("registrant_status") as
@@ -207,6 +222,10 @@ function RegistrationModal({
   const categoryId = watch("category_id") as string;
 
   const selectedCategory = categories.find((cat) => cat.id === categoryId);
+  const participantCount = Math.min(
+    4,
+    Math.max(1, selectedCategory?.participant_count ?? 1)
+  );
   const hasRepertoire =
     (selectedCategory?.repertoire && selectedCategory.repertoire.length > 0) ||
     (selectedCategory?.event_subcategories.some(
@@ -214,6 +233,24 @@ function RegistrationModal({
         sub.repertoire && sub.repertoire.length > 0
     ) &&
       eventType === "festival");
+
+  useEffect(() => {
+    const current = getValues("participants");
+    if (current.length === participantCount) return;
+    replace(
+      Array.from({ length: participantCount }, (_, index) => current[index] ?? { name: "" })
+    );
+    setBirthCertificates((prev) =>
+      Array.from({ length: participantCount }, (_, index) => prev[index] ?? { file: null })
+    );
+    setActiveParticipant(0);
+  }, [participantCount, getValues, replace]);
+
+  useEffect(() => {
+    if (!Array.isArray(errors.participants)) return;
+    const index = errors.participants.findIndex((item) => item?.name);
+    if (index >= 0) setActiveParticipant(index);
+  }, [errors.participants]);
 
   const handleFileChange = (type: keyof FileStates) => (file: File | null) => {
     if (file && file.size > MAX_FILE_SIZE) {
@@ -229,14 +266,38 @@ function RegistrationModal({
     }));
   };
 
+  const handleBirthCertificateChange = (index: number) => (file: File | null) => {
+    if (file && file.size > MAX_FILE_SIZE) {
+      setBirthCertificates((prev) => {
+        const next = [...prev];
+        next[index] = { file: null, error: t("validation.fileSizeLimit") };
+        return next;
+      });
+      return;
+    }
+    setBirthCertificates((prev) => {
+      const next = [...prev];
+      next[index] = { file, error: undefined };
+      return next;
+    });
+  };
+
   const validateFiles = () => {
     let isValid = true;
-    const newFiles = { ...files };
+    let firstInvalidParticipant = -1;
+    const nextCertificates = Array.from({ length: participantCount }, (_, index) => {
+      const current = birthCertificates[index] ?? { file: null };
+      if (!current.file) {
+        isValid = false;
+        if (firstInvalidParticipant < 0) firstInvalidParticipant = index;
+        return { file: null, error: t("validation.uploadBirthCert") };
+      }
+      return { file: current.file, error: undefined };
+    });
+    setBirthCertificates(nextCertificates);
+    if (firstInvalidParticipant >= 0) setActiveParticipant(firstInvalidParticipant);
 
-    if (!files.birth_certificate.file) {
-      newFiles.birth_certificate.error = t("validation.uploadBirthCert");
-      isValid = false;
-    }
+    const newFiles = { ...files };
     if (!files.payment_receipt.file) {
       newFiles.payment_receipt.error = t("validation.uploadPayment");
       isValid = false;
@@ -322,18 +383,26 @@ function RegistrationModal({
         phone.slice(-4) || phone
       }`;
 
+      const performers = data.participants.slice(0, participantCount);
       const uploadPromises = [
-        uploadFile(files.birth_certificate.file!, "birth-certificates"),
+        ...performers.map((_, index) =>
+          uploadFile(birthCertificates[index].file!, "birth-certificates")
+        ),
         uploadFile(files.payment_receipt.file!, "payment-receipts"),
       ];
       if (files.song_pdf.file) {
         uploadPromises.push(uploadFile(files.song_pdf.file, "song-pdfs"));
       }
       const uploadedFiles = await Promise.all(uploadPromises);
-      const [birthCertUrl, paymentReceiptUrl, songPdfUrl] = uploadedFiles;
+      const birthCertUrls = uploadedFiles.slice(0, performers.length);
+      const paymentReceiptUrl = uploadedFiles[performers.length];
+      const songPdfUrl = files.song_pdf.file
+        ? uploadedFiles[performers.length + 1]
+        : undefined;
+      const primaryName = performers[0]?.name ?? "";
 
       if (!data.registrant_name || data.registrant_name === "") {
-        data.registrant_name = data.participant_name;
+        data.registrant_name = primaryName;
       }
 
       const category = categories.find((cat) => cat.id === data.category_id);
@@ -350,12 +419,12 @@ function RegistrationModal({
           registrant_name: data.registrant_name,
           registrant_whatsapp: data.registrant_whatsapp,
           registrant_email: data.registrant_email,
-          participant_name: data.participant_name,
+          participant_name: primaryName,
           category_id: data.category_id,
           subcategory_id: data.subcategory_id,
           song_title: data.song_title,
           song_duration: data.song_duration,
-          birth_certificate_url: birthCertUrl,
+          birth_certificate_url: birthCertUrls[0],
           song_pdf_url: songPdfUrl ? [songPdfUrl] : null,
           video_url: data.video_url || null,
           bank_name: data.bank_name,
@@ -370,6 +439,20 @@ function RegistrationModal({
 
       if (registrationError) {
         throw new Error(`Registration failed: ${registrationError.message}`);
+      }
+
+      const { error: participantError } = await supabase
+        .from("registration_participants")
+        .insert(
+          performers.map((performer, index) => ({
+            registration_id: registrationId,
+            slot: index + 1,
+            participant_name: performer.name,
+            birth_certificate_url: birthCertUrls[index],
+          }))
+        );
+      if (participantError) {
+        throw new Error(`Registration failed: ${participantError.message}`);
       }
 
       if (!import.meta.env.DEV) {
@@ -403,15 +486,15 @@ function RegistrationModal({
               registrant_status:
                 data.registrant_status.charAt(0).toUpperCase() +
                 data.registrant_status.slice(1),
-              registrant_name: data.registrant_name || data.participant_name,
+              registrant_name: data.registrant_name || primaryName,
               registrant_email: data.registrant_email,
               registrant_whatsapp: data.registrant_whatsapp,
-              participant_name: data.participant_name,
+              participant_name: primaryName,
               category_name: category?.name || "",
               subcategory_name: subCategory?.name || "",
               song_title: data.song_title,
               song_duration: data.song_duration || "",
-              birth_certificate_url: birthCertUrl,
+              birth_certificate_url: birthCertUrls[0],
               song_pdf_url: songPdfUrl ? [songPdfUrl] : null,
               video_url: data.video_url || null,
               bank_name: data.bank_name,
@@ -429,10 +512,11 @@ function RegistrationModal({
       try {
         await EmailService.sendCompetitionRegistrationEmail({
           registrant_status: data.registrant_status,
-          registrant_name: data.registrant_name || data.participant_name,
+          registrant_name: data.registrant_name || primaryName,
           registrant_email: data.registrant_email,
           registrant_whatsapp: data.registrant_whatsapp,
-          participant_name: data.participant_name,
+          participant_name: primaryName,
+          participant_names: performers.map((performer) => performer.name),
           song_title: data.song_title,
           song_duration: data.song_duration || "",
           category: category?.name || "",
@@ -472,11 +556,12 @@ function RegistrationModal({
       }
 
       setRegistrationRef(refNumber);
-      setRegisteredName(data.participant_name);
+      setRegisteredName(performers.map((performer) => performer.name).join(" & "));
       setShowThankYou(true);
       reset();
+      setActiveParticipant(0);
+      setBirthCertificates([{ file: null }]);
       setFiles({
-        birth_certificate: { file: null },
         song_pdf: { file: null },
         payment_receipt: { file: null },
       });
@@ -620,26 +705,8 @@ function RegistrationModal({
             </Field>
           </Section>
 
-          {/* ───────────────────────────────────────── PARTICIPANT ───── */}
-          <Section eyebrow="02 · Participant">
-            <Field>
-              <Label variant="editorial" htmlFor="participant_name">
-                {t("registration.fullName")} {REQ}
-              </Label>
-              <Input
-                variant="boxed"
-                id="participant_name"
-                type="text"
-                {...register("participant_name")}
-                aria-invalid={errors.participant_name ? true : undefined}
-              />
-              {errors.participant_name && (
-                <p className={FIELD_ERROR_CLASS}>
-                  {errors.participant_name.message}
-                </p>
-              )}
-            </Field>
-
+          {/* ───────────────────────────────────────── CATEGORY ───── */}
+          <Section eyebrow="02 · Category">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <Field>
                 <Label variant="editorial" htmlFor="category_id">
@@ -693,6 +760,74 @@ function RegistrationModal({
                 </Field>
               )}
             </div>
+          </Section>
+
+          {/* ───────────────────────────────────────── PARTICIPANTS ───── */}
+          <Section eyebrow="03 · Participants">
+            {participantCount > 1 && (
+              <div role="tablist" aria-label={t("registration.participantData")} className="flex gap-2">
+                {fields.map((field, index) => {
+                  const tabInvalid = Boolean(
+                    errors.participants?.[index]?.name || birthCertificates[index]?.error
+                  );
+                  return (
+                    <button
+                      key={field.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeParticipant === index}
+                      onClick={() => setActiveParticipant(index)}
+                      className={cn(
+                        "h-10 px-4 type-label border-b-2",
+                        activeParticipant === index
+                          ? "border-marigold text-burgundy"
+                          : "border-transparent text-ink-muted",
+                        tabInvalid && "text-[color:var(--status-error)]"
+                      )}
+                    >
+                      {t("registration.participant")} {index + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                hidden={participantCount > 1 && activeParticipant !== index}
+                className="flex flex-col gap-5"
+              >
+                <Field>
+                  <Label variant="editorial" htmlFor={`participant_name_${index}`}>
+                    {t("registration.fullName")} {REQ}
+                  </Label>
+                  <Input
+                    variant="boxed"
+                    id={`participant_name_${index}`}
+                    type="text"
+                    {...register(`participants.${index}.name`)}
+                    aria-invalid={errors.participants?.[index]?.name ? true : undefined}
+                  />
+                  {errors.participants?.[index]?.name && (
+                    <p className={FIELD_ERROR_CLASS}>
+                      {errors.participants[index]?.name?.message}
+                    </p>
+                  )}
+                </Field>
+                <FileUpload
+                  label={t("registration.birthCertificate")}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  registration={{
+                    name: `birth_certificate_${index}`,
+                    onChange: async () => true,
+                    onBlur: async () => true,
+                  }}
+                  error={birthCertificates[index]?.error}
+                  onFileChange={handleBirthCertificateChange(index)}
+                />
+              </div>
+            ))}
 
             {hasRepertoire ? (
               <Field>
@@ -765,19 +900,8 @@ function RegistrationModal({
           </Section>
 
           {/* ───────────────────────────────────────── DOCUMENTS ───── */}
-          <Section eyebrow="03 · Documents">
-            <FileUpload
-              label={t("registration.birthCertificate")}
-              accept=".pdf,.jpg,.jpeg,.png"
-              registration={{
-                name: "birth_certificate",
-                onChange: async () => true,
-                onBlur: async () => true,
-              }}
-              error={files.birth_certificate.error}
-              onFileChange={handleFileChange("birth_certificate")}
-            />
-
+          {(!hasRepertoire || isOnlineEvent) && (
+          <Section eyebrow="04 · Documents">
             {!hasRepertoire && (
               <FileUpload
                 label={t("registration.songPdf")}
@@ -830,9 +954,10 @@ function RegistrationModal({
               </Field>
             )}
           </Section>
+          )}
 
           {/* ───────────────────────────────────────── PAYMENT ───── */}
-          <Section eyebrow="04 · Payment">
+          <Section eyebrow={`${!hasRepertoire || isOnlineEvent ? "05" : "04"} · Payment`}>
             <PaymentInfoCard label={t("registration.bankTransferDetails")}>
               <p className="type-body-md text-burgundy">
                 Bank Central Asia (BCA)
