@@ -210,7 +210,8 @@ export default function GroupClassRegistrationModal({
         data.registrant_name = data.participant_name;
       }
 
-      const { data: registration, error: registrationError } = await supabase
+      // Insert only: visitors cannot read registrations back under RLS.
+      const { error: registrationError } = await supabase
         .from("registrations")
         .insert([
           {
@@ -230,9 +231,7 @@ export default function GroupClassRegistrationModal({
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
-        ])
-        .select()
-        .single();
+        ]);
 
       if (registrationError) throw registrationError;
 
@@ -271,7 +270,7 @@ export default function GroupClassRegistrationModal({
               bank_account_name: data.bank_account_name,
               bank_account_number: data.bank_account_number,
               payment_receipt_url: paymentReceiptUrl,
-              created_at: registration.created_at,
+              created_at: new Date().toISOString(),
             },
           });
         } catch (error) {

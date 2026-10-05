@@ -410,7 +410,8 @@ function RegistrationModal({
         (sub) => sub.id === data.subcategory_id
       );
 
-      const { data: registration, error: registrationError } = await supabase
+      // Insert only: visitors cannot read registrations back under RLS.
+      const { error: registrationError } = await supabase
         .from("registrations")
         .insert({
           id: registrationId,
@@ -433,9 +434,7 @@ function RegistrationModal({
           payment_receipt_url: paymentReceiptUrl,
           status: "pending",
           ref_code: refNumber,
-        })
-        .select()
-        .single();
+        });
 
       if (registrationError) {
         throw new Error(`Registration failed: ${registrationError.message}`);
@@ -501,7 +500,7 @@ function RegistrationModal({
               bank_account_name: data.bank_account_name,
               bank_account_number: data.bank_account_number,
               payment_receipt_url: paymentReceiptUrl,
-              created_at: registration.created_at,
+              created_at: new Date().toISOString(),
             },
           });
         } catch (error) {

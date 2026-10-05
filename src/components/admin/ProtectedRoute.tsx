@@ -12,9 +12,11 @@ interface ProtectedRouteProps {
 /**
  * ProtectedRoute — authorization wall for every admin route.
  *
- * Authorization rules preserved exactly from the original:
- *   - Clerk `org:admin` role → authorized
- *   - Email or username contains "staff" → authorized
+ * Authorization comes from Clerk publicMetadata.role (writable only from the
+ * Clerk dashboard or backend). Email and username text are never permission
+ * signals. RLS (public.is_admin) checks the same claim server-side.
+ *   - role `admin` (legacy `org:admin` accepted) → authorized. `staff` is
+ *     scanner-only and `jury` is scoring-only, so both are denied here.
  *   - Otherwise → denied, auto-logout after 3 seconds
  *
  * Only the loading / denied UIs have been redesigned to the editorial system.
@@ -29,28 +31,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     if (isLoaded && user) {
       const checkAuthorization = () => {
         try {
-          const hasAdminRole =
-            user.organizationMemberships?.some(
-              (membership) => membership.role === "org:admin"
-            ) || user.publicMetadata?.role === "org:admin";
-
-          if (hasAdminRole) {
-            setIsAuthorized(true);
-            return;
-          }
-
-          const email =
-            user.primaryEmailAddress?.emailAddress?.toLowerCase() || "";
-          const username = user.username?.toLowerCase() || "";
-
-          if (email.includes("staff") || username.includes("staff")) {
+          const role = user.publicMetadata?.role;
+          if (typeof role === "string" && role.replace(/^org:/, "") === "admin") {
             setIsAuthorized(true);
             return;
           }
 
           setIsAuthorized(false);
           setAuthError(
-            "Access denied: You must be an admin or staff member to use this application."
+            "Access denied: only accounts with the admin role can use the admin."
           );
 
           setTimeout(() => {

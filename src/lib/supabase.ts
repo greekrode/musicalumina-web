@@ -8,14 +8,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing Supabase environment variables");
 }
 
-// Create Supabase client with custom headers for admin role
+declare global {
+  interface Window {
+    Clerk?: { session?: { getToken(): Promise<string | null> } | null };
+  }
+}
+
+// Signed-in staff send their Clerk session token (Supabase third-party auth);
+// RLS checks its publicMetadata role via public.is_admin(). Visitors send none
+// and fall back to the anon key.
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  global: {
-    headers: {
-      // This will be used by RLS policies to determine admin access
-      "x-admin-role": "admin",
-    },
-  },
+  accessToken: async () => (await window.Clerk?.session?.getToken()) ?? null,
 });
 
 export async function getEvents({
@@ -162,11 +165,11 @@ export async function getEventById(id: string) {
     }
 
     // Get registration count for this event
-    const { count: registrationCount, error: countError } = await supabase
-      .from("registrations")
-      .select("*", { count: "exact", head: true })
-      .eq("event_id", id)
-      .in("status", ["pending", "verified"]);
+    // Registrations are staff-only under RLS; the count comes from a definer RPC.
+    const { data: registrationCount, error: countError } = await supabase.rpc(
+      "event_registration_count",
+      { p_event_id: id }
+    );
 
     if (countError) {
       console.error("Error fetching registration count:", countError);
@@ -390,26 +393,24 @@ export async function sendContactMessage(data: {
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // First, insert the message into the database
-    const { data: insertedMessage, error: dbError } = await supabase
-      .from("contact_messages")
-      .insert([
-        {
-          ...data,
-          created_at: new Date().toISOString(),
-          sent_at: null,
-        },
-      ])
-      .select()
-      .single();
+    // Visitors cannot read contact messages back (RLS), so mint the id here.
+    const messageId = crypto.randomUUID();
+    const { error: dbError } = await supabase.from("contact_messages").insert([
+      {
+        id: messageId,
+        ...data,
+        created_at: new Date().toISOString(),
+        sent_at: null,
+      },
+    ]);
 
     if (dbError) throw dbError;
-    if (!insertedMessage) throw new Error("Failed to insert message");
 
     // Then, trigger the Edge Function to send the email
     const { error: functionError } = await supabase.functions.invoke(
       "send-contact-email",
       {
-        body: { ...data, messageId: insertedMessage.id },
+        body: { ...data, messageId },
       }
     );
 

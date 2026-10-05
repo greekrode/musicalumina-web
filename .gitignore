@@ -35,3 +35,4 @@ MEMORY/
 
 CLAUDE.md
 .cursor/
+supabase/functions/.env

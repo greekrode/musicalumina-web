@@ -8,7 +8,7 @@ values were therefore readable by anyone who opened the site's source. That
 made the n8n webhook an open ingestion endpoint and the HS256 signing key
 a shared secret with every visitor.
 
-The six functions in this directory close that gap. Each one:
+The proxy functions in this directory close that gap. Each one:
 
 1. Receives a request from the client via `supabase.functions.invoke(name, { body })`.
 2. Reads the real credentials from `Deno.env` (never in the client bundle).
@@ -136,3 +136,25 @@ obvious from the URL (`lark-search` vs `send-to-lark`), and lets Supabase
 scale / log / alert on them independently. The cost is a little more
 boilerplate, which the `_shared/n8n.ts` helper keeps under 5 lines per
 function.
+
+## Clerk auth for the admin (RLS)
+
+The admin signs in with Clerk. The Supabase client sends the Clerk session
+token (`accessToken` in `src/lib/supabase.ts`), and RLS calls
+`public.is_admin()` / `public.clerk_role()`, which trust only the verified
+token's `metadata.role` claim, copied from Clerk publicMetadata. Roles: `admin`
+(web admin, full access), `jury` (scoring app, reads registrations), `staff`
+(QR scanner only). Visitors send
+no token and use the anon key.
+
+Rollout order (migration `20261005100000_clerk_role_rls.sql`):
+
+1. Clerk dashboard → Integrations → Supabase → activate (adds `role: authenticated`).
+2. Supabase dashboard → Authentication → Third-party auth → add Clerk with your Clerk domain.
+3. Clerk dashboard → Sessions → Customize session token: `{ "metadata": "{{user.public_metadata}}" }`. Then set each staff user's public metadata to `{ "role": "admin" }`, `{ "role": "jury" }` or `{ "role": "staff" }`.
+4. Deploy the web app, then apply the migration (`supabase db push`).
+5. Smoke test signed out: home, an event page (registration count), a registration submit, the contact form. Signed in as staff: every admin page, one upload, one registration status change.
+
+QR check-in no longer uses an Edge Function. The scanner app
+(`musicalumina-qr-scanner`) ships its own Cloudflare Worker, which calls the
+`check_in_pass` RPC with the service role.
