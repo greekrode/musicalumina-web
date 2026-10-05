@@ -3,8 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabase";
-import { InvitationCodeCrypto } from "../lib/crypto";
+import { edgeFunctions } from "../lib/supabase";
 import Modal from "./Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +19,13 @@ interface InvitationPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   eventId: string;
-  onSuccess: (invitationCodeId: string) => void;
+  /** Receives the verified plaintext code; it is redeemed on submit. */
+  onSuccess: (invitationCode: string) => void;
 }
 
 /**
- * InvitationPasswordModal — verifies an invitation code against the event's
- * active codes table. Editorial styling, same crypto + Supabase wiring.
+ * InvitationPasswordModal — checks an invitation code with the
+ * invitation-code edge function. Hashes never reach the browser.
  */
 export default function InvitationPasswordModal({
   isOpen,
@@ -50,52 +50,21 @@ export default function InvitationPasswordModal({
       setIsLoading(true);
       setError(null);
 
-      const { data: allCodes, error: fetchError } = await supabase
-        .from("invitation_codes")
-        .select("*")
-        .eq("event_id", eventId)
-        .eq("active", true);
+      const { data: result, error: verifyError } = await edgeFunctions.invoke<{ valid?: boolean }>(
+        "invitation-code",
+        { body: { action: "verify", eventId, code: data.password } }
+      );
 
-      if (fetchError) {
+      if (verifyError) {
         throw new Error("Failed to verify invitation code");
       }
 
-      if (!allCodes || allCodes.length === 0) {
+      if (!result?.valid) {
         setError("Invalid invitation code or no available slots");
         return;
       }
 
-      const now = new Date();
-      const invitationCodes = allCodes.filter((code) => {
-        const hasAvailableUses = code.current_uses < code.max_uses;
-        const notExpired =
-          !code.expires_at || new Date(code.expires_at) > now;
-        return hasAvailableUses && notExpired;
-      });
-
-      if (invitationCodes.length === 0) {
-        setError("Invalid invitation code or no available slots");
-        return;
-      }
-
-      let validCodeId: string | null = null;
-      for (const code of invitationCodes) {
-        const isValid = await InvitationCodeCrypto.verifyCode(
-          data.password,
-          code.code_hash
-        );
-        if (isValid) {
-          validCodeId = code.id;
-          break;
-        }
-      }
-
-      if (!validCodeId) {
-        setError("Invalid invitation code");
-        return;
-      }
-
-      onSuccess(validCodeId);
+      onSuccess(data.password);
       reset();
     } catch (err) {
       console.error("Error verifying invitation code:", err);

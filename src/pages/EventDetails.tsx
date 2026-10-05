@@ -147,8 +147,8 @@ function EventDetails() {
     setIsInvitationPasswordModalOpen(true);
   };
 
-  const handleInvitationPasswordSuccess = (invitationCodeId: string) => {
-    setValidInvitationCodeId(invitationCodeId);
+  const handleInvitationPasswordSuccess = (invitationCode: string) => {
+    setValidInvitationCodeId(invitationCode);
     setIsInvitationPasswordModalOpen(false);
     setIsRegistrationModalOpen(true);
   };
@@ -533,7 +533,7 @@ function EventDetails() {
         categories={event.event_categories}
         maxQuota={validInvitationCodeId ? undefined : event.max_quota || undefined}
         registrationCount={event.registration_count || 0}
-        invitationCodeId={validInvitationCodeId}
+        invitationCode={validInvitationCodeId}
         onOpenTerms={() => setIsTermsModalOpen(true)}
       />
 

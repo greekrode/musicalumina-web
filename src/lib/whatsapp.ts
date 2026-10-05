@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { edgeFunctions } from "./supabase";
 
 /**
  * WhatsAppService — browser client for the `whatsapp-send` Edge Function.
@@ -14,7 +14,7 @@ async function sendWhatsAppViaFunction(payload: {
   phone: string;
   message: string;
 }): Promise<void> {
-  const { error } = await supabase.functions.invoke("whatsapp-send", {
+  const { error } = await edgeFunctions.invoke("whatsapp-send", {
     body: payload,
   });
   if (error) {

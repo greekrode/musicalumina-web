@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import { supabase } from "../lib/supabase";
+import { edgeFunctions, signRegistrationUpload, supabase } from "../lib/supabase";
 import FileUpload from "./FileUpload";
 import Modal from "./Modal";
 import ThankYouModal from "./ThankYouModal";
@@ -127,7 +127,8 @@ interface RegistrationModalProps {
   onOpenTerms: () => void;
   maxQuota?: number;
   registrationCount?: number;
-  invitationCodeId?: string | null;
+  /** Verified invitation code (plaintext); redeemed server-side on submit. */
+  invitationCode?: string | null;
 }
 
 /* ============================================================================
@@ -171,7 +172,7 @@ function RegistrationModal({
   onOpenTerms,
   maxQuota,
   registrationCount = 0,
-  invitationCodeId,
+  invitationCode,
 }: RegistrationModalProps) {
   const { t, language } = useLanguage();
   const [showThankYou, setShowThankYou] = useState(false);
@@ -329,17 +330,8 @@ function RegistrationModal({
         throw new Error("Upload succeeded but no path returned");
       }
 
-      const { data: signedUrlData, error: signedUrlError } =
-        await supabase.storage
-          .from("registration-documents")
-          .createSignedUrl(data.path, 31536000);
-
-      if (signedUrlError || !signedUrlData?.signedUrl) {
-        console.error("Signed URL error:", signedUrlError);
-        throw new Error("Failed to generate signed URL for uploaded file");
-      }
-
-      return signedUrlData.signedUrl;
+      // Visitors cannot read the bucket; a function signs this fresh upload.
+      return await signRegistrationUpload(data.path);
     } catch (error) {
       console.error("Error uploading file:", error);
       throw error;
@@ -528,26 +520,15 @@ function RegistrationModal({
         console.error("Error sending email:", error);
       }
 
-      if (invitationCodeId) {
+      if (invitationCode) {
         try {
-          const { data: currentCode, error: fetchError } = await supabase
-            .from("invitation_codes")
-            .select("current_uses")
-            .eq("id", invitationCodeId)
-            .single();
-          if (fetchError) {
-            console.error("Error fetching invitation code:", fetchError);
-          } else {
-            const { error: updateError } = await supabase
-              .from("invitation_codes")
-              .update({ current_uses: currentCode.current_uses + 1 })
-              .eq("id", invitationCodeId);
-            if (updateError) {
-              console.error(
-                "Error updating invitation code usage:",
-                updateError
-              );
-            }
+          // Server re-checks the code and this pending registration, then
+          // increments the use count atomically.
+          const { error: redeemError } = await edgeFunctions.invoke("invitation-code", {
+            body: { action: "redeem", eventId, code: invitationCode, registrationId },
+          });
+          if (redeemError) {
+            console.error("Error updating invitation code usage:", redeemError);
           }
         } catch (error) {
           console.error("Error incrementing invitation code usage:", error);

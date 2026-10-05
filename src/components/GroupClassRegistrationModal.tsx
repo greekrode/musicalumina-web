@@ -6,7 +6,7 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { z } from "zod";
 import { useLanguage } from "../lib/LanguageContext";
-import { supabase } from "../lib/supabase";
+import { signRegistrationUpload, supabase } from "../lib/supabase";
 import { EmailService } from "../lib/email";
 import FileUpload from "./FileUpload";
 import LoadingModal from "./LoadingModal";
@@ -173,14 +173,8 @@ export default function GroupClassRegistrationModal({
       throw new Error(`Error uploading ${path}: ${uploadError.message}`);
     }
     if (!data?.path) throw new Error("Upload succeeded but no path returned");
-    const { data: signedUrlData, error: signedUrlError } =
-      await supabase.storage
-        .from("registration-documents")
-        .createSignedUrl(data.path, 31536000);
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      throw new Error("Failed to generate signed URL for uploaded file");
-    }
-    return signedUrlData.signedUrl;
+    // Visitors cannot read the bucket; a function signs this fresh upload.
+    return await signRegistrationUpload(data.path);
   };
 
   const onSubmit = async (data: RegistrationForm) => {

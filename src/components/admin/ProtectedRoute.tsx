@@ -15,8 +15,9 @@ interface ProtectedRouteProps {
  * Authorization comes from Clerk publicMetadata.role (writable only from the
  * Clerk dashboard or backend). Email and username text are never permission
  * signals. RLS (public.is_admin) checks the same claim server-side.
- *   - role `admin` (legacy `org:admin` accepted) → authorized. `staff` is
- *     scanner-only and `jury` is scoring-only, so both are denied here.
+ *   - role `admin` (legacy `org:admin` accepted) → full access
+ *   - role `staff` → read-only (banner shown; the database rejects writes)
+ *   - `reg_staff` (scanner), `jury` / `score_staff` (scoring) → denied
  *   - Otherwise → denied, auto-logout after 3 seconds
  *
  * Only the loading / denied UIs have been redesigned to the editorial system.
@@ -26,20 +27,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { signOut } = useClerk();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string>("");
+  // staff can view the admin; RLS (public.is_admin) rejects their writes.
+  const isReadOnly = user?.publicMetadata?.role === "staff";
 
   useEffect(() => {
     if (isLoaded && user) {
       const checkAuthorization = () => {
         try {
           const role = user.publicMetadata?.role;
-          if (typeof role === "string" && role.replace(/^org:/, "") === "admin") {
+          const normalized = typeof role === "string" ? role.replace(/^org:/, "") : "";
+          if (normalized === "admin" || normalized === "staff") {
             setIsAuthorized(true);
             return;
           }
 
           setIsAuthorized(false);
           setAuthError(
-            "Access denied: only accounts with the admin role can use the admin."
+            "Access denied: the admin needs the admin or staff role."
           );
 
           setTimeout(() => {
@@ -118,7 +122,21 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   return (
     <>
-      <SignedIn>{isAuthorized === true ? children : null}</SignedIn>
+      <SignedIn>
+        {isAuthorized === true && (
+          <>
+            {isReadOnly && (
+              <div
+                role="status"
+                className="sticky top-0 z-50 bg-marigold/15 border-b border-marigold/40 px-4 py-2 text-center type-caption text-burgundy"
+              >
+                Read-only access: you can view everything, but changes are disabled for the staff role.
+              </div>
+            )}
+            {children}
+          </>
+        )}
+      </SignedIn>
       <SignedOut>
         <Navigate to="/admin" replace />
       </SignedOut>

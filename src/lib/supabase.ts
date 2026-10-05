@@ -21,6 +21,26 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   accessToken: async () => (await window.Clerk?.session?.getToken()) ?? null,
 });
 
+// Edge functions are public endpoints called with the anon key. Kept on a
+// separate client so a signed-in admin's Clerk token is never sent to them
+// (the functions gateway validates Supabase-issued JWTs only).
+export const edgeFunctions = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+}).functions;
+
+/** Long-lived signed URL for a file this visitor just uploaded. */
+export async function signRegistrationUpload(path: string): Promise<string> {
+  const { data, error } = await edgeFunctions.invoke<{ signedUrl?: string }>(
+    "registration-upload-url",
+    { body: { path } }
+  );
+  if (error || !data?.signedUrl) {
+    console.error("Signed URL error:", error);
+    throw new Error("Failed to generate signed URL for uploaded file");
+  }
+  return data.signedUrl;
+}
+
 export async function getEvents({
   page = 1,
   limit = 10,
@@ -407,7 +427,7 @@ export async function sendContactMessage(data: {
     if (dbError) throw dbError;
 
     // Then, trigger the Edge Function to send the email
-    const { error: functionError } = await supabase.functions.invoke(
+    const { error: functionError } = await edgeFunctions.invoke(
       "send-contact-email",
       {
         body: { ...data, messageId },

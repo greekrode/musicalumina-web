@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { edgeFunctions } from "./supabase";
 
 /**
  * EmailService — browser client for the `email-send` Edge Function.
@@ -17,7 +17,7 @@ async function sendEmailViaFunction(payload: {
   subject: string;
   message: string;
 }): Promise<void> {
-  const { error } = await supabase.functions.invoke("email-send", {
+  const { error } = await edgeFunctions.invoke("email-send", {
     body: payload,
   });
   if (error) {

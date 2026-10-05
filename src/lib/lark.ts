@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { edgeFunctions } from "./supabase";
 
 /**
  * LarkService — browser client for the Lark-bridge Edge Functions.
@@ -88,7 +88,7 @@ async function invokeLarkFunction<T>(
   name: "lark-access-token" | "lark-search" | "lark-update" | "lark-send",
   body?: Record<string, unknown>
 ): Promise<T> {
-  const { data, error } = await supabase.functions.invoke<T>(name, {
+  const { data, error } = await edgeFunctions.invoke<T>(name, {
     body: body ?? {},
   });
   if (error) {
