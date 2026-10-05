@@ -142,9 +142,11 @@ function.
 The admin signs in with Clerk. The Supabase client sends the Clerk session
 token (`accessToken` in `src/lib/supabase.ts`), and RLS calls
 `public.is_admin()` / `public.clerk_role()`, which trust only the verified
-token's `metadata.role` claim, copied from Clerk publicMetadata. Roles: `admin`
-(web admin, full access), `jury` (scoring app, reads registrations), `staff`
-(QR scanner only). Visitors send
+token's `metadata.role` claim, copied from Clerk publicMetadata. Roles: `admin` (everything), `staff` (web admin, read-only), `reg_staff`
+(QR scanner only), `jury` (scoring: own unfinalized scores), `score_staff`
+(scoring: view only). Public uploads are signed by the
+`registration-upload-url` function and invitation codes are checked by
+`invitation-code`; neither table nor bucket is readable with the anon key. Visitors send
 no token and use the anon key.
 
 Rollout order (migration `20261005100000_clerk_role_rls.sql`):
