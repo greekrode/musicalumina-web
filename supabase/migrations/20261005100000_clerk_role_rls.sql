@@ -142,6 +142,8 @@ drop policy if exists "Authenticated Users Can Upload Repertoire Files" on stora
 drop policy if exists "Authenticated Users Can Delete Repertoire Files" on storage.objects;
 drop policy if exists "Authenticated Users Can Update Repertoire Files" on storage.objects;
 drop policy if exists "Allow users to delete their own uploads" on storage.objects;
+-- auth.uid() casts the JWT sub to uuid; Clerk ids (user_...) make it throw.
+drop policy if exists "Users can read their own documents" on storage.objects;
 create policy "Admins manage admin buckets" on storage.objects
   for all to authenticated
   using (public.is_admin() and bucket_id in ('jury-images', 'event-photos', 'categories-repertoires', 'registration-documents', 'payment-receipts'))
