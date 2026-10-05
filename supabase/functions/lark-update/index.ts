@@ -1,17 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { withCors, basicAuthHeader, forwardToN8n } from "../_shared/n8n.ts";
-
-/**
- * lark-update — proxies Lark record updates (video-URL write-back from the
- * submission page) to the n8n bridge. Method is PUT to match the upstream
- * semantics.
- */
-serve(
-  withCors(async (req) => {
-    return await forwardToN8n(req, {
-      url: "https://hooks.kangritel.com/webhook/update-lark-record",
-      method: "PUT",
-      authHeader: basicAuthHeader(),
-    });
+// Retired 2026-10-05. This function forwarded whatever the caller sent
+// (recipients, message content, Lark base/table/record), so anyone with the
+// public anon key could use it as a relay. Replaced by registration-notify
+// and video-submission, which build everything server-side.
+Deno.serve(() =>
+  new Response(JSON.stringify({ error: "This endpoint has been retired." }), {
+    status: 410,
+    headers: { "Content-Type": "application/json" },
   })
 );

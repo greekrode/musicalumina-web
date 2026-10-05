@@ -18,19 +18,31 @@ The proxy functions in this directory close that gap. Each one:
 
 ## Inventory
 
-| Function | Auth to n8n | Client callers |
-| --- | --- | --- |
-| `lark-access-token` | Basic auth | `LarkService.getAccessToken()` |
-| `lark-search` | Basic auth | `LarkService.searchParticipantData()` (video submission) |
-| `lark-update` | Basic auth | `LarkService.updateParticipantVideo()` (video submission) |
-| `lark-send` | Bearer (HS256 JWT) | `LarkService.sendRegistrationData()` (registration mirror) |
-| `email-send` | Bearer (HS256 JWT) | `EmailService.send*RegistrationEmail()` |
-| `whatsapp-send` | Bearer (HS256 JWT) | `WhatsAppService.send*RegistrationMessage()` |
+Every public function decides *what* to send from the database, never from the
+request body. The browser calls them with the anon key (`edgeFunctions` in
+`src/lib/supabase.ts`).
 
-Shared helpers live in `_shared/n8n.ts` (CORS wrapper, JWT signer, basic-auth
-builder, upstream-proxy helper). `_shared/cors.ts` is the same CORS tuple
-the existing `send-contact-email` / `send-registration-email` functions
-already use.
+| Function | What it does | Guards |
+| --- | --- | --- |
+| `registration-notify` | Confirmation email + Lark row for a just-created registration (`{ registrationId, language, turnstileToken }`) | Turnstile `register`, once per registration (`email_sent_at`), 30-min window, values HTML-escaped |
+| `video-submission` | Look up a registration by reference code / set its video link once (fixed Lark table) | Turnstile `video`, 20 calls / 15 min / IP |
+| `registration-upload-url` | Signs a file the form just uploaded | path allowlist, file must be < 15 min old |
+| `invitation-code` | Verifies / redeems invitation codes server-side | 10 / 15 min / IP, 300 / event |
+| `sitemap` | Public sitemap | read-only |
+
+Retired (return `410`, kept as stubs so the code matches what is deployed):
+`email-send`, `whatsapp-send`, `lark-send`, `lark-search`, `lark-update`,
+`lark-access-token`, `send-contact-email`, `send-registration-email`,
+`send-to-lark`, `send-whatsapp-message`. Each one forwarded caller-chosen
+recipients, content or Lark targets.
+
+Secrets: `TURNSTILE_SECRET` and `TURNSTILE_HOSTNAMES` (production hostnames
+only) are set with `supabase secrets set`; the widget site key is public and
+lives in `src/components/Turnstile.tsx`.
+
+Shared helpers: `_shared/n8n.ts` (CORS wrapper, JWT signer, basic-auth),
+`_shared/guard.ts` (Turnstile, HTML escaping, client IP),
+`_shared/registration-email.ts` (email templates).
 
 ## One-time setup
 

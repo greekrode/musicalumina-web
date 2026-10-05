@@ -1,20 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { withCors, forwardToN8n, signN8nJwt } from "../_shared/n8n.ts";
-
-/**
- * whatsapp-send — proxies WhatsApp confirmation messages to the n8n
- * `send-whatsapp-message` webhook with a server-signed JWT.
- *
- * Request body shape mirrors what the client used to send directly, so
- * the upstream n8n workflow doesn't need any changes.
- */
-serve(
-  withCors(async (req) => {
-    const token = await signN8nJwt();
-    return await forwardToN8n(req, {
-      url: "https://hooks.kangritel.com/webhook/send-whatsapp-message",
-      method: "POST",
-      authHeader: `Bearer ${token}`,
-    });
+// Retired 2026-10-05. This function forwarded whatever the caller sent
+// (recipients, message content, Lark base/table/record), so anyone with the
+// public anon key could use it as a relay. Replaced by registration-notify
+// and video-submission, which build everything server-side.
+Deno.serve(() =>
+  new Response(JSON.stringify({ error: "This endpoint has been retired." }), {
+    status: 410,
+    headers: { "Content-Type": "application/json" },
   })
 );
