@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { useLanguage } from "../lib/LanguageContext";
 import PageTransition from "../components/PageTransition";
-import { LarkService } from "../lib/lark";
+import { edgeFunctions } from "../lib/supabase";
+import { Turnstile, type TurnstileHandle } from "../components/Turnstile";
 import { Section, Container } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +59,16 @@ interface ParticipantData {
   songTitle: string;
   hasVideoSubmitted: boolean;
   existingVideoUrl?: string;
-  recordId: string;
+}
+
+/** Calls the video-submission edge function; throws its error message. */
+async function videoSubmission<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await edgeFunctions.invoke<T>("video-submission", { body });
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(detail?.error ?? "Request failed. Please try again.");
+  }
+  return data as T;
 }
 
 /* ============================================================================
@@ -87,6 +97,7 @@ const stagger = {
 
 export default function VideoSubmissionPage() {
   const { t } = useLanguage();
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const reduceMotion = useReducedMotion();
   const initial = reduceMotion ? false : "hidden";
 
@@ -135,9 +146,11 @@ export default function VideoSubmissionPage() {
       setIsLoadingParticipant(true);
       setLoadParticipantError(null);
 
-      const data = await LarkService.searchParticipantData(
-        registrationReference.trim()
-      );
+      const data = await videoSubmission<ParticipantData>({
+        action: "lookup",
+        refCode: registrationReference.trim(),
+        turnstileToken: turnstileRef.current?.getToken() ?? null,
+      });
       setParticipantData(data);
     } catch (error) {
       console.error("Failed to load participant data:", error);
@@ -145,6 +158,7 @@ export default function VideoSubmissionPage() {
       setParticipantData(null);
     } finally {
       setIsLoadingParticipant(false);
+      turnstileRef.current?.reset();
     }
   };
 
@@ -161,13 +175,14 @@ export default function VideoSubmissionPage() {
     try {
       setIsSubmitting(true);
 
-      await LarkService.updateParticipantVideo(
-        participantData.recordId,
-        data.video_url,
-        participantData.participantName,
-        participantData.category,
-        participantData.subCategory
-      );
+      // The server re-finds the Lark record by reference code and writes
+      // only the video link, once.
+      await videoSubmission({
+        action: "submit",
+        refCode: data.registration_reference.trim(),
+        videoUrl: data.video_url,
+        turnstileToken: turnstileRef.current?.getToken() ?? null,
+      });
 
       setSubmitSuccess(true);
       reset();
@@ -185,6 +200,7 @@ export default function VideoSubmissionPage() {
       });
     } finally {
       setIsSubmitting(false);
+      turnstileRef.current?.reset();
     }
   };
 
@@ -254,6 +270,7 @@ export default function VideoSubmissionPage() {
                 noValidate
                 className="flex flex-col gap-10"
               >
+                <Turnstile ref={turnstileRef} action="video" className="flex justify-center" />
                 {/* ─── Step 1: Reference code ─── */}
                 <FormStep label={t("pageCopy.videoSubmission.step1")}>
                   <div>

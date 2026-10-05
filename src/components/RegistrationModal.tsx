@@ -1,18 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import { edgeFunctions, signRegistrationUpload, supabase } from "../lib/supabase";
+import { edgeFunctions, notifyRegistration, signRegistrationUpload, supabase } from "../lib/supabase";
+import { Turnstile, type TurnstileHandle } from "./Turnstile";
 import FileUpload from "./FileUpload";
 import Modal from "./Modal";
 import ThankYouModal from "./ThankYouModal";
 import LoadingModal from "./LoadingModal";
 import { useLanguage } from "../lib/LanguageContext";
-import { EmailService } from "../lib/email.ts";
-import { LarkService } from "../lib/lark.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,7 +164,6 @@ function RegistrationModal({
   isOpen,
   onClose,
   eventId,
-  eventName,
   eventVenue,
   eventType,
   categories = [],
@@ -175,6 +173,7 @@ function RegistrationModal({
   invitationCode,
 }: RegistrationModalProps) {
   const { t, language } = useLanguage();
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const [showThankYou, setShowThankYou] = useState(false);
   const [registrationRef, setRegistrationRef] = useState("");
   const [registeredName, setRegisteredName] = useState("");
@@ -343,6 +342,14 @@ function RegistrationModal({
       setIsSubmitting(true);
       setShowLoadingModal(true);
 
+      const turnstileToken = turnstileRef.current?.getToken() ?? null;
+      if (!turnstileToken) {
+        setError("root", { type: "manual", message: language === "id" ? "Mohon selesaikan verifikasi keamanan terlebih dahulu." : "Please complete the security check first." });
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
+
       if (maxQuota && registrationCount >= maxQuota) {
         setError("root", {
           type: "manual",
@@ -397,10 +404,6 @@ function RegistrationModal({
         data.registrant_name = primaryName;
       }
 
-      const category = categories.find((cat) => cat.id === data.category_id);
-      const subCategory = category?.event_subcategories.find(
-        (sub) => sub.id === data.subcategory_id
-      );
 
       // Insert only: visitors cannot read registrations back under RLS.
       const { error: registrationError } = await supabase
@@ -454,71 +457,10 @@ function RegistrationModal({
         });
       }
 
-      const { data: eventData, error: eventError } = await supabase
-        .from("events")
-        .select("lark_base, lark_table, type")
-        .eq("id", eventId)
-        .single();
-
-      if (eventError) {
-        console.error("Error fetching event data for Lark:", eventError);
-      } else if (eventData.lark_base && eventData.lark_table) {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          await LarkService.sendRegistrationData({
-            event: {
-              id: eventId,
-              lark_base: eventData.lark_base,
-              lark_table: eventData.lark_table,
-              type: eventData.type,
-            },
-            registration: {
-              ref_code: refNumber,
-              registrant_status:
-                data.registrant_status.charAt(0).toUpperCase() +
-                data.registrant_status.slice(1),
-              registrant_name: data.registrant_name || primaryName,
-              registrant_email: data.registrant_email,
-              registrant_whatsapp: data.registrant_whatsapp,
-              participant_name: primaryName,
-              category_name: category?.name || "",
-              subcategory_name: subCategory?.name || "",
-              song_title: data.song_title,
-              song_duration: data.song_duration || "",
-              birth_certificate_url: birthCertUrls[0],
-              song_pdf_url: songPdfUrl ? [songPdfUrl] : null,
-              video_url: data.video_url || null,
-              bank_name: data.bank_name,
-              bank_account_name: data.bank_account_name,
-              bank_account_number: data.bank_account_number,
-              payment_receipt_url: paymentReceiptUrl,
-              created_at: new Date().toISOString(),
-            },
-          });
-        } catch (error) {
-          console.error("Error sending data to Lark:", error);
-        }
-      }
-
-      try {
-        await EmailService.sendCompetitionRegistrationEmail({
-          registrant_status: data.registrant_status,
-          registrant_name: data.registrant_name || primaryName,
-          registrant_email: data.registrant_email,
-          registrant_whatsapp: data.registrant_whatsapp,
-          participant_name: primaryName,
-          participant_names: performers.map((performer) => performer.name),
-          song_title: data.song_title,
-          song_duration: data.song_duration || "",
-          category: category?.name || "",
-          sub_category: subCategory?.name || "",
-          registration_ref_code: refNumber,
-          event_name: eventName,
-          language,
-        });
-      } catch (error) {
-        console.error("Error sending email:", error);
-      }
+      // Confirmation email + Lark mirror are built server-side from the stored
+      // registration (registration-notify); the browser sends no content.
+      await notifyRegistration(registrationId, language, turnstileToken);
+      turnstileRef.current?.reset();
 
       if (invitationCode) {
         try {
@@ -1050,6 +992,7 @@ function RegistrationModal({
           </div>
 
           {/* ───────────────────────────────────────── ACTIONS ───── */}
+          <Turnstile ref={turnstileRef} action="register" className="flex justify-center" />
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               {t("registration.cancel")}

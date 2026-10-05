@@ -1,14 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Loader2, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { z } from "zod";
 import { useLanguage } from "../lib/LanguageContext";
-import { LarkService } from "../lib/lark";
-import { signRegistrationUpload, supabase } from "../lib/supabase";
-import { EmailService } from "../lib/email";
+import { notifyRegistration, signRegistrationUpload, supabase } from "../lib/supabase";
+import { Turnstile, type TurnstileHandle } from "./Turnstile";
 import FileUpload from "./FileUpload";
 import LoadingModal from "./LoadingModal";
 import Modal from "./Modal";
@@ -203,10 +202,10 @@ function MasterclassRegistrationModal({
   isOpen,
   onClose,
   eventId,
-  eventName,
   onOpenTerms,
 }: MasterclassRegistrationModalProps) {
   const { t, language } = useLanguage();
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -487,6 +486,14 @@ function MasterclassRegistrationModal({
     try {
       setIsSubmitting(true);
       setShowLoadingModal(true);
+
+      const turnstileToken = turnstileRef.current?.getToken() ?? null;
+      if (!turnstileToken) {
+        setSubmitError(language === "id" ? "Mohon selesaikan verifikasi keamanan terlebih dahulu." : "Please complete the security check first.");
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
       setSubmitError(null);
 
       const filteredRepertoire = repertoireList.filter(
@@ -497,14 +504,6 @@ function MasterclassRegistrationModal({
         number_of_slots: Number(choice.number_of_slots),
         preferred_start_at: choice.preferred_start_at,
       }));
-      const sessionSummary = sessionPayload.map((session) => {
-        const time = new Intl.DateTimeFormat("en-GB", {
-          dateStyle: "medium",
-          timeStyle: "short",
-          timeZone: "Asia/Jakarta",
-        }).format(new Date(session.preferred_start_at));
-        return `${time} WIB · ${session.number_of_slots} slot(s)`;
-      }).join("<br />");
 
       const sessionOverLimit = sessionPayload.find((choice) => {
         const maximum = maxUserSlotsByDate[choice.session_date];
@@ -582,7 +581,7 @@ function MasterclassRegistrationModal({
         return;
       }
 
-      const { data: registrationRows, error } = await supabase.rpc(
+      const { error } = await supabase.rpc(
         "create_masterclass_registration",
         {
           p_registration_id: registrationId,
@@ -612,80 +611,15 @@ function MasterclassRegistrationModal({
         }
         throw error;
       }
-      const registration = registrationRows?.[0];
 
       if (!import.meta.env.DEV) {
         window.umami?.track("masterclass_registration_submitted", { eventId });
       }
 
-      const { data: eventData } = await supabase
-        .from("events")
-        .select("lark_base, lark_table, type")
-        .eq("id", eventId)
-        .single();
-
-      if (eventData?.lark_base && eventData?.lark_table) {
-        try {
-          await LarkService.sendRegistrationData({
-            event: {
-              id: eventId,
-              lark_base: eventData.lark_base,
-              lark_table: eventData.lark_table,
-              type: eventData.type,
-            },
-            registration: {
-              ref_code: refNumber,
-              registrant_status:
-                data.registrant_status.charAt(0).toUpperCase() +
-                data.registrant_status.slice(1),
-              registrant_name:
-                data.registrant_status === "personal"
-                  ? data.participant_name
-                  : data.registrant_name,
-              registrant_email: data.registrant_email,
-              registrant_whatsapp: data.registrant_whatsapp,
-              participant_name: data.participant_name,
-              participant_age: parseInt(data.participant_age),
-              selected_date: sessionPayload[0].preferred_start_at,
-              number_of_slots: sessionPayload.reduce((total, choice) => total + choice.number_of_slots, 0),
-              duration: parseInt(data.selected_duration),
-              repertoire: filteredRepertoire.join("; "),
-              song_pdf_url: songPdfUrls.length > 0 ? songPdfUrls : null,
-              payment_receipt_url: paymentReceiptUrl,
-              bank_name: data.bank_name,
-              bank_account_name: data.bank_account_name,
-              bank_account_number: data.bank_account_number,
-              created_at: registration?.registration_created_at || new Date().toISOString(),
-            },
-          });
-        } catch (error) {
-          console.error("Error sending data to Lark:", error);
-        }
-      }
-
-      try {
-        await EmailService.sendMasterclassRegistrationEmail({
-          registrant_status: data.registrant_status,
-          registrant_name:
-            data.registrant_status === "personal"
-              ? data.participant_name
-              : data.registrant_name,
-          registrant_email: data.registrant_email,
-          registrant_whatsapp: data.registrant_whatsapp,
-          participant_name: data.participant_name,
-          participant_age: parseInt(data.participant_age),
-          selected_date: sessionPayload[0].preferred_start_at,
-          session_summary: sessionSummary,
-          number_of_slots: sessionPayload.reduce((total, choice) => total + choice.number_of_slots, 0),
-          duration: parseInt(data.selected_duration),
-          repertoire: filteredRepertoire,
-          registration_ref_code: refNumber,
-          event_name: eventName,
-          language,
-        });
-      } catch (error) {
-        console.error("Error sending email:", error);
-      }
+      // Confirmation email + Lark mirror are built server-side from the stored
+      // registration (registration-notify); the browser sends no content.
+      await notifyRegistration(registrationId, language, turnstileToken);
+      turnstileRef.current?.reset();
 
       setRegistrationRef(refNumber);
       setRegisteredName(data.participant_name);
@@ -1182,6 +1116,7 @@ function MasterclassRegistrationModal({
             )}
           </div>
 
+          <Turnstile ref={turnstileRef} action="register" className="flex justify-center" />
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               {t("registration.cancel")}

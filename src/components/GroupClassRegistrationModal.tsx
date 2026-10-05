@@ -1,18 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { z } from "zod";
 import { useLanguage } from "../lib/LanguageContext";
-import { signRegistrationUpload, supabase } from "../lib/supabase";
-import { EmailService } from "../lib/email";
+import { notifyRegistration, signRegistrationUpload, supabase } from "../lib/supabase";
+import { Turnstile, type TurnstileHandle } from "./Turnstile";
 import FileUpload from "./FileUpload";
 import LoadingModal from "./LoadingModal";
 import Modal from "./Modal";
 import ThankYouModal from "./ThankYouModal";
-import { LarkService } from "@/lib/lark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,10 +103,10 @@ export default function GroupClassRegistrationModal({
   isOpen,
   onClose,
   eventId,
-  eventName,
   onOpenTerms,
 }: GroupClassRegistrationModalProps) {
   const { t, language } = useLanguage();
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const [showThankYou, setShowThankYou] = useState(false);
   const [registrationRef, setRegistrationRef] = useState("");
   const [registeredName, setRegisteredName] = useState("");
@@ -182,6 +181,14 @@ export default function GroupClassRegistrationModal({
       setIsSubmitting(true);
       setShowLoadingModal(true);
 
+      const turnstileToken = turnstileRef.current?.getToken() ?? null;
+      if (!turnstileToken) {
+        setError("root", { type: "manual", message: language === "id" ? "Mohon selesaikan verifikasi keamanan terlebih dahulu." : "Please complete the security check first." });
+        setIsSubmitting(false);
+        setShowLoadingModal(false);
+        return;
+      }
+
       if (!validateFiles()) {
         setIsSubmitting(false);
         setShowLoadingModal(false);
@@ -235,57 +242,10 @@ export default function GroupClassRegistrationModal({
 
       // Fetch event with `type` so the Lark payload includes it.
       // (This was a pre-existing TS error in the original implementation.)
-      const { data: eventData, error: eventError } = await supabase
-        .from("events")
-        .select("lark_base, lark_table, type")
-        .eq("id", eventId)
-        .single();
-
-      if (eventError) {
-        console.error("Error fetching event data for Lark:", eventError);
-      } else if (eventData.lark_base && eventData.lark_table) {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          await LarkService.sendRegistrationData({
-            event: {
-              id: eventId,
-              lark_base: eventData.lark_base,
-              lark_table: eventData.lark_table,
-              type: eventData.type,
-            },
-            registration: {
-              ref_code: refNumber,
-              registrant_name: data.registrant_name,
-              registrant_email: data.registrant_email,
-              registrant_whatsapp: data.registrant_whatsapp,
-              participant_name: data.participant_name,
-              participant_age: parseInt(data.participant_age),
-              bank_name: data.bank_name,
-              bank_account_name: data.bank_account_name,
-              bank_account_number: data.bank_account_number,
-              payment_receipt_url: paymentReceiptUrl,
-              created_at: new Date().toISOString(),
-            },
-          });
-        } catch (error) {
-          console.error("Error sending data to Lark:", error);
-        }
-      }
-
-      try {
-        await EmailService.sendGroupClassRegistrationEmail({
-          registrant_name: data.registrant_name,
-          registrant_email: data.registrant_email,
-          registrant_whatsapp: data.registrant_whatsapp,
-          participant_name: data.participant_name,
-          participant_age: parseInt(data.participant_age),
-          registration_ref_code: refNumber,
-          event_name: eventName,
-          language,
-        });
-      } catch (error) {
-        console.error("Error sending email:", error);
-      }
+      // Confirmation email + Lark mirror are built server-side from the stored
+      // registration (registration-notify); the browser sends no content.
+      await notifyRegistration(registrationId, language, turnstileToken);
+      turnstileRef.current?.reset();
 
       setRegistrationRef(refNumber);
       setRegisteredName(data.participant_name);
@@ -581,6 +541,7 @@ export default function GroupClassRegistrationModal({
             )}
           </div>
 
+          <Turnstile ref={turnstileRef} action="register" className="flex justify-center" />
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               {t("registration.cancel")}

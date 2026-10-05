@@ -1,29 +1,8 @@
-import { edgeFunctions } from "./supabase";
-
-/**
- * EmailService — browser client for the `email-send` Edge Function.
- *
- * Previously held `VITE_JWT_SECRET` and called `hooks.kangritel.com/webhook/
- * send-email` directly, which leaked the HS256 signing key in the client
- * bundle. The JWT is now minted server-side inside the Edge Function; this
- * client just posts the `{ email, subject, message }` envelope. Public API
- * (sendCompetitionRegistrationEmail / sendGroupClassRegistrationEmail /
- * sendMasterclassRegistrationEmail) is unchanged.
- */
-
-/** Invoke the email-send Edge Function. Throws on failure. */
-async function sendEmailViaFunction(payload: {
-  email: string;
-  subject: string;
-  message: string;
-}): Promise<void> {
-  const { error } = await edgeFunctions.invoke("email-send", {
-    body: payload,
-  });
-  if (error) {
-    throw new Error(`email-send failed: ${error.message}`);
-  }
-}
+// Registration confirmation emails, rendered server-side.
+// Templates copied verbatim from src/lib/email.ts (the browser no longer
+// builds or sends emails). Every value is HTML-escaped before it reaches a
+// template, so names and repertoire cannot inject markup.
+import { escapeHtml } from "./guard.ts";
 
 // Helper function to format date for email display
 function formatDateForEmail(dateString: string): string {
@@ -87,8 +66,8 @@ interface EmailMessageData {
   language: string;
 }
 
-export class EmailService {
-  private static getEmailTemplate(content: string): string {
+class Templates {
+  static getEmailTemplate(content: string): string {
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -232,7 +211,7 @@ export class EmailService {
     `.trim();
   }
 
-  private static formatCompetitionMessage(data: EmailMessageData): string {
+  static formatCompetitionMessage(data: EmailMessageData): string {
     const registrantType =
       {
         personal: data.language === "id" ? "Personal" : "Personal",
@@ -351,7 +330,7 @@ export class EmailService {
     }
   }
 
-  private static formatGroupClassMessage(data: EmailMessageData): string {
+  static formatGroupClassMessage(data: EmailMessageData): string {
     if (data.language === "id") {
       return this.getEmailTemplate(`
         <div class="email-header">
@@ -425,7 +404,7 @@ export class EmailService {
     }
   }
 
-  private static formatMasterclassMessage(data: EmailMessageData): string {
+  static formatMasterclassMessage(data: EmailMessageData): string {
     const repertoireHtml = data.repertoire?.length
       ? `
       <ul class="repertoire-list">
@@ -552,67 +531,38 @@ export class EmailService {
       `);
     }
   }
+}
 
-  public static async sendCompetitionRegistrationEmail(
-    data: EmailMessageData
-  ): Promise<void> {
-    try {
-      const message = this.formatCompetitionMessage(data);
-      const subject =
-        data.language === "id"
-          ? `Pendaftaran ${data.event_name} Berhasil! 🎉`
-          : `${data.event_name} Registration Successful! 🎉`;
+export type RegistrationKind = "competition" | "group_class" | "masterclass";
 
-      await sendEmailViaFunction({
-        email: data.registrant_email,
-        subject,
-        message,
-      });
-    } catch (error) {
-      console.error("Error sending email:", error);
-      throw error;
-    }
-  }
-
-  public static async sendGroupClassRegistrationEmail(
-    data: EmailMessageData
-  ): Promise<void> {
-    try {
-      const message = this.formatGroupClassMessage(data);
-      const subject =
-        data.language === "id"
-          ? `Pendaftaran ${data.event_name} Berhasil! 🎉`
-          : `${data.event_name} Registration Successful! 🎉`;
-
-      await sendEmailViaFunction({
-        email: data.registrant_email,
-        subject,
-        message,
-      });
-    } catch (error) {
-      console.error("Error sending email:", error);
-      throw error;
-    }
-  }
-
-  public static async sendMasterclassRegistrationEmail(
-    data: EmailMessageData
-  ): Promise<void> {
-    try {
-      const message = this.formatMasterclassMessage(data);
-      const subject =
-        data.language === "id"
-          ? `Pendaftaran ${data.event_name} Berhasil! 🎉`
-          : `${data.event_name} Registration Successful! 🎉`;
-
-      await sendEmailViaFunction({
-        email: data.registrant_email,
-        subject,
-        message,
-      });
-    } catch (error) {
-      console.error("Error sending email:", error);
-      throw error;
-    }
-  }
+/** data values are raw; this escapes them. session_summary lines are joined with <br />. */
+export function buildRegistrationEmail(
+  kind: RegistrationKind,
+  raw: EmailMessageData & { session_lines?: string[] },
+): { subject: string; html: string } {
+  const e = (v: unknown) => (v === null || v === undefined ? v : escapeHtml(v));
+  const data: EmailMessageData = {
+    ...raw,
+    registrant_name: escapeHtml(raw.registrant_name),
+    registrant_email: escapeHtml(raw.registrant_email),
+    participant_name: escapeHtml(raw.participant_name),
+    participant_names: raw.participant_names?.map((n) => escapeHtml(n)),
+    song_title: e(raw.song_title) as string | undefined,
+    song_duration: e(raw.song_duration) as string | undefined,
+    category: e(raw.category) as string | undefined,
+    sub_category: e(raw.sub_category) as string | undefined,
+    registration_ref_code: escapeHtml(raw.registration_ref_code),
+    repertoire: raw.repertoire?.map((p) => escapeHtml(p)) ?? null,
+    session_summary: raw.session_lines?.length ? raw.session_lines.map((l) => escapeHtml(l)).join("<br />") : null,
+    event_name: escapeHtml(raw.event_name),
+    registrant_status: raw.registrant_status,
+  };
+  const html =
+    kind === "masterclass" ? Templates.formatMasterclassMessage(data)
+    : kind === "group_class" ? Templates.formatGroupClassMessage(data)
+    : Templates.formatCompetitionMessage(data);
+  const subject = data.language === "id"
+    ? `Pendaftaran ${raw.event_name} Berhasil! 🎉`
+    : `${raw.event_name} Registration Successful! 🎉`;
+  return { subject, html };
 }

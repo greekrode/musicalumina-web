@@ -28,6 +28,23 @@ export const edgeFunctions = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 }).functions;
 
+/**
+ * Confirmation email + Lark mirror for a registration this visitor just
+ * created. The server builds both from the stored registration; the browser
+ * only proves it is a person (Turnstile) and picks the email language.
+ * Failure is logged, not thrown: the registration itself is already saved.
+ */
+export async function notifyRegistration(
+  registrationId: string,
+  language: string,
+  turnstileToken: string | null
+): Promise<void> {
+  const { error } = await edgeFunctions.invoke("registration-notify", {
+    body: { registrationId, language, turnstileToken },
+  });
+  if (error) console.error("registration-notify failed:", error);
+}
+
 /** Long-lived signed URL for a file this visitor just uploaded. */
 export async function signRegistrationUpload(path: string): Promise<string> {
   const { data, error } = await edgeFunctions.invoke<{ signedUrl?: string }>(
@@ -404,47 +421,6 @@ export const getLatestUpcomingEvent = async () => {
 
   return data;
 };
-
-export async function sendContactMessage(data: {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-}): Promise<{ success: boolean; error?: string }> {
-  try {
-    // First, insert the message into the database
-    // Visitors cannot read contact messages back (RLS), so mint the id here.
-    const messageId = crypto.randomUUID();
-    const { error: dbError } = await supabase.from("contact_messages").insert([
-      {
-        id: messageId,
-        ...data,
-        created_at: new Date().toISOString(),
-        sent_at: null,
-      },
-    ]);
-
-    if (dbError) throw dbError;
-
-    // Then, trigger the Edge Function to send the email
-    const { error: functionError } = await edgeFunctions.invoke(
-      "send-contact-email",
-      {
-        body: { ...data, messageId },
-      }
-    );
-
-    if (functionError) throw functionError;
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error sending contact message:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to send message",
-    };
-  }
-}
 
 export async function getMasterclassParticipants(eventId: string) {
   try {
