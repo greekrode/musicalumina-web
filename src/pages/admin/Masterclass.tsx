@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import Modal from "@/components/Modal";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,13 @@ import {
   CALENDAR_HOUR_HEIGHT,
   getCalendarBlockPosition,
 } from "@/lib/masterclassCalendar";
+import {
+  jakartaDate,
+  sameInstant,
+  scheduleDates,
+  sessionDurationMinutes,
+  withCurrentSlot,
+} from "@/lib/masterclassSchedule";
 
 type MasterclassParticipant =
   Database["public"]["Tables"]["masterclass_participants"]["Row"] & {
@@ -24,10 +32,6 @@ type MasterclassEvent = Pick<
 >;
 
 type AvailableSlot = { slot_start: string; slot_end: string };
-
-function jakartaDate(value: string) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date(value));
-}
 
 function formatTimeRange(slot: AvailableSlot) {
   const formatter = new Intl.DateTimeFormat("en-GB", {
@@ -69,14 +73,32 @@ export function AdminMasterclass() {
   const [availableHoldSlots, setAvailableHoldSlots] = useState<AvailableSlot[]>([]);
   const [holdError, setHoldError] = useState<string | null>(null);
   const [isCreatingHold, setIsCreatingHold] = useState(false);
+  const [editingParticipant, setEditingParticipant] = useState<MasterclassParticipant | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [availableEditSlots, setAvailableEditSlots] = useState<AvailableSlot[]>([]);
+  const [isLoadingEditSlots, setIsLoadingEditSlots] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
   const selectedHoldEvent = useMemo(
     () => masterclassEvents.find((event) => event.id === holdEventId),
     [holdEventId, masterclassEvents]
   );
   const holdDates = useMemo(
-    () => [...new Set((selectedHoldEvent?.event_schedule || []).map((session) => jakartaDate(session.start_at)))],
+    () => scheduleDates(selectedHoldEvent?.event_schedule),
     [selectedHoldEvent]
+  );
+  const editingEvent = useMemo(
+    () => masterclassEvents.find((event) => event.id === editingParticipant?.event_id),
+    [editingParticipant, masterclassEvents]
+  );
+  const editDuration = editingParticipant
+    ? sessionDurationMinutes(editingParticipant, editingEvent?.event_duration)
+    : null;
+  const editDates = useMemo(
+    () => scheduleDates(editingEvent?.event_schedule, editingParticipant?.session_date),
+    [editingEvent, editingParticipant]
   );
 
   const groupedParticipants = useMemo(() => {
@@ -129,6 +151,48 @@ export function AdminMasterclass() {
     };
     loadAvailableSlots();
   }, [holdDate, holdDuration, holdEventId, holdSlots]);
+
+  useEffect(() => {
+    const participant = editingParticipant;
+    const slotCount = participant?.number_of_slots || 1;
+    if (!participant || !editDate || !editDuration) {
+      setAvailableEditSlots([]);
+      setIsLoadingEditSlots(false);
+      return;
+    }
+    let cancelled = false;
+    const loadEditSlots = async () => {
+      setAvailableEditSlots([]);
+      setIsLoadingEditSlots(true);
+      const { data, error } = await supabase.rpc("get_masterclass_available_slots", {
+        p_event_id: participant.event_id,
+        p_session_date: editDate,
+        p_duration_minutes: editDuration,
+        p_number_of_slots: slotCount,
+      });
+      if (cancelled) return;
+      setIsLoadingEditSlots(false);
+      if (error) {
+        console.error("Error loading reschedule availability:", error);
+        setAvailableEditSlots([]);
+        setEditError("Could not load available times.");
+        return;
+      }
+      const slots = withCurrentSlot(data || [], participant, editDate);
+      setAvailableEditSlots(slots);
+      setEditStart((current) => {
+        const preferred = participant.preferred_start_at;
+        const onOriginalDate = participant.session_date === editDate || (preferred ? jakartaDate(preferred) === editDate : false);
+        const target = current || (onOriginalDate ? preferred || "" : "");
+        if (!target) return "";
+        return slots.find((slot) => sameInstant(slot.slot_start, target))?.slot_start ?? "";
+      });
+    };
+    loadEditSlots();
+    return () => {
+      cancelled = true;
+    };
+  }, [editDate, editDuration, editingParticipant]);
 
   const fetchParticipants = async () => {
     try {
@@ -232,6 +296,56 @@ export function AdminMasterclass() {
     }
   };
 
+  const openScheduleEditor = (participant: MasterclassParticipant) => {
+    setEditingParticipant(participant);
+    setEditDate(participant.session_date || (participant.preferred_start_at ? jakartaDate(participant.preferred_start_at) : ""));
+    setEditStart(participant.preferred_start_at || "");
+    setAvailableEditSlots([]);
+    setEditError(null);
+  };
+
+  const closeScheduleEditor = () => {
+    setEditingParticipant(null);
+    setEditDate("");
+    setEditStart("");
+    setAvailableEditSlots([]);
+    setEditError(null);
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!editingParticipant || !editDate || !editStart) {
+      setEditError("Choose a date and an available time.");
+      return;
+    }
+    const slot = availableEditSlots.find((candidate) => sameInstant(candidate.slot_start, editStart));
+    if (!slot) {
+      setEditError("Choose a date and an available time.");
+      return;
+    }
+    try {
+      setIsSavingSchedule(true);
+      setEditError(null);
+      const { data, error } = await supabase
+        .from("masterclass_participants")
+        .update({
+          preferred_start_at: slot.slot_start,
+          preferred_end_at: slot.slot_end,
+          session_date: editDate,
+        })
+        .eq("id", editingParticipant.id)
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("The schedule was not saved. Refresh the page and try again.");
+      closeScheduleEditor();
+      await fetchParticipants();
+    } catch (error) {
+      console.error("Error rescheduling participant:", error);
+      setEditError(errorMessage(error, "Unable to change this session."));
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
   const moveToTimeSlot = async (target: MasterclassParticipant) => {
     const source = participants.find((participant) => participant.id === draggedId);
     if (!source?.preferred_start_at || !source.preferred_end_at || !target.preferred_start_at || source.id === target.id) return;
@@ -256,7 +370,7 @@ export function AdminMasterclass() {
               Masterclass participants
             </h1>
             <p className="type-body-sm text-ink-muted">
-              Every row is one selected date. Drag a session onto another time to reschedule it.
+              Every row is one selected date. Edit a session to change its date and time.
             </p>
           </div>
           <Button type="button" onClick={() => setIsHoldFormOpen((open) => !open)}>
@@ -331,7 +445,7 @@ export function AdminMasterclass() {
           </div>
           <div className="mt-5 flex flex-col gap-6">
             {masterclassEvents.map((event) => (
-              <MasterclassDayCalendar key={event.id} event={event} participants={participants.filter((participant) => participant.event_id === event.id)} />
+              <MasterclassDayCalendar key={event.id} event={event} participants={participants.filter((participant) => participant.event_id === event.id)} onEdit={openScheduleEditor} />
             ))}
             {masterclassEvents.length === 0 && <p className="py-10 text-center type-body-sm text-ink-muted">No ongoing masterclass schedule.</p>}
           </div>
@@ -401,6 +515,11 @@ export function AdminMasterclass() {
                     <Td className="sticky right-0 z-10 bg-surface-elevated text-right">
                       <div className="inline-flex items-center gap-1">
                         <IconAction
+                          label="Edit schedule"
+                          icon={<Pencil className="h-3.5 w-3.5" />}
+                          onClick={() => openScheduleEditor(participant)}
+                        />
+                        <IconAction
                           destructive
                           label={participant.is_hold ? "Release hold" : "Delete"}
                           icon={<Trash2 className="h-3.5 w-3.5" />}
@@ -417,8 +536,81 @@ export function AdminMasterclass() {
           </div>
         </section>
       </div>
+
+      <Modal
+        isOpen={editingParticipant !== null}
+        onClose={closeScheduleEditor}
+        eyebrow="Masterclass · Reschedule"
+        title={editingParticipant ? sessionLabel(editingParticipant) : "Reschedule"}
+        maxWidth="lg"
+      >
+        <div className="flex flex-col gap-5">
+          <p className="type-body-sm text-ink-muted">
+            {editDuration
+              ? `${editDuration} minutes × ${editingParticipant?.number_of_slots || 1} slot${(editingParticipant?.number_of_slots || 1) === 1 ? "" : "s"}. Pick another date and an open time.`
+              : "This session has no duration on file, so a new time can't be offered."}
+          </p>
+          <Field label="Date">
+            <select
+              aria-label="Date"
+              value={editDate}
+              onChange={(event) => {
+                setEditDate(event.target.value);
+                setEditStart("");
+                setEditError(null);
+              }}
+              disabled={!editDates.length}
+              className={SELECT_CLASSES}
+            >
+              <option value="">{editDates.length ? "Select a date…" : "Configure this event's dates first…"}</option>
+              {editDates.map((date) => (
+                <option key={date} value={date}>
+                  {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date(`${date}T12:00:00+07:00`))}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Time">
+            <select
+              aria-label="Time"
+              value={editStart}
+              onChange={(event) => {
+                setEditStart(event.target.value);
+                setEditError(null);
+              }}
+              disabled={!editDate || !editDuration || isLoadingEditSlots}
+              className={SELECT_CLASSES}
+            >
+              <option value="">
+                {isLoadingEditSlots ? "Loading times…" : availableEditSlots.length ? "Select an available time…" : "No open times on this date"}
+              </option>
+              {availableEditSlots.map((slot) => (
+                <option key={slot.slot_start} value={slot.slot_start}>{formatTimeRange(slot)}</option>
+              ))}
+            </select>
+          </Field>
+          {editError && <p className="type-body-sm text-[color:var(--status-error)]">{editError}</p>}
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={closeScheduleEditor} disabled={isSavingSchedule}>Cancel</Button>
+            <Button type="button" onClick={handleSaveSchedule} disabled={isSavingSchedule || !editDate || !editStart || !editDuration}>
+              {isSavingSchedule ? "Saving…" : "Save schedule"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </AdminLayout>
   );
+}
+
+function sessionLabel(participant: MasterclassParticipant) {
+  return participant.is_hold ? participant.hold_label || participant.name : participant.name;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string" && error.message) {
+    return error.message;
+  }
+  return fallback;
 }
 
 function formatWindow(value: string) {
@@ -433,7 +625,7 @@ function CalendarLegend({ className, label }: { className: string; label: string
   return <span className="inline-flex items-center gap-2"><span className={cn("h-3 w-3", className)} />{label}</span>;
 }
 
-function MasterclassDayCalendar({ event, participants }: { event: MasterclassEvent; participants: MasterclassParticipant[] }) {
+function MasterclassDayCalendar({ event, participants, onEdit }: { event: MasterclassEvent; participants: MasterclassParticipant[]; onEdit: (participant: MasterclassParticipant) => void }) {
   const windows = [...(event.event_schedule || [])].sort((a, b) => a.start_at.localeCompare(b.start_at));
   if (windows.length === 0) return null;
   const calendarStart = Math.floor(Math.min(...windows.map((window) => jakartaMinutes(window.start_at))) / 60) * 60;
@@ -496,10 +688,10 @@ function MasterclassDayCalendar({ event, participants }: { event: MasterclassEve
                   const start = jakartaMinutes(participant.preferred_start_at!);
                   const end = jakartaMinutes(participant.preferred_end_at!);
                   return (
-                    <div key={participant.id} className={cn("absolute inset-x-2 z-20 overflow-hidden border-l-4 px-2 py-1.5 text-burgundy shadow-sm", participant.is_hold ? "border-marigold bg-marigold/50" : "border-burgundy bg-burgundy/15")} style={getCalendarBlockPosition(start, end, calendarStart)} title={`${participant.is_hold ? "Reserved hold" : "Registration"} · ${formatWindow(participant.preferred_start_at!)}–${formatWindow(participant.preferred_end_at!)} WIB`}>
+                    <button key={participant.id} type="button" onClick={() => onEdit(participant)} className={cn("absolute inset-x-2 z-20 block overflow-hidden border-l-4 px-2 py-1.5 text-left text-burgundy shadow-sm hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold", participant.is_hold ? "border-marigold bg-marigold/50" : "border-burgundy bg-burgundy/15")} style={getCalendarBlockPosition(start, end, calendarStart)} title={`Edit schedule · ${formatWindow(participant.preferred_start_at!)}–${formatWindow(participant.preferred_end_at!)} WIB`}>
                       <p className="type-label truncate">{participant.is_hold ? participant.hold_label || participant.name : participant.name}</p>
                       <p className="type-caption tabular-nums">{formatWindow(participant.preferred_start_at!)}–{formatWindow(participant.preferred_end_at!)} · {participant.number_of_slots || 1} slot{(participant.number_of_slots || 1) === 1 ? "" : "s"}</p>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
