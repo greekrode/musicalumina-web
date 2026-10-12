@@ -600,6 +600,70 @@ export interface Database {
           updated_at?: string;
         };
       };
+      festival_schedule_segments: {
+        Row: {
+          id: string;
+          event_id: string;
+          sort_order: number;
+          kind: "opening" | "performance" | "awarding" | "break";
+          label: string | null;
+          session_number: number | null;
+          subcategory_id: string | null;
+          starts_at: string;
+          ends_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          sort_order: number;
+          kind: "opening" | "performance" | "awarding" | "break";
+          label?: string | null;
+          session_number?: number | null;
+          subcategory_id?: string | null;
+          starts_at: string;
+          ends_at: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          sort_order?: number;
+          kind?: "opening" | "performance" | "awarding" | "break";
+          label?: string | null;
+          session_number?: number | null;
+          subcategory_id?: string | null;
+          starts_at?: string;
+          ends_at?: string;
+          created_at?: string;
+        };
+      };
+      festival_schedule_entries: {
+        Row: {
+          id: string;
+          segment_id: string;
+          registration_id: string | null;
+          order_index: number;
+          display_name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          segment_id: string;
+          registration_id?: string | null;
+          order_index: number;
+          display_name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          segment_id?: string;
+          registration_id?: string | null;
+          order_index?: number;
+          display_name?: string;
+          created_at?: string;
+        };
+      };
       customer_event_outreach: {
         Row: {
           id: string;

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
+import { attachScheduleEntries } from "./festivalSchedule";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -212,10 +213,41 @@ export async function getEventById(id: string) {
       console.error("Error fetching registration count:", countError);
     }
 
-    // Add registration count to event object
+    const { data: scheduleSegments, error: scheduleError } = await supabase
+      .from("festival_schedule_segments")
+      .select(
+        "id, kind, label, session_number, subcategory_id, starts_at, ends_at, sort_order",
+      )
+      .eq("event_id", id)
+      .order("sort_order");
+
+    if (scheduleError) {
+      throw scheduleError;
+    }
+
+    const segmentIds = (scheduleSegments ?? []).map((segment) => segment.id);
+    const { data: scheduleEntries, error: entriesError } = segmentIds.length
+      ? await supabase
+          .from("festival_schedule_entries")
+          .select("id, segment_id, order_index, display_name")
+          .in("segment_id", segmentIds)
+          .order("order_index")
+      : { data: [], error: null };
+
+    if (entriesError) {
+      throw entriesError;
+    }
+
+    // Add registration count and the published running order.
+    // Entries expose display names only — registration PII stays on the
+    // staff-only registrations table.
     const eventWithCount = {
       ...event,
       registration_count: registrationCount || 0,
+      festival_schedule: attachScheduleEntries(
+        scheduleSegments ?? [],
+        scheduleEntries ?? [],
+      ),
     };
 
           // Sort categories and subcategories by order_index

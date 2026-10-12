@@ -217,6 +217,7 @@ export const translations = {
       comingSoon: "Coming Soon",
       viewResults: "View Results",
       statusOpen: "Open",
+      statusOngoing: "Ongoing",
       statusUpcoming: "Upcoming",
       statusConcluded: "Concluded",
       eventTypes: {
@@ -249,6 +250,13 @@ export const translations = {
         "Please review our terms and conditions before proceeding with registration.",
       viewTerms: "View Terms & Conditions",
       categories: "Categories",
+      schedule: "Schedule",
+      scheduleOpening: "Opening",
+      scheduleAwarding: "Awarding",
+      scheduleIntermission: "Intermission",
+      scheduleLunch: "Lunch break",
+      session: "Session",
+      minutesShort: "min",
       prizes: "Prizes",
       juryPanel: "Jury Panel",
       downloadProspectus: "Download Prospectus",
@@ -347,6 +355,8 @@ export const translations = {
       eventDetails: {
         tiersLede:
           "Select the appropriate category based on age and repertoire requirements. All participants receive written adjudicator feedback.",
+        runningOrderLede:
+          "Who plays in each session, and which category they are in.",
         juryHeading: "Adjudicators",
         juryLede: "The panel guiding this programme.",
         artistInResidenceHeading: "Artist in Residence",
@@ -642,6 +652,7 @@ export const translations = {
       comingSoon: "Segera Hadir",
       viewResults: "Lihat Hasil",
       statusOpen: "Dibuka",
+      statusOngoing: "Berlangsung",
       statusUpcoming: "Akan Datang",
       statusConcluded: "Selesai",
       eventTypes: {
@@ -673,6 +684,13 @@ export const translations = {
         "Silakan tinjau syarat dan ketentuan kami sebelum melanjutkan pendaftaran.",
       viewTerms: "Lihat Syarat & Ketentuan",
       categories: "Kategori",
+      schedule: "Jadwal",
+      scheduleOpening: "Pembukaan",
+      scheduleAwarding: "Pengumuman",
+      scheduleIntermission: "Istirahat",
+      scheduleLunch: "Istirahat makan siang",
+      session: "Sesi",
+      minutesShort: "menit",
       prizes: "Hadiah",
       juryPanel: "Dewan Juri",
       downloadProspectus: "Unduh Prospektus",
@@ -769,6 +787,8 @@ export const translations = {
       eventDetails: {
         tiersLede:
           "Pilih kategori yang sesuai berdasarkan persyaratan usia dan repertoar. Semua peserta mendapatkan umpan balik tertulis dari juri.",
+        runningOrderLede:
+          "Siapa yang tampil di setiap sesi, dan kategorinya.",
         juryHeading: "Dewan Juri",
         juryLede: "Panel yang memandu program ini.",
         artistInResidenceHeading: "Artis dalam Residensi",

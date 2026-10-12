@@ -28,6 +28,14 @@ import { NoteGlyph } from "@/components/ui/wireframe-wave";
 import { cn } from "@/lib/utils";
 import { getEventProspectusUrl } from "@/lib/prospectus";
 import {
+  buildScheduleTimeline,
+  durationMinutes,
+  formatJakartaClock,
+  shouldShowRunningOrder,
+  type FestivalScheduleSegment,
+  type ScheduleSession,
+} from "@/lib/festivalSchedule";
+import {
   MetaItem,
   PrizesSection,
   JuryPanel,
@@ -70,6 +78,7 @@ type Event = Database["public"]["Tables"]["events"]["Row"] & {
   event_categories: EventCategory[];
   event_jury: EventJuror[];
   registration_count?: number;
+  festival_schedule?: FestivalScheduleSegment[];
 };
 
 /* ============================================================================
@@ -228,13 +237,28 @@ function EventDetails() {
         ? t("eventDetails.registrationClosed")
         : t("eventDetails.registerNow");
 
-  const statusBadge = isQuotaFull
-    ? { status: "closed" as const, label: t("eventDetails.quotaFull") }
-    : isRegistrationClosed
+  const schedule = event.festival_schedule ?? [];
+  const showRunningOrder = shouldShowRunningOrder({
+    status: event.status,
+    registrationClosed: Boolean(isRegistrationClosed),
+    segments: schedule,
+  });
+
+  const statusBadge =
+    event.status === "completed"
       ? { status: "ended" as const, label: t("eventCard.statusConcluded") }
       : event.status === "ongoing"
-        ? { status: "open" as const, label: t("eventCard.statusOpen") }
-        : { status: "upcoming" as const, label: t("eventCard.statusUpcoming") };
+        ? {
+            status: "open" as const,
+            label: isRegistrationClosed
+              ? t("eventCard.statusOngoing")
+              : t("eventCard.statusOpen"),
+          }
+        : isQuotaFull
+          ? { status: "closed" as const, label: t("eventDetails.quotaFull") }
+          : isRegistrationClosed
+            ? { status: "closed" as const, label: t("eventDetails.registrationClosed") }
+            : { status: "upcoming" as const, label: t("eventCard.statusUpcoming") };
 
   const typeLabel = t(`eventCard.eventTypes.${event.type}`);
   const prospectusUrl = getEventProspectusUrl(event.id, language);
@@ -386,7 +410,7 @@ function EventDetails() {
       {/* ================================================================
           IMPORTANT INFO — terms block (only shown when terms exist)
           ================================================================ */}
-      {event.terms_and_conditions && (
+      {event.terms_and_conditions && !showRunningOrder && (
         <Section tone="warm" pause="sm" rule="top">
           <Container>
             <motion.div
@@ -418,7 +442,31 @@ function EventDetails() {
           itself clearly, and pause reduced to `sm` so the terms block flows
           directly into it.
           ================================================================ */}
-      {event.event_categories.length > 0 && (
+      {showRunningOrder ? (
+        <Section tone="canvas" pause="sm" rule="top">
+          <Container>
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="max-w-3xl mb-8 lg:mb-10"
+            >
+              <h2 className="type-headline-lg text-burgundy">
+                {t("eventDetails.schedule")}
+              </h2>
+              <p className="type-body-lg text-ink-muted mt-3">
+                {t("pageCopy.eventDetails.runningOrderLede")}
+              </p>
+            </motion.div>
+            <SessionSchedule
+              segments={schedule}
+              categories={event.event_categories}
+              reduceMotion={Boolean(reduceMotion)}
+            />
+          </Container>
+        </Section>
+      ) : event.event_categories.length > 0 ? (
         <Section tone="canvas" pause="sm" rule="top">
           <Container>
             <motion.div
@@ -448,13 +496,13 @@ function EventDetails() {
             </Suspense>
           </Container>
         </Section>
-      )}
+      ) : null}
 
       {/* ================================================================
           PRIZES — eyebrow removed (it duplicated the heading), section
           pause reduced to `sm` so prizes sit snugly below categories.
           ================================================================ */}
-      {hasAnyPrizes && (
+      {hasAnyPrizes && !showRunningOrder && (
         <Section tone="warm" pause="sm" rule="top">
           <Container>
             <motion.div
@@ -545,6 +593,270 @@ function EventDetails() {
           event.terms_and_conditions?.en
         }
       />
+    </div>
+  );
+}
+
+/* ============================================================================
+   SessionSchedule — the published day. Categories, fees, and requirements
+   stay off this view. Each session lists who plays, in order, with the
+   category they are in.
+   ============================================================================ */
+
+function categoryPath(
+  subcategoryId: string | null,
+  categories: EventCategory[],
+): string {
+  if (!subcategoryId) return "";
+  for (const category of categories) {
+    const sub = category.event_subcategories.find((item) => item.id === subcategoryId);
+    if (sub) return `${category.name} · ${sub.name}`;
+  }
+  return "";
+}
+
+function markerLabel(label: string | null, t: (key: string) => string): string {
+  if (!label) return "";
+  if (label.startsWith("Awarding & ")) {
+    const rest = label.slice("Awarding & ".length);
+    return `${t("eventDetails.scheduleAwarding")} & ${markerLabel(rest, t)}`;
+  }
+  if (label === "Opening") return t("eventDetails.scheduleOpening");
+  if (label === "Awarding") return t("eventDetails.scheduleAwarding");
+  if (label === "Intermission") return t("eventDetails.scheduleIntermission");
+  if (label === "Lunch break") return t("eventDetails.scheduleLunch");
+  return label;
+}
+
+function SessionSchedule({
+  segments,
+  categories,
+  reduceMotion,
+}: {
+  segments: FestivalScheduleSegment[];
+  categories: EventCategory[];
+  reduceMotion: boolean;
+}) {
+  const { t } = useLanguage();
+  const timeline = buildScheduleTimeline(segments);
+  const sessions = timeline.filter(
+    (item): item is ScheduleSession => item.type === "session",
+  );
+  const [openSessions, setOpenSessions] = useState<Set<number>>(
+    () => new Set(sessions.map((session) => session.sessionNumber)),
+  );
+  const [closedGroups, setClosedGroups] = useState<Set<string>>(() => new Set());
+
+  const toggleGroup = (blockId: string) => {
+    setClosedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
+  };
+
+  const toggleSession = (sessionNumber: number) => {
+    setOpenSessions((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionNumber)) next.delete(sessionNumber);
+      else next.add(sessionNumber);
+      return next;
+    });
+  };
+
+  const jumpToSession = (sessionNumber: number) => {
+    setOpenSessions((prev) => {
+      if (prev.has(sessionNumber)) return prev;
+      const next = new Set(prev);
+      next.add(sessionNumber);
+      return next;
+    });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`session-${sessionNumber}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      {sessions.length > 1 && (
+        <div className="flex items-center gap-5 overflow-x-auto no-scrollbar border-y border-rule-hairline py-3">
+          <span className="type-label text-ink-muted flex items-center gap-3 shrink-0">
+            <span aria-hidden className="inline-block w-5 h-px bg-marigold" />
+            {t("eventDetails.schedule")}
+          </span>
+          {sessions.map((session) => (
+            <button
+              key={session.sessionNumber}
+              type="button"
+              onClick={() => jumpToSession(session.sessionNumber)}
+              className="type-label whitespace-nowrap font-bold text-burgundy hover:text-marigold-700"
+            >
+              {t("eventDetails.session")} {session.sessionNumber}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4">
+        {timeline.map((item) => {
+          if (item.type === "marker") {
+            const minutes = durationMinutes(item.startsAt, item.endsAt);
+            const time = `${formatJakartaClock(item.startsAt)}–${formatJakartaClock(item.endsAt)}`;
+            if (item.emphasis) {
+              return (
+                <div
+                  key={item.id}
+                  className="bg-burgundy text-white px-6 lg:px-8 py-5"
+                >
+                  <p className="type-label text-marigold font-bold">
+                    {markerLabel(item.label, t)}
+                  </p>
+                  <p className="type-headline-lg text-white font-bold tabular-nums mt-1">
+                    {time}
+                    <span className="ml-3 type-body-md text-marigold font-bold">
+                      {minutes} {t("eventDetails.minutesShort")}
+                    </span>
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <p
+                key={item.id}
+                className="type-body-md font-bold text-burgundy text-center py-2"
+              >
+                {markerLabel(item.label, t)}
+                {" · "}
+                {time}
+                {" · "}
+                {minutes} {t("eventDetails.minutesShort")}
+              </p>
+            );
+          }
+
+          const open = openSessions.has(item.sessionNumber);
+          const panelId = `session-panel-${item.sessionNumber}`;
+          const headerId = `session-header-${item.sessionNumber}`;
+
+          return (
+            <section
+              key={item.sessionNumber}
+              id={`session-${item.sessionNumber}`}
+              className="scroll-mt-28 bg-surface-elevated border border-burgundy/30"
+            >
+              <button
+                type="button"
+                id={headerId}
+                aria-expanded={open}
+                aria-controls={panelId}
+                onClick={() => toggleSession(item.sessionNumber)}
+                className="w-full text-left px-6 lg:px-8 py-5 flex items-center justify-between gap-6 hover:bg-surface-canvas-warm/40"
+              >
+                <span className="min-w-0">
+                  <span className="type-headline-lg font-bold text-burgundy block">
+                    {t("eventDetails.session")} {item.sessionNumber}
+                  </span>
+                  <span className="type-body-md font-bold text-ink-body tabular-nums">
+                    {formatJakartaClock(item.startsAt)}–{formatJakartaClock(item.endsAt)}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-6 w-6 flex-shrink-0 text-burgundy transition-transform duration-base",
+                    open && "rotate-180",
+                  )}
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {open && (
+                  <motion.div
+                    id={panelId}
+                    role="region"
+                    aria-labelledby={headerId}
+                    initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={reduceMotion ? undefined : { height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: EASE }}
+                    className="overflow-hidden border-t border-rule-hairline"
+                  >
+                    {item.performances.map((block) => {
+                      const category = categoryPath(block.subcategory_id, categories);
+                      const time = `${formatJakartaClock(block.starts_at)}–${formatJakartaClock(block.ends_at)}`;
+                      const groupOpen = !closedGroups.has(block.id);
+                      const groupPanelId = `group-panel-${block.id}`;
+                      const groupHeaderId = `group-header-${block.id}`;
+                      return (
+                        <div key={block.id} className="border-b border-rule-hairline last:border-b-0">
+                          <button
+                            type="button"
+                            id={groupHeaderId}
+                            aria-expanded={groupOpen}
+                            aria-controls={groupPanelId}
+                            onClick={() => toggleGroup(block.id)}
+                            className="w-full text-left px-6 lg:px-8 py-4 flex items-center justify-between gap-4 bg-surface-canvas-warm/50 hover:bg-surface-canvas-warm"
+                          >
+                            <span className="min-w-0">
+                              <span className="type-body-md font-bold text-burgundy block">
+                                {category}
+                              </span>
+                              <span className="type-body-sm font-bold text-ink-body tabular-nums">
+                                {time}
+                                {" · # "}
+                                {block.entries.length}{" "}
+                                {t("eventDetails.participants")}
+                              </span>
+                            </span>
+                            <ChevronDown
+                              className={cn(
+                                "h-5 w-5 flex-shrink-0 text-burgundy transition-transform duration-base",
+                                groupOpen && "rotate-180",
+                              )}
+                            />
+                          </button>
+                          <AnimatePresence initial={false}>
+                            {groupOpen && (
+                              <motion.ol
+                                id={groupPanelId}
+                                role="region"
+                                aria-labelledby={groupHeaderId}
+                                initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={reduceMotion ? undefined : { height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3, ease: EASE }}
+                                className="overflow-hidden px-6 lg:px-8"
+                              >
+                                {block.entries.map((entry) => (
+                                  <li
+                                    key={entry.id}
+                                    className="flex items-baseline gap-4 py-2.5 border-b border-rule-hairline/70 last:border-b-0"
+                                  >
+                                    <span className="type-body-md font-bold text-marigold tabular-nums w-8 shrink-0">
+                                      {String(entry.order_index).padStart(2, "0")}
+                                    </span>
+                                    <span className="type-body-md text-ink-body">
+                                      {entry.display_name}
+                                    </span>
+                                  </li>
+                                ))}
+                              </motion.ol>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
