@@ -23,11 +23,12 @@ import { cn } from "@/lib/utils";
 /**
  * HomePage — Musical Lumina
  *
- * Editorial five-act composition with measured luxury motion:
+ * Editorial composition with measured luxury motion:
  *   1. Hero — staggered fade-up on mount (eyebrow → title → lede → CTA pair)
- *   2. Featured events — scroll-triggered with card stagger
- *   3. Three movements — scroll-triggered with step stagger
- *   4. Closing CTA — scroll-triggered
+ *   2. The house — artists in residence and partners, first scroll on mobile
+ *   3. Featured events — scroll-triggered with card stagger
+ *   4. Three movements — scroll-triggered with step stagger
+ *   5. Closing CTA — scroll-triggered
  *
  * All motion uses ease-out-expo (0.19, 1, 0.22, 1) with 600–800ms durations —
  * the pace of a confident curtain rise rather than a UI flourish. Reduced-
@@ -146,7 +147,7 @@ function HomePage() {
           />
         )}
 
-        <Container className="relative pt-24 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20">
+        <Container className="relative pt-24 pb-6 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20">
           <motion.div
             variants={reduceMotion ? undefined : staggerContainer}
             initial={initial}
@@ -220,6 +221,122 @@ function HomePage() {
           </motion.div>
         </Container>
       </section>
+
+      {/* ====================================================================
+          THE HOUSE — visible without the mobile menu.
+          Two tiles side by side on a phone so both pages show together.
+          Editorial cards from md up.
+          ==================================================================== */}
+      <Section tone="warm" pause="none" className="py-4 md:py-[var(--pause-section)]">
+        <Container>
+          <PageHeader
+            align="start"
+            className="mb-10 lg:mb-14 max-w-3xl hidden md:flex"
+          >
+            <PageHeaderEyebrow>
+              {t("pageCopy.home.companyEyebrow")}
+            </PageHeaderEyebrow>
+            <PageHeaderTitle as="h2" size="lg">
+              {t("pageCopy.home.companyHeading")}
+            </PageHeaderTitle>
+          </PageHeader>
+
+          <motion.div
+            variants={reduceMotion ? undefined : gridStagger}
+            initial={initial}
+            whileInView="visible"
+            viewport={{ once: true, margin: "120px" }}
+            className="grid grid-cols-2 gap-3 lg:gap-8"
+          >
+            {(
+              [
+                {
+                  to: "/artists-in-residence",
+                  eyebrow: t("artistsInResidence.title"),
+                  heading: t("artistsInResidence.subtitle"),
+                  lede: t("artistsInResidence.lede"),
+                  cta: t("pageCopy.home.artistsCta"),
+                  inverse: true,
+                },
+                {
+                  to: "/partners",
+                  eyebrow: t("footer.partners"),
+                  heading: t("partners.title"),
+                  lede: t("partners.subtitle"),
+                  cta: t("pageCopy.home.partnersCta"),
+                  inverse: false,
+                },
+              ] as const
+            ).map((door) => (
+              <motion.div key={door.to} variants={fadeUp}>
+                <button
+                  type="button"
+                  onClick={() => navigate(door.to)}
+                  className={cn(
+                    "group relative w-full h-full text-left overflow-hidden",
+                    "flex flex-col items-start justify-between gap-4",
+                    "min-h-[7.25rem] px-4 py-4 rounded-sm border",
+                    "md:min-h-[280px] md:gap-10 md:p-8 lg:p-10",
+                    "transition-[background-color,border-color] duration-base ease-out-quart",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marigold focus-visible:ring-offset-2",
+                    door.inverse
+                      ? "bg-burgundy-700 border-burgundy-700 text-offWhite hover:border-marigold/70 focus-visible:ring-offset-burgundy-700"
+                      : "bg-surface-canvas border-rule-hairline text-ink-body hover:border-marigold/80 focus-visible:ring-offset-surface-canvas"
+                  )}
+                >
+                  {door.inverse && (
+                    <WireframeWave
+                      color="#E2A225"
+                      opacity={0.07}
+                      amplitude={0.6}
+                      lines={5}
+                      className="hidden md:block"
+                    />
+                  )}
+                  <h3
+                    className={cn(
+                      "relative type-headline-sm text-balance md:hidden",
+                      door.inverse ? "text-offWhite" : "text-burgundy"
+                    )}
+                  >
+                    {door.eyebrow}
+                  </h3>
+                  <div className="relative hidden md:flex flex-col gap-5 min-w-0">
+                    <Eyebrow tone={door.inverse ? "inverse" : "accent"} withRule>
+                      {door.eyebrow}
+                    </Eyebrow>
+                    <h3
+                      className={cn(
+                        "type-headline-md text-balance",
+                        door.inverse ? "text-offWhite" : "text-burgundy"
+                      )}
+                    >
+                      {door.heading}
+                    </h3>
+                    <p
+                      className={cn(
+                        "type-body-md text-pretty max-w-prose",
+                        door.inverse ? "text-offWhite/75" : "text-ink-body"
+                      )}
+                    >
+                      {door.lede}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "relative inline-flex items-center gap-2 shrink-0 type-label",
+                      door.inverse ? "text-marigold" : "text-burgundy"
+                    )}
+                  >
+                    <span className="hidden md:inline">{door.cta}</span>
+                    <ArrowRight className="h-4 w-4 transition-transform duration-base ease-out-quart group-hover:translate-x-1" />
+                  </span>
+                </button>
+              </motion.div>
+            ))}
+          </motion.div>
+        </Container>
+      </Section>
 
       {/* ====================================================================
           IN-SEASON — featured events, scroll-triggered stagger

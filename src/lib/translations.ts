@@ -326,6 +326,10 @@ export const translations = {
         closingHeading: "Where your next performance lives.",
         closingLede:
           "The full calendar of competitions, masterclasses, and group classes — curated across the year.",
+        companyEyebrow: "The house",
+        companyHeading: "The artists we champion, and the company we keep.",
+        artistsCta: "Meet the artists",
+        partnersCta: "See our partners",
       },
       events: {
         eyebrow: "Our programme",
@@ -743,6 +747,10 @@ export const translations = {
         closingHeading: "Di mana penampilan Anda berikutnya bermukim.",
         closingLede:
           "Kalender lengkap kompetisi, masterclass, dan kelas kelompok — dikurasi sepanjang tahun.",
+        companyEyebrow: "Rumah kami",
+        companyHeading: "Artis yang kami dukung, dan mitra yang kami jaga.",
+        artistsCta: "Kenali para artis",
+        partnersCta: "Lihat mitra kami",
       },
       events: {
         eyebrow: "Program kami",
