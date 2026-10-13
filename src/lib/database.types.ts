@@ -44,6 +44,7 @@ export interface Database {
           lark_base: string | null;
           lark_table: string | null;
           max_quota: number | null;
+          session_seat_limit: number;
           event_date: string[] | null;
           event_schedule: { start_at: string; end_at: string; max_slots?: number; max_user_slots?: number | null; break_after_slots?: number; break_duration_minutes?: number; unavailable_blocks?: { start_at: string; end_at: string; label?: string }[] }[] | null;
           event_duration: number[] | null;
@@ -66,6 +67,7 @@ export interface Database {
           lark_base?: string | null;
           lark_table?: string | null;
           max_quota?: number | null;
+          session_seat_limit?: number;
           event_date?: string[] | null;
           event_schedule?: { start_at: string; end_at: string; max_slots?: number; max_user_slots?: number | null; break_after_slots?: number; break_duration_minutes?: number; unavailable_blocks?: { start_at: string; end_at: string; label?: string }[] }[] | null;
           event_duration?: number[] | null;
@@ -88,6 +90,7 @@ export interface Database {
           lark_base?: string | null;
           lark_table?: string | null;
           max_quota?: number | null;
+          session_seat_limit?: number;
           event_date?: string[] | null;
           event_schedule?: { start_at: string; end_at: string; max_slots?: number; max_user_slots?: number | null; break_after_slots?: number; break_duration_minutes?: number; unavailable_blocks?: { start_at: string; end_at: string; label?: string }[] }[] | null;
           event_duration?: number[] | null;

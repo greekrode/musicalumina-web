@@ -62,6 +62,12 @@ const formSchema = z.object({
   // valueAsNumber yields NaN for an empty quota. z.number() rejects NaN, and
   // this form did not render that error, so the whole save was swallowed.
   max_quota: z.union([z.number(), z.nan(), z.string()]).optional(),
+  // Festival audience seats per session; the check-in desk sells tickets
+  // against it (participant + guardian = 2 seats each).
+  session_seat_limit: z
+    .number({ invalid_type_error: "Seats per session is required" })
+    .int("Use a whole number")
+    .min(1, "At least 1 seat"),
   lark_base: optionalText,
   lark_table: optionalText,
   event_duration: z.array(z.number()).nullish(),
@@ -149,6 +155,7 @@ export function EditEventModal({
       poster_image: "",
       status: "upcoming",
       max_quota: undefined,
+      session_seat_limit: 125,
       lark_base: "",
       lark_table: "",
       event_duration: [],
@@ -226,6 +233,7 @@ export function EditEventModal({
       poster_image: event.poster_image || "",
       status: event.status,
       max_quota: event.max_quota || undefined,
+      session_seat_limit: event.session_seat_limit,
       lark_base: event.lark_base || "",
       lark_table: event.lark_table || "",
       event_duration: (event as unknown as { event_duration?: number[] })
@@ -366,6 +374,7 @@ export function EditEventModal({
         poster_image: posterUrl,
         status: values.status,
         max_quota: maxQuota,
+        session_seat_limit: values.session_seat_limit,
         lark_base: values.lark_base,
         lark_table: values.lark_table,
         updated_at: new Date().toISOString(),
@@ -808,6 +817,28 @@ export function EditEventModal({
                 <FieldError>{errors.max_quota.message}</FieldError>
               )}
             </div>
+            {eventType === "festival" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-seat-limit">
+                  Seats per session{" "}
+                  <span className="type-caption text-ink-muted font-normal">
+                    — each participant + guardian takes 2; tickets sell the rest
+                  </span>
+                </Label>
+                <Input
+                  id="edit-seat-limit"
+                  type="number"
+                  min={1}
+                  step={1}
+                  variant="boxed"
+                  aria-invalid={!!errors.session_seat_limit}
+                  {...register("session_seat_limit", { valueAsNumber: true })}
+                />
+                {errors.session_seat_limit && (
+                  <FieldError>{errors.session_seat_limit.message}</FieldError>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="edit-venue-details">Venue details</Label>

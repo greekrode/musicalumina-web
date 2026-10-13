@@ -57,6 +57,12 @@ const formSchema = z.object({
   status: z.enum(["upcoming", "ongoing", "completed"]),
   poster_image: optionalText,
   max_quota: z.union([z.number(), z.nan(), z.string()]).optional(),
+  // Festival audience seats per session; the check-in desk sells tickets
+  // against it (participant + guardian = 2 seats each).
+  session_seat_limit: z
+    .number({ invalid_type_error: "Seats per session is required" })
+    .int("Use a whole number")
+    .min(1, "At least 1 seat"),
   lark_base: optionalText,
   lark_table: optionalText,
   event_duration: z.array(z.number()).nullish(),
@@ -133,6 +139,7 @@ export function AddEventModal({
       status: "upcoming",
       poster_image: "",
       max_quota: undefined,
+      session_seat_limit: 125,
       lark_base: "",
       lark_table: "",
       event_duration: [],
@@ -263,6 +270,7 @@ export function AddEventModal({
           venue_details: values.venue_details,
           poster_image: posterUrl,
           max_quota: maxQuota,
+          session_seat_limit: values.session_seat_limit,
           status: values.status,
           lark_base: values.lark_base || null,
           lark_table: values.lark_table || null,
@@ -680,6 +688,28 @@ export function AddEventModal({
                 <FieldError>{errors.max_quota.message}</FieldError>
               )}
             </div>
+            {eventType === "festival" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="ev-seat-limit">
+                  Seats per session{" "}
+                  <span className="type-caption text-ink-muted font-normal">
+                    — each participant + guardian takes 2; tickets sell the rest
+                  </span>
+                </Label>
+                <Input
+                  id="ev-seat-limit"
+                  type="number"
+                  min={1}
+                  step={1}
+                  variant="boxed"
+                  aria-invalid={!!errors.session_seat_limit}
+                  {...register("session_seat_limit", { valueAsNumber: true })}
+                />
+                {errors.session_seat_limit && (
+                  <FieldError>{errors.session_seat_limit.message}</FieldError>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="ev-venue-details">Venue details</Label>
