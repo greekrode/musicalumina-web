@@ -64,6 +64,7 @@ const AdminArtistsInResidence = lazy(() => import("./pages/admin/ArtistsInReside
 const AdminRegistrations = lazy(() => import("./pages/admin/Registrations"));
 const AdminCustomers = lazy(() => import("./pages/admin/Customers"));
 const AdminTeacherWalkin = lazy(() => import("./pages/admin/TeacherWalkin"));
+const AdminRemarksSheets = lazy(() => import("./pages/admin/RemarksSheets"));
 const AdminEventCategories = lazy(
   () => import("./pages/admin/EventCategories")
 );
@@ -376,6 +377,18 @@ function AnimatedRoutes() {
             >
               <ProtectedRoute>
                 <AdminTeacherWalkin />
+              </ProtectedRoute>
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/remarks-sheets"
+          element={
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminRemarksSheets />
               </ProtectedRoute>
             </Suspense>
           }

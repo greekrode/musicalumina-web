@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, FunctionsHttpError } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 import { attachScheduleEntries } from "./festivalSchedule";
 
@@ -57,6 +57,27 @@ export async function signRegistrationUpload(path: string): Promise<string> {
     throw new Error("Failed to generate signed URL for uploaded file");
   }
   return data.signedUrl;
+}
+
+/**
+ * Admin-only remarks-sheets function. Called with the anon key like the other
+ * functions (the gateway accepts Supabase JWTs only); the admin's Clerk token
+ * rides in x-clerk-token and the function checks it with public.is_admin().
+ */
+export async function invokeRemarksSheets<T>(body: Record<string, unknown>): Promise<T> {
+  const token = await window.Clerk?.session?.getToken();
+  if (!token) throw new Error("Please sign in again.");
+  const { data, error } = await edgeFunctions.invoke<T>("remarks-sheets", {
+    body,
+    headers: { "x-clerk-token": token },
+  });
+  if (error) {
+    // The function answers { error } with a 4xx; show that message, not the generic one.
+    const detail: { error?: string } | null =
+      error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
+    throw new Error(detail?.error ?? error.message);
+  }
+  return data as T;
 }
 
 export async function getEvents({

@@ -27,6 +27,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { name: "Registrations", href: "/admin/registrations" },
   { name: "Customers", href: "/admin/customers" },
   { name: "Teacher Walk-in", href: "/admin/teacher-walkin" },
+  { name: "Remarks Sheets", href: "/admin/remarks-sheets" },
   { name: "Masterclass", href: "/admin/masterclass" },
 ];
 
