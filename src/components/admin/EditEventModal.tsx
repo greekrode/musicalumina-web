@@ -11,9 +11,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Editor } from "@tinymce/tinymce-react";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm, type FieldErrors } from "react-hook-form";
+import { Controller, useForm, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { cn } from "@/lib/utils";
+import { IdrInput } from "./IdrInput";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
@@ -68,6 +69,9 @@ const formSchema = z.object({
     .number({ invalid_type_error: "Seats per session is required" })
     .int("Use a whole number")
     .min(1, "At least 1 seat"),
+  // Festival audience ticket (IDR), charged by QRIS at the check-in desk.
+  // Empty turns QRIS off.
+  ticket_price: z.number().int().positive("Price must be above 0").nullable(),
   lark_base: optionalText,
   lark_table: optionalText,
   event_duration: z.array(z.number()).nullish(),
@@ -133,6 +137,7 @@ export function EditEventModal({
   const { toast } = useToast();
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -156,6 +161,7 @@ export function EditEventModal({
       status: "upcoming",
       max_quota: undefined,
       session_seat_limit: 125,
+      ticket_price: null,
       lark_base: "",
       lark_table: "",
       event_duration: [],
@@ -234,6 +240,7 @@ export function EditEventModal({
       status: event.status,
       max_quota: event.max_quota || undefined,
       session_seat_limit: event.session_seat_limit,
+      ticket_price: event.ticket_price ?? null,
       lark_base: event.lark_base || "",
       lark_table: event.lark_table || "",
       event_duration: (event as unknown as { event_duration?: number[] })
@@ -375,6 +382,7 @@ export function EditEventModal({
         status: values.status,
         max_quota: maxQuota,
         session_seat_limit: values.session_seat_limit,
+        ticket_price: values.ticket_price,
         lark_base: values.lark_base,
         lark_table: values.lark_table,
         updated_at: new Date().toISOString(),
@@ -836,6 +844,35 @@ export function EditEventModal({
                 />
                 {errors.session_seat_limit && (
                   <FieldError>{errors.session_seat_limit.message}</FieldError>
+                )}
+              </div>
+            )}
+            {eventType === "festival" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-ticket-price">
+                  Ticket price{" "}
+                  <span className="type-caption text-ink-muted font-normal">
+                    — paid by QRIS at the check-in desk; empty turns QRIS off
+                  </span>
+                </Label>
+                <Controller
+                  control={control}
+                  name="ticket_price"
+                  render={({ field }) => (
+                    <IdrInput
+                      id="edit-ticket-price"
+                      variant="boxed"
+                      placeholder="50,000"
+                      aria-invalid={!!errors.ticket_price}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  )}
+                />
+                {errors.ticket_price && (
+                  <FieldError>{errors.ticket_price.message}</FieldError>
                 )}
               </div>
             )}
