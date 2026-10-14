@@ -28,6 +28,7 @@ request body. The browser calls them with the anon key (`edgeFunctions` in
 | `video-submission` | Look up a registration by reference code / set its video link once (fixed Lark table) | Turnstile `video`, 20 calls / 15 min / IP |
 | `registration-upload-url` | Signs a file the form just uploaded | path allowlist, file must be < 15 min old |
 | `invitation-code` | Verifies / redeems invitation codes server-side | 10 / 15 min / IP, 300 / event |
+| `teacher-walkin` | Walk-in teacher QR (`/teacher-walkin/<event id>`): `open` mints a single-use form link, `submit` adds the teacher to `customers` unless the WhatsApp/email already exists | `open`: Turnstile `teacher`, 60 / 15 min / IP, event day (WIB) and inside the venue radius (`teacher_walkin_gates`); `submit`: link unused and < 20 min old, same answer whether or not the teacher existed |
 | `sitemap` | Public sitemap | read-only |
 
 Retired (return `410`, kept as stubs so the code matches what is deployed):

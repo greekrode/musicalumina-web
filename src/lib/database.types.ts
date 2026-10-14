@@ -699,6 +699,48 @@ export interface Database {
           updated_at?: string;
         };
       };
+      teacher_walkin_gates: {
+        Row: {
+          event_id: string;
+          latitude: number;
+          longitude: number;
+          radius_m: number;
+          enabled: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          event_id: string;
+          latitude: number;
+          longitude: number;
+          radius_m?: number;
+          enabled?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          event_id?: string;
+          latitude?: number;
+          longitude?: number;
+          radius_m?: number;
+          enabled?: boolean;
+          updated_at?: string;
+        };
+      };
+      teacher_walkin_links: {
+        Row: {
+          id: string;
+          event_id: string;
+          token_hash: string;
+          client_ip: string;
+          distance_m: number;
+          created_at: string;
+          expires_at: string;
+          used_at: string | null;
+          customer_id: string | null;
+          new_customer: boolean | null;
+        };
+        Insert: never;
+        Update: never;
+      };
     };
   };
 }

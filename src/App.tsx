@@ -37,6 +37,7 @@ const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
 const VideoSubmissionPage = lazy(() => import("./pages/VideoSubmissionPage"));
+const TeacherWalkinPage = lazy(() => import("./pages/TeacherWalkinPage"));
 
 /* Admin routes — lazy-loaded so their TinyMCE / dense-form weight never
    reaches the public bundle. Every admin page is behind a Clerk-guarded
@@ -62,6 +63,7 @@ const AdminJury = lazy(() =>
 const AdminArtistsInResidence = lazy(() => import("./pages/admin/ArtistsInResidence"));
 const AdminRegistrations = lazy(() => import("./pages/admin/Registrations"));
 const AdminCustomers = lazy(() => import("./pages/admin/Customers"));
+const AdminTeacherWalkin = lazy(() => import("./pages/admin/TeacherWalkin"));
 const AdminEventCategories = lazy(
   () => import("./pages/admin/EventCategories")
 );
@@ -265,6 +267,18 @@ function AnimatedRoutes() {
           }
         />
         <Route
+          path="/teacher-walkin/:eventId"
+          element={
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading..." />}
+            >
+              <PageTransition>
+                <TeacherWalkinPage />
+              </PageTransition>
+            </Suspense>
+          }
+        />
+        <Route
           path="/admin"
           element={
             <Suspense
@@ -350,6 +364,18 @@ function AnimatedRoutes() {
             >
               <ProtectedRoute>
                 <AdminCustomers />
+              </ProtectedRoute>
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/teacher-walkin"
+          element={
+            <Suspense
+              fallback={<LoadingSpinner fullScreen message="Loading admin…" />}
+            >
+              <ProtectedRoute>
+                <AdminTeacherWalkin />
               </ProtectedRoute>
             </Suspense>
           }
