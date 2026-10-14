@@ -18,9 +18,14 @@ type Registrant = {
   participants: Participant[];
   ready: boolean;
   sentAt: string | null;
+  lastError: { at: string; message: string } | null;
 };
 type Status = { judges: string[]; registrants: Registrant[]; unknownJudges: string[] };
-type SendResult = { sent: string[]; failed: { email: string; error: string }[]; remaining: number };
+type TestResult = { sent: string[]; failed: { email: string; error: string }[] };
+
+/** While a background send runs, refresh the list this often (and stop after the cap). */
+const POLL_MS = 10_000;
+const POLL_MAX_MS = 20 * 60_000;
 
 const SELECT_CLASSES =
   "h-11 px-3 py-2 rounded-sm border border-burgundy/20 bg-surface-elevated font-sans text-body-sm text-ink-body focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20";
@@ -41,7 +46,8 @@ const jakartaTime = new Intl.DateTimeFormat("en-GB", {
  * scores, with remarks, are finalized for every one of its registrations.
  * "Send test" works any time: it mails one recipient's email (the ready one
  * with the longest remarks, else the first with sample remarks) to the given
- * address only. "Send to all ready" sends each ready recipient once.
+ * address only. "Send to all ready" queues every ready recipient on the
+ * server (sent in the background, each once); the page only polls progress.
  */
 export default function AdminRemarksSheets() {
   const [events, setEvents] = useState<EventOption[]>([]);
@@ -51,7 +57,7 @@ export default function AdminRemarksSheets() {
   const [isLoading, setIsLoading] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [progress, setProgress] = useState("");
+  const [backgroundSince, setBackgroundSince] = useState<number | null>(null);
 
   useEffect(() => {
     supabase
@@ -69,20 +75,24 @@ export default function AdminRemarksSheets() {
       });
   }, []);
 
-  const load = useCallback(async (id: string) => {
-    setIsLoading(true);
-    setLoadError("");
-    setStatus(null);
+  // quiet: refresh in place (background progress) without blanking the table.
+  const load = useCallback(async (id: string, quiet = false) => {
+    if (!quiet) {
+      setIsLoading(true);
+      setLoadError("");
+      setStatus(null);
+    }
     try {
       setStatus(await invokeRemarksSheets<Status>({ action: "status", eventId: id }));
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : String(error));
+      if (!quiet) setLoadError(error instanceof Error ? error.message : String(error));
     } finally {
-      setIsLoading(false);
+      if (!quiet) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    setBackgroundSince(null);
     if (eventId) load(eventId);
   }, [eventId, load]);
 
@@ -90,11 +100,23 @@ export default function AdminRemarksSheets() {
   const sentCount = registrants.filter((r) => r.sentAt).length;
   const readyCount = registrants.filter((r) => r.ready && !r.sentAt).length;
   const waitingCount = registrants.filter((r) => !r.ready).length;
+  const failedCount = registrants.filter((r) => r.ready && !r.sentAt && r.lastError).length;
+  // Still working while some ready recipient has neither been sent nor failed since the run started.
+  const isBackgroundRunning =
+    backgroundSince !== null &&
+    Date.now() - backgroundSince < POLL_MAX_MS &&
+    registrants.some((r) => r.ready && !r.sentAt && !(r.lastError && new Date(r.lastError.at).getTime() >= backgroundSince));
+
+  useEffect(() => {
+    if (!isBackgroundRunning) return;
+    const timer = window.setInterval(() => load(eventId, true), POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [isBackgroundRunning, eventId, load]);
 
   async function sendTest() {
     setIsSending(true);
     try {
-      const result = await invokeRemarksSheets<SendResult>({ action: "send", eventId, testEmail });
+      const result = await invokeRemarksSheets<TestResult>({ action: "send-test", eventId, testEmail });
       if (result.sent.length) toast.success(`Test email sent to ${testEmail} (sheets of ${result.sent[0]})`);
       else if (result.failed.length) toast.error(`Test failed: ${result.failed[0].error}`);
       else toast.error("No registrants for this event");
@@ -108,26 +130,15 @@ export default function AdminRemarksSheets() {
   async function sendAll() {
     if (!window.confirm(`Email remarks to ${readyCount} recipient${readyCount === 1 ? "" : "s"}? Each is only emailed once.`)) return;
     setIsSending(true);
-    const failed: SendResult["failed"] = [];
-    let sent = 0;
     try {
-      // The function sends a few recipients per call; keep going until none are left
-      // or a whole batch fails (then stop so the error can be looked at).
-      for (;;) {
-        const result = await invokeRemarksSheets<SendResult>({ action: "send", eventId });
-        sent += result.sent.length;
-        failed.push(...result.failed);
-        setProgress(`Sent ${sent} · ${result.remaining} left`);
-        if (result.remaining <= 0 || result.sent.length === 0) break;
-      }
-      if (failed.length) toast.error(`Sent ${sent}; ${failed.length} failed: ${failed.map((f) => `${f.email} (${f.error})`).join(", ")}`);
-      else toast.success(`Sent ${sent} email${sent === 1 ? "" : "s"}`);
+      const { queued } = await invokeRemarksSheets<{ queued: number }>({ action: "send-all", eventId });
+      setBackgroundSince(Date.now());
+      toast.success(`Sending ${queued} email${queued === 1 ? "" : "s"} in the background. You can close this page.`);
+      load(eventId, true);
     } catch (error) {
-      toast.error(`Stopped after ${sent}: ${error instanceof Error ? error.message : String(error)}`);
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSending(false);
-      setProgress("");
-      load(eventId);
     }
   }
 
@@ -171,6 +182,7 @@ export default function AdminRemarksSheets() {
             <p className="type-body-sm text-ink-body">
               Judges: {status.judges.join(" & ")} · {registrants.length} recipients ·{" "}
               <strong>{readyCount} ready</strong> · {waitingCount} waiting for finalized remarks · {sentCount} sent
+              {failedCount > 0 && <span className="text-[color:var(--status-error)]"> · {failedCount} failed</span>}
             </p>
             {status.unknownJudges.length > 0 && (
               <p className="type-body-sm text-[color:var(--status-error)]">
@@ -191,11 +203,13 @@ export default function AdminRemarksSheets() {
               <Button variant="outline" onClick={sendTest} disabled={isSending || !testEmail || registrants.length === 0}>
                 Send test
               </Button>
-              <Button variant="elegant" onClick={sendAll} disabled={isSending || readyCount === 0}>
-                {isSending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Send className="h-4 w-4 mr-1.5" />}
-                Send to all ready ({readyCount})
+              <Button variant="elegant" onClick={sendAll} disabled={isSending || isBackgroundRunning || readyCount === 0}>
+                {isSending || isBackgroundRunning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Send className="h-4 w-4 mr-1.5" />}
+                {failedCount > 0 && !isBackgroundRunning ? "Retry / send to all ready" : "Send to all ready"} ({readyCount})
               </Button>
-              {progress && <span className="type-body-sm text-ink-muted">{progress}</span>}
+              {isBackgroundRunning && (
+                <span className="type-body-sm text-ink-muted">Sending in the background ({sentCount} sent so far). You can close this page.</span>
+              )}
             </div>
           </section>
         )}
@@ -241,6 +255,10 @@ export default function AdminRemarksSheets() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           {r.sentAt ? (
                             `Sent ${jakartaTime.format(new Date(r.sentAt))}`
+                          ) : r.ready && r.lastError ? (
+                            <span className="text-[color:var(--status-error)] whitespace-normal" title={r.lastError.message}>
+                              Failed {jakartaTime.format(new Date(r.lastError.at))}: {r.lastError.message}
+                            </span>
                           ) : r.ready ? (
                             <span className="text-[color:var(--status-upcoming)]">Ready</span>
                           ) : (

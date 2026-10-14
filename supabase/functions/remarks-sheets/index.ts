@@ -9,9 +9,10 @@ import { renderRemarksSheet, type SheetAssets } from "./render.ts";
  * remarks-sheets — jury comment sheets for a finished event (admin only).
  *
  *   { action: "status", eventId }
- *       -> { judges, registrants: [{ email, type, name, ready, sentAt, participants }], unknownJudges }
- *   { action: "send", eventId, testEmail? }
- *       -> { sent: string[], failed: { email, error }[], remaining }
+ *       -> { judges, registrants: [{ email, type, name, ready, sentAt, lastError, participants }], unknownJudges }
+ *   { action: "send-test", eventId, testEmail } -> { sent: string[], failed: { email, error }[] }
+ *   { action: "send-all", eventId } -> { queued }   (sends in the background)
+ *   { action: "continue", eventId, startedAt }      (internal: next background batch)
  *
  * One PDF per verified registration (participant + category): the event's
  * template filled with name, category, repertoire and both judges' remarks
@@ -22,10 +23,13 @@ import { renderRemarksSheet, type SheetAssets } from "./render.ts";
  *
  * A recipient is ready once every one of its registrations has finalized
  * scores with remarks from both judges, and is sent at most once per event
- * (remarks_sheet_sends). "send" handles SEND_BATCH recipients per call; the
- * admin page calls again until remaining is 0. With testEmail it sends one
- * recipient's email (the ready one with the longest remarks, else the first
- * with SAMPLE_REMARKS) to testEmail instead and marks nothing sent.
+ * (remarks_sheet_sends; failed attempts keep their error there). "send-all"
+ * answers at once and works through the ready recipients in the background,
+ * SEND_BATCH per invocation, each batch calling the function again for the
+ * next ("continue", authorised by the service role key), so the admin can
+ * close the page. "send-test" sends one recipient's email (the ready one with
+ * the longest remarks, else the first with SAMPLE_REMARKS) to testEmail only
+ * and marks nothing sent.
  *
  * Mail goes out through Lark SMTP on port 465 (Supabase blocks 25 and 587),
  * as no-reply@musicalumina.com with replies to contact@musicalumina.com.
@@ -36,10 +40,16 @@ import { renderRemarksSheet, type SheetAssets } from "./render.ts";
  */
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-const db = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Recipients per invocation; each run then calls the function again for the next batch. */
 const SEND_BATCH = 5;
+/** Pause between emails so Lark SMTP does not throttle a bulk run. */
+const SEND_GAP_MS = 3000;
+
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 const SMTP_HOST = "smtp.larksuite.com";
 const SMTP_PORT = 465;
@@ -85,6 +95,8 @@ interface Registrant {
   participants: Participant[];
   ready: boolean;
   sentAt: string | null;
+  /** Latest failed send (background sends report here), cleared by a success. */
+  lastError: { at: string; message: string } | null;
 }
 
 async function isAdmin(req: Request): Promise<boolean> {
@@ -113,9 +125,10 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
       ? db.from("event_scoring").select("registration_id, jury_name, remarks, finalized").in("registration_id", ids)
       : Promise.resolve({ data: [], error: null }),
     db.from("remarks_sheet_sends")
-      .select("registrant_email, registrant_type, sent_at")
+      .select("registrant_email, registrant_type, sent_at, error")
       .eq("event_id", eventId)
-      .eq("is_test", false),
+      .eq("is_test", false)
+      .order("sent_at"),
   ]);
   if (scoresRes.error) throw scoresRes.error;
   if (sendsRes.error) throw sendsRes.error;
@@ -140,9 +153,13 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
     unlocked[index] = s.finalized !== true;
     unlockedByReg.set(s.registration_id, unlocked);
   }
-  const sentAt = new Map<string, string>(
-    (sendsRes.data ?? []).map((s) => [`${s.registrant_email} ${s.registrant_type}`, s.sent_at]),
-  );
+  const sentAt = new Map<string, string>();
+  const lastError = new Map<string, { at: string; message: string }>();
+  for (const s of sendsRes.data ?? []) {
+    const key = `${s.registrant_email} ${s.registrant_type}`;
+    if (s.error) lastError.set(key, { at: s.sent_at, message: s.error });
+    else sentAt.set(key, s.sent_at);
+  }
 
   const byRecipient = new Map<string, Registrant>();
   for (const r of regs ?? []) {
@@ -171,6 +188,7 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
       participants: [],
       ready: true,
       sentAt: sentAt.get(key) ?? null,
+      lastError: sentAt.has(key) ? null : lastError.get(key) ?? null,
     };
     registrant.participants.push(participant);
     registrant.ready &&= participant.missing.length === 0;
@@ -223,28 +241,126 @@ async function sendRegistrant(smtp: SMTPClient, registrant: Registrant, to: stri
   });
 }
 
+/**
+ * Sends each recipient's email (to `testTo` instead when given). A row in
+ * remarks_sheet_sends is claimed first so two runs cannot both send; a failed
+ * send keeps its row with the error so the admin page can show it.
+ */
+async function sendBatch(eventId: string, template: string, batch: Registrant[], testTo: string | null) {
+  const { data: event, error } = await db.from("events").select("title").eq("id", eventId).single();
+  if (error) throw error;
+  const assets = await loadAssets(template);
+  const sent: string[] = [];
+  const failed: { email: string; error: string }[] = [];
+  const smtp = new SMTPClient({
+    connection: {
+      hostname: SMTP_HOST,
+      port: SMTP_PORT,
+      tls: true,
+      auth: { username: Deno.env.get("SMTP_USERNAME") ?? "", password: Deno.env.get("SMTP_PASSWORD") ?? "" },
+    },
+  });
+  try {
+    for (const [i, registrant] of batch.entries()) {
+      if (i > 0) {
+        const { promise, resolve } = Promise.withResolvers<void>();
+        setTimeout(resolve, SEND_GAP_MS);
+        await promise;
+      }
+      const { data: claim, error: claimError } = await db
+        .from("remarks_sheet_sends")
+        .insert({
+          event_id: eventId,
+          registrant_email: registrant.email,
+          registrant_type: registrant.type,
+          registration_ids: registrant.participants.map((p) => p.registrationId),
+          is_test: testTo !== null,
+          sent_to: testTo ?? registrant.email,
+        })
+        .select("id")
+        .single();
+      if (claimError) {
+        failed.push({ email: registrant.email, error: claimError.code === "23505" ? "already sent" : claimError.message });
+        continue;
+      }
+      try {
+        await sendRegistrant(smtp, registrant, testTo ?? registrant.email, event.title, assets);
+        sent.push(`${registrant.email} (${registrant.type})`);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.error("remarks-sheets send failed", registrant.email, registrant.type, message);
+        await db.from("remarks_sheet_sends").update({ error: message.slice(0, 500) }).eq("id", claim.id);
+        failed.push({ email: registrant.email, error: message });
+      }
+    }
+  } finally {
+    await smtp.close();
+  }
+  return { sent, failed };
+}
+
+/**
+ * One background step of "send to all ready": send a batch, then call this
+ * function again for the next one, so no single invocation runs into the
+ * edge function time limit. Recipients that already failed during this run
+ * (since `startedAt`) are skipped so one bad address cannot stall the rest;
+ * they stay pending for the next "send to all ready".
+ */
+async function sendStep(eventId: string, startedAt: string) {
+  const sheet = SHEETS[eventId];
+  const { registrants } = await loadRegistrants(eventId, sheet.judges);
+  const pending = registrants.filter((r) => r.ready && !r.sentAt && !(r.lastError && r.lastError.at >= startedAt));
+  if (pending.length === 0) return;
+  const batch = pending.slice(0, SEND_BATCH);
+  const { sent, failed } = await sendBatch(eventId, sheet.template, batch, null);
+  console.log("remarks-sheets step", { eventId, sent: sent.length, failed: failed.length, left: pending.length - batch.length });
+  if (pending.length > batch.length) {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/remarks-sheets`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${ANON_KEY}`, "x-internal-key": SERVICE_ROLE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "continue", eventId, startedAt }),
+    });
+    if (!res.ok) console.error("remarks-sheets could not continue", res.status, await res.text());
+  }
+}
+
 serve(
   withCors(async (req) => {
-    if (!(await isAdmin(req))) return jsonResponse({ error: "Admins only" }, 403);
-    const { action, eventId, testEmail } = await req.json().catch(() => ({}));
+    const { action, eventId, testEmail, startedAt } = await req.json().catch(() => ({}));
     if (!UUID.test(String(eventId))) return jsonResponse({ error: "Invalid event" }, 400);
     const sheet = SHEETS[eventId];
     if (!sheet) return jsonResponse({ error: "This event has no remarks sheet template." }, 400);
 
+    // Next step of a background run, called by the previous step only.
+    if (action === "continue") {
+      if (!SERVICE_ROLE_KEY || req.headers.get("x-internal-key") !== SERVICE_ROLE_KEY) {
+        return jsonResponse({ error: "Forbidden" }, 403);
+      }
+      EdgeRuntime.waitUntil(sendStep(eventId, String(startedAt)).catch((e) => console.error("remarks-sheets step failed", e)));
+      return jsonResponse({ ok: true }, 202);
+    }
+
+    if (!(await isAdmin(req))) return jsonResponse({ error: "Admins only" }, 403);
     const { registrants, unknownJudges } = await loadRegistrants(eventId, sheet.judges);
 
     if (action === "status") {
       return jsonResponse({ judges: sheet.judges, registrants, unknownJudges });
     }
-    if (action !== "send") return jsonResponse({ error: "Invalid action" }, 400);
 
-    const isTest = testEmail !== undefined;
+    // Starts the background run and answers at once; the page can be closed.
+    if (action === "send-all") {
+      const queued = registrants.filter((r) => r.ready && !r.sentAt).length;
+      if (queued > 0) {
+        EdgeRuntime.waitUntil(
+          sendStep(eventId, new Date().toISOString()).catch((e) => console.error("remarks-sheets step failed", e)),
+        );
+      }
+      return jsonResponse({ queued });
+    }
+
+    if (action !== "send-test") return jsonResponse({ error: "Invalid action" }, 400);
     const to = String(testEmail ?? "").trim();
-    if (isTest && !EMAIL.test(to)) return jsonResponse({ error: "Invalid test email" }, 400);
-
-    const { data: event, error } = await db.from("events").select("title").eq("id", eventId).single();
-    if (error) throw error;
-    const assets = await loadAssets(sheet.template);
+    if (!EMAIL.test(to)) return jsonResponse({ error: "Invalid test email" }, 400);
 
     // Test send: the ready recipient with the longest remarks (worst case for
     // the auto-sized text). Before anything is ready, the first recipient with
@@ -252,60 +368,13 @@ serve(
     const remarksLength = (r: Registrant) =>
       r.participants.reduce((n, p) => n + p.remarks[0].length + p.remarks[1].length, 0);
     const ready = registrants.filter((r) => r.ready);
-    const batch = !isTest
-      ? registrants.filter((r) => r.ready && !r.sentAt).slice(0, SEND_BATCH)
-      : ready.length
+    const batch = ready.length
       ? [ready.reduce((a, b) => (remarksLength(b) > remarksLength(a) ? b : a))]
       : registrants.slice(0, 1).map((r) => ({
         ...r,
         participants: r.participants.map((p) => ({ ...p, remarks: [...SAMPLE_REMARKS] as [string, string] })),
       }));
-    const sent: string[] = [];
-    const failed: { email: string; error: string }[] = [];
-    if (batch.length === 0) return jsonResponse({ sent, failed, remaining: 0 });
-
-    const smtp = new SMTPClient({
-      connection: {
-        hostname: SMTP_HOST,
-        port: SMTP_PORT,
-        tls: true,
-        auth: { username: Deno.env.get("SMTP_USERNAME") ?? "", password: Deno.env.get("SMTP_PASSWORD") ?? "" },
-      },
-    });
-    try {
-      for (const registrant of batch) {
-        // Claim first so two admins (or a double click) cannot send twice.
-        const { data: claim, error: claimError } = await db
-          .from("remarks_sheet_sends")
-          .insert({
-            event_id: eventId,
-            registrant_email: registrant.email,
-            registrant_type: registrant.type,
-            registration_ids: registrant.participants.map((p) => p.registrationId),
-            is_test: isTest,
-            sent_to: isTest ? to : registrant.email,
-          })
-          .select("id")
-          .single();
-        if (claimError) {
-          failed.push({ email: registrant.email, error: claimError.code === "23505" ? "already sent" : claimError.message });
-          continue;
-        }
-        try {
-          await sendRegistrant(smtp, registrant, isTest ? to : registrant.email, event.title, assets);
-          sent.push(`${registrant.email} (${registrant.type})`);
-        } catch (e) {
-          console.error("remarks-sheets send failed", registrant.email, e);
-          await db.from("remarks_sheet_sends").delete().eq("id", claim.id);
-          failed.push({ email: registrant.email, error: e instanceof Error ? e.message : String(e) });
-        }
-      }
-    } finally {
-      await smtp.close();
-    }
-
-    // Failed recipients stay pending; a batch that sends nothing means stop and look.
-    const remaining = isTest ? 0 : registrants.filter((r) => r.ready && !r.sentAt).length - sent.length;
-    return jsonResponse({ sent, failed, remaining });
+    if (batch.length === 0) return jsonResponse({ sent: [], failed: [] });
+    return jsonResponse(await sendBatch(eventId, sheet.template, batch, to));
   }),
 );
