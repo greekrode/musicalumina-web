@@ -250,7 +250,8 @@ export default function AdminTeacherWalkin() {
             Teachers who did not register scan this QR at the venue to watch for free. The form
             only opens on the event day, within the radius below. Each verified scan gets a
             single-use link, and a teacher already in Customers (same WhatsApp or email) is not
-            added again.
+            added again. After submitting, the teacher's phone shows an entry pass QR: scan it
+            with the QR scanner app to check them in.
           </p>
         </header>
 

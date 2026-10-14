@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Loader2, MapPin } from "lucide-react";
 import { useLanguage } from "../lib/LanguageContext";
@@ -27,7 +28,9 @@ import { usePageTitle } from "../hooks/usePageTitle";
  * Walk-in teacher form, opened from the QR printed for an event
  * (/teacher-walkin/:eventId). Step 1 proves the visitor is at the venue on an
  * event day and gets a single-use link (#t=<token>); step 2 sends name, email
- * and WhatsApp. The teacher-walkin Edge Function does every check.
+ * and WhatsApp and gets back a signed entry pass, shown as a QR for the door's
+ * QR scanner and kept in localStorage so reopening the page shows it again.
+ * The teacher-walkin Edge Function does every check.
  */
 
 /**
@@ -86,6 +89,9 @@ function createSchema(t: (key: string) => string): z.ZodType<WalkinForm> {
   });
 }
 
+/** The signed entry pass from a successful submit, and the name it was submitted with. */
+type EntryPass = { pass: string; name: string };
+
 export default function TeacherWalkinPage() {
   const { t } = useLanguage();
   const { eventId = "" } = useParams();
@@ -93,12 +99,23 @@ export default function TeacherWalkinPage() {
   const navigate = useNavigate();
   const turnstileRef = useRef<TurnstileHandle>(null);
   const token = new URLSearchParams(location.hash.slice(1)).get("t");
+  const storageKey = `teacher-walkin-pass:${eventId}`;
 
   const [eventTitle, setEventTitle] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [entryPass, setEntryPass] = useState<EntryPass | null>(() => {
+    try {
+      const stored: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
+      return stored && typeof stored === "object" && "pass" in stored && "name" in stored &&
+        typeof stored.pass === "string" && typeof stored.name === "string"
+        ? { pass: stored.pass, name: stored.name }
+        : null;
+    } catch {
+      return null;
+    }
+  });
 
   usePageTitle(t("pageCopy.teacherWalkin.title"));
 
@@ -178,8 +195,14 @@ export default function TeacherWalkinPage() {
     setErrorCode(null);
     setIsSubmitting(true);
     try {
-      await teacherWalkin({ action: "submit", token, ...data });
-      setDone(true);
+      const { pass } = await teacherWalkin<{ pass: string }>({ action: "submit", token, ...data });
+      const issued = { pass, name: data.name.trim() };
+      setEntryPass(issued);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(issued));
+      } catch {
+        // Private browsing: the pass still shows now; the teacher can screenshot it.
+      }
       navigate({ hash: "" }, { replace: true }); // the link is used up
     } catch (error) {
       fail(error);
@@ -201,7 +224,7 @@ export default function TeacherWalkinPage() {
             <PageHeader align="start" className="max-w-3xl">
               <PageHeaderEyebrow>{eventTitle ?? t("pageCopy.teacherWalkin.eyebrow")}</PageHeaderEyebrow>
               <PageHeaderTitle size="xl">{t("pageCopy.teacherWalkin.title")}</PageHeaderTitle>
-              {!done && <PageHeaderLede>{t("pageCopy.teacherWalkin.lede")}</PageHeaderLede>}
+              {(token || !entryPass) && <PageHeaderLede>{t("pageCopy.teacherWalkin.lede")}</PageHeaderLede>}
             </PageHeader>
           </Container>
         </section>
@@ -209,14 +232,7 @@ export default function TeacherWalkinPage() {
         <Section tone="canvas" pause="md" rule="top">
           <Container>
             <div className="max-w-xl mx-auto flex flex-col gap-8">
-              {done ? (
-                <StatusBanner kind="success">
-                  <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-                  <span className="type-body-md font-semibold">
-                    {t("pageCopy.teacherWalkin.success")}
-                  </span>
-                </StatusBanner>
-              ) : token ? (
+              {token ? (
                 <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
                   <Eyebrow withRule>{t("pageCopy.teacherWalkin.step2")}</Eyebrow>
                   <Field id="name" label={t("pageCopy.teacherWalkin.name")} error={errors.name?.message}>
@@ -266,6 +282,8 @@ export default function TeacherWalkinPage() {
                       : t("pageCopy.teacherWalkin.submit")}
                   </Button>
                 </form>
+              ) : entryPass ? (
+                <EntryPassCard entryPass={entryPass} />
               ) : (
                 <div className="flex flex-col gap-6">
                   <Eyebrow withRule>{t("pageCopy.teacherWalkin.step1")}</Eyebrow>
@@ -288,6 +306,44 @@ export default function TeacherWalkinPage() {
         </Section>
       </div>
     </PageTransition>
+  );
+}
+
+function EntryPassCard({ entryPass }: { entryPass: EntryPass }) {
+  const { t } = useLanguage();
+  const [qrDataUrl, setQrDataUrl] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    // ECC Q like the printed passes; the scanner reads the raw ML2 string.
+    QRCode.toDataURL(entryPass.pass, { width: 720, margin: 2, errorCorrectionLevel: "Q" })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch((error) => console.error("Entry pass QR failed:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, [entryPass.pass]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <StatusBanner kind="success">
+        <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+        <span className="type-body-md font-semibold">{t("pageCopy.teacherWalkin.success")}</span>
+      </StatusBanner>
+      <div className="bg-white border border-rule-hairline p-6 flex flex-col items-center gap-4 text-center">
+        <Eyebrow>{t("pageCopy.teacherWalkin.passEyebrow")}</Eyebrow>
+        {qrDataUrl ? (
+          <img src={qrDataUrl} alt={t("pageCopy.teacherWalkin.passAlt")} className="w-64 h-64 sm:w-72 sm:h-72" />
+        ) : (
+          <div className="w-64 h-64 sm:w-72 sm:h-72 bg-surface-canvas-warm" />
+        )}
+        <p className="type-body-lg font-semibold text-burgundy">{entryPass.name}</p>
+        <p className="type-body-sm text-ink-body">{t("pageCopy.teacherWalkin.passShow")}</p>
+        <p className="type-caption text-ink-muted">{t("pageCopy.teacherWalkin.passSave")}</p>
+      </div>
+    </div>
   );
 }
 

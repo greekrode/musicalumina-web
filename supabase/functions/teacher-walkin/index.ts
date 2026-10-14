@@ -2,13 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jsonResponse, withCors } from "../_shared/n8n.ts";
 import { clientIp, verifyTurnstile } from "../_shared/guard.ts";
+import { encodeCustomerPass } from "../_shared/pass.ts";
 
 /**
  * teacher-walkin — the walk-in teacher QR at an event venue.
  *
  *   { action: "open", eventId, latitude, longitude, accuracy, turnstileToken }
  *       -> { token, expiresAt }
- *   { action: "submit", token, name, email, whatsapp } -> { ok }
+ *   { action: "submit", token, name, email, whatsapp } -> { ok, pass }
  *
  * "open" needs Turnstile, is rate-limited per IP, and only succeeds on one of
  * the event's days (Jakarta) with a browser location inside the venue gate
@@ -16,6 +17,8 @@ import { clientIp, verifyTurnstile } from "../_shared/guard.ts";
  * SHA-256 is stored. "submit" uses up the token and adds the teacher to
  * customers unless the WhatsApp number or email is already there; the answer
  * is the same either way, so the form can't be used to look people up.
+ * The answer carries a signed entry pass (kind 4, see _shared/pass.ts) that the
+ * page shows as a QR for the door's QR scanner.
  * Failures come back as { error, code } with a stable code the page translates.
  */
 const MAX_OPENS_PER_IP = 60; // per 15 minutes; a venue's Wi-Fi shares one IP
@@ -102,6 +105,9 @@ async function submit(body: Record<string, unknown>): Promise<Response> {
     return refusal("invalid_input");
   }
 
+  // Checked before the link is used up, so a misconfiguration can be retried.
+  const passSecret = Deno.env.get("QR_PASS_SECRET");
+  if (!passSecret) throw new Error("QR_PASS_SECRET is not set");
   const result = await rpc("submit_teacher_walkin", {
     p_token_hash: await sha256Hex(token),
     p_name: name,
@@ -109,7 +115,13 @@ async function submit(body: Record<string, unknown>): Promise<Response> {
     p_whatsapp: whatsapp,
   });
   if (typeof result.error === "string") return refusal(result.error);
-  return jsonResponse({ ok: true });
+  const pass = await encodeCustomerPass(
+    passSecret,
+    String(result.customerId),
+    String(result.eventId),
+    Number(result.passExpiresAt),
+  );
+  return jsonResponse({ ok: true, pass });
 }
 
 serve(

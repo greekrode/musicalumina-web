@@ -413,6 +413,10 @@ export const translations = {
         submit: "Submit",
         submitting: "Submitting…",
         success: "Submission successful. Thank you!",
+        passEyebrow: "Teacher entry pass",
+        passAlt: "Teacher entry pass QR code",
+        passShow: "Show this QR code at the entrance. Our staff will scan it to let you in.",
+        passSave: "Take a screenshot in case you lose signal. Opening this page again on this phone also shows it.",
         startOver: "Start again",
         errors: {
           closed: "This form is not open for this event.",
@@ -885,6 +889,10 @@ export const translations = {
         submit: "Kirim",
         submitting: "Mengirim…",
         success: "Data berhasil dikirim. Terima kasih!",
+        passEyebrow: "Kartu masuk guru",
+        passAlt: "Kode QR kartu masuk guru",
+        passShow: "Tunjukkan kode QR ini di pintu masuk. Staf kami akan memindainya.",
+        passSave: "Simpan tangkapan layar untuk berjaga-jaga jika sinyal hilang. Membuka halaman ini lagi di ponsel ini juga akan menampilkannya.",
         startOver: "Mulai lagi",
         errors: {
           closed: "Formulir ini tidak dibuka untuk acara ini.",
