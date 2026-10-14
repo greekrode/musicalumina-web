@@ -207,7 +207,7 @@ export default function AdminRemarksSheets() {
         const rows = (data || []).filter((e) => {
           const days = (Array.isArray(e.event_date) && e.event_date.length ? e.event_date : [e.start_date])
             .filter(Boolean)
-            .map((d) => String(d).slice(0, 10));
+            .map((d) => jakartaDay.format(new Date(String(d))));
           return days.some((d) => d >= from && d <= to);
         });
         setEvents(rows.map(({ id, title }) => ({ id, title })));
