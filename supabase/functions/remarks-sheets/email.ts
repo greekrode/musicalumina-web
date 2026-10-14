@@ -8,39 +8,43 @@ export interface AttachedSheet {
 }
 
 /**
- * Wording per registrant type, ported from the LSPF 2026 jury comment sheet
- * emails (musicalumina-tools/scripts/email-templates/comment-sheets-*.html).
+ * Wording per registrant type (registrations.registrant_status): teachers
+ * hear about their students, parents about their child, personal
+ * registrants about themselves. `thanks` receives the escaped event title.
  */
-const COPY: Record<RegistrantType, { badge: string; thanks: string; attached: string; note: string; closing: string }> = {
+const COPY: Record<
+  RegistrantType,
+  { badge: string; thanks: (event: string) => string; attached: string; note: string; closing: string }
+> = {
   teacher: {
     badge: "Jury Comment Sheets",
-    thanks:
-      "It was our genuine privilege to host your student(s) — their dedication, artistry, and courage on stage made this festival truly special.",
+    thanks: (event) =>
+      `Thank you for bringing your students to the ${event}. We loved hearing them play, and we hope they enjoyed the stage as much as we enjoyed listening.`,
     attached:
-      "Attached to this email, you will find the <strong>jury comment sheets</strong> for each of your registered students. We hope the feedback from our esteemed jury serves as meaningful encouragement on each musician's continued journey.",
+      "Each student's jury comment sheet is attached to this email as a PDF, with notes from both judges. Students who played in more than one category have a sheet for each.",
     note:
-      "<strong>Kindly forward</strong> each student's comment sheet to them (and their parents, where applicable). We trust you to distribute these with the context they deserve.",
-    closing: "We look forward to welcoming you and your students to future editions of Musica Lumina.",
+      "Please pass each sheet on to the student, and to their parents if that suits. The judges wrote the comments for the students themselves, so they're worth reading together after a lesson.",
+    closing: "We hope to see you and your students again at our next festival.",
   },
   parents: {
     badge: "Jury Comment Sheets",
-    thanks:
-      "It was our genuine privilege to host your child — their dedication, artistry, and courage on stage made this festival truly special.",
+    thanks: (event) =>
+      `Thank you for being part of the ${event}. It was lovely to hear your child play.`,
     attached:
-      "Attached to this email, you will find the <strong>jury comment sheet(s)</strong> for your registered child or children. We hope the feedback from our esteemed jury serves as meaningful encouragement on their continued musical journey.",
+      "Your child's jury comment sheet is attached to this email as a PDF, with notes from both judges. If they played in more than one category, there's a sheet for each.",
     note:
-      "Please read through the comments with your child — we hope the jury's remarks become a gentle source of reflection and encouragement for their next stage.",
-    closing: "We look forward to welcoming you and your family to future editions of Musica Lumina.",
+      "Try reading the comments together. The judges point out what went well, not only what to practise next, and kids usually like hearing both.",
+    closing: "We hope to see your family again at our next festival.",
   },
   personal: {
     badge: "Jury Comment Sheet",
-    thanks:
-      "Your dedication, artistry, and courage on stage made this festival truly special, and we are grateful to have shared the moment with you.",
+    thanks: (event) =>
+      `Thank you for performing at the ${event}. We really enjoyed your performance.`,
     attached:
-      "Attached to this email, you will find your <strong>jury comment sheet(s)</strong>. We hope the feedback from our esteemed jury serves as meaningful encouragement on your continued musical journey.",
+      "Your jury comment sheet is attached to this email as a PDF, with notes from both judges. If you played in more than one category, there's a sheet for each.",
     note:
-      "Read through the comments at your own pace — we hope the jury's remarks serve as a gentle source of reflection and encouragement for your next stage.",
-    closing: "We look forward to welcoming you to future editions of Musica Lumina.",
+      "Take your time with the comments. The judges note what went well, not only what to work on next.",
+    closing: "We hope to see you again at our next festival.",
   },
 };
 
@@ -53,9 +57,7 @@ export function buildRemarksEmail(input: {
   const { type, registrantName, eventTitle, sheets } = input;
   const copy = COPY[type];
   const event = escapeHtml(eventTitle);
-  const opening = type === "personal"
-    ? `Thank you for performing at the ${event}.`
-    : `Thank you for being part of the ${event}.`;
+  const thanks = copy.thanks(event);
   const sheetRows = sheets
     .map(
       (s) =>
@@ -93,7 +95,7 @@ export function buildRemarksEmail(input: {
         <tr>
           <td style="padding:20px 40px 8px 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#3d3230;">
             <p style="margin:0 0 14px 0;">Dear ${escapeHtml(registrantName)},</p>
-            <p style="margin:0 0 14px 0;">${opening} ${copy.thanks}</p>
+            <p style="margin:0 0 14px 0;">${thanks}</p>
             <p style="margin:0;">${copy.attached}</p>
           </td>
         </tr>
@@ -104,7 +106,7 @@ export function buildRemarksEmail(input: {
                 <td style="padding:20px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#3d3230;">
                   <p style="margin:0 0 10px 0;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#b07d12;font-weight:bold;">What's Attached</p>
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0">${sheetRows}</table>
-                  <p style="margin:8px 0 0 0;font-size:13px;color:#6b5d58;font-style:italic;">One PDF per participant and category, named after the participant and category.</p>
+                  <p style="margin:8px 0 0 0;font-size:13px;color:#6b5d58;font-style:italic;">Each file is named after the participant and category.</p>
                 </td>
               </tr>
             </table>
@@ -113,7 +115,7 @@ export function buildRemarksEmail(input: {
         <tr>
           <td style="padding:24px 40px 0 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#3d3230;">
             <p style="margin:0 0 14px 0;">${copy.note}</p>
-            <p style="margin:0;">Thank you again for entrusting us with this moment. ${copy.closing}</p>
+            <p style="margin:0;">${copy.closing}</p>
           </td>
         </tr>
         <tr>
@@ -125,7 +127,6 @@ export function buildRemarksEmail(input: {
         <tr>
           <td align="center" style="padding:20px 40px;background-color:#491822;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#e8d9c7;">
             You are receiving this email because you registered for the ${event}.<br>
-            Jury comment sheets are for the recipient's personal review — please handle them with care.<br>
             <a href="https://www.musicalumina.com" target="_blank" style="color:#e3a42a;text-decoration:none;">musicalumina.com</a>
           </td>
         </tr>

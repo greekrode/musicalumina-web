@@ -81,13 +81,16 @@ const FONTS = {
   body: "remarks-sheets/fonts/Nunito-SemiBold.ttf",
 };
 
+type JudgeStatus = "final" | "draft" | "none";
+
 interface Participant {
   registrationId: string;
   name: string;
   category: string;
   song: string;
   remarks: [string, string];
-  missing: string[];
+  /** Per judge, in template order: finalized with remarks, written but not finalized, or nothing yet. */
+  judgeStatus: JudgeStatus[];
   /** Latest successful email (send or resend) that carried this sheet. */
   sentAt: string | null;
 }
@@ -190,9 +193,7 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
       category: [cat?.name, sub?.name].filter(Boolean).join(" - "),
       song: String(r.song_title ?? "").trim(),
       remarks,
-      missing: judges.flatMap((judge, i) =>
-        !remarks[i] ? [`${judge} (no remarks)`] : unlocked[i] ? [`${judge} (not finalized)`] : [],
-      ),
+      judgeStatus: judges.map((_, i): JudgeStatus => (!remarks[i] ? "none" : unlocked[i] ? "draft" : "final")),
       sentAt: sheetSentAt.get(r.id) ?? null,
     };
     const registrant: Registrant = byRecipient.get(key) ?? {
@@ -206,7 +207,7 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
       lastError: sentAt.has(key) ? null : lastError.get(key) ?? null,
     };
     registrant.participants.push(participant);
-    registrant.ready &&= participant.missing.length === 0;
+    registrant.ready &&= participant.judgeStatus.every((s) => s === "final");
     byRecipient.set(key, registrant);
   }
   return { registrants: [...byRecipient.values()], unknownJudges: [...unknownJudges] };
@@ -405,7 +406,7 @@ serve(
       const wanted = new Set(Array.isArray(registrationIds) ? registrationIds.map(String) : []);
       const participants = recipient.participants.filter((p) => wanted.has(p.registrationId));
       if (participants.length === 0) return jsonResponse({ error: "Choose at least one participant" }, 400);
-      const notReady = participants.filter((p) => p.missing.length > 0).map((p) => p.name);
+      const notReady = participants.filter((p) => p.judgeStatus.some((s) => s !== "final")).map((p) => p.name);
       if (notReady.length) return jsonResponse({ error: `Remarks not finalized for ${notReady.join(", ")}` }, 400);
       return jsonResponse(await sendBatch(eventId, sheet.template, [{ ...recipient, participants }], { resend: true }));
     }

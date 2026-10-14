@@ -1,7 +1,21 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { Loader2, Send } from "lucide-react";
+import {
+  CircleAlert,
+  CircleCheck,
+  CircleDashed,
+  Clock,
+  GraduationCap,
+  Loader2,
+  type LucideIcon,
+  MailCheck,
+  PenLine,
+  Send,
+  User,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Badge, type BadgeStatus } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
@@ -10,17 +24,20 @@ import { invokeRemarksSheets, supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 type EventOption = { id: string; title: string };
+type JudgeStatus = "final" | "draft" | "none";
+type RegistrantType = "teacher" | "parents" | "personal";
 type Participant = {
   registrationId: string;
   name: string;
   category: string;
   song: string;
-  missing: string[];
+  /** Per judge, in Status.judges order. */
+  judgeStatus: JudgeStatus[];
   sentAt: string | null;
 };
 type Registrant = {
   email: string;
-  type: "teacher" | "parents" | "personal";
+  type: RegistrantType;
   name: string;
   participants: Participant[];
   ready: boolean;
@@ -45,6 +62,70 @@ const jakartaTime = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+const TYPE_META: Record<RegistrantType, { label: string; icon: LucideIcon }> = {
+  teacher: { label: "Teacher", icon: GraduationCap },
+  parents: { label: "Parent", icon: Users },
+  personal: { label: "Personal", icon: User },
+};
+
+const JUDGE_META: Record<JudgeStatus, { label: string; status: BadgeStatus; icon: LucideIcon }> = {
+  final: { label: "Finalized", status: "open", icon: CircleCheck },
+  draft: { label: "Not finalized", status: "upcoming", icon: PenLine },
+  none: { label: "No remarks", status: "closed", icon: CircleDashed },
+};
+
+/** A sheet can go out once every judge's remarks are finalized. */
+function isSendable(p: Participant): boolean {
+  return p.judgeStatus.every((s) => s === "final");
+}
+
+/** Recipient-level status pill, plus resend / error detail under it. */
+function RecipientStatus({ r }: { r: Registrant }) {
+  if (r.sentAt) {
+    return (
+      <div className="flex flex-col gap-1">
+        <Badge size="sm" status="open" className="normal-case tracking-normal w-fit">
+          <MailCheck className="h-3.5 w-3.5" aria-hidden />
+          Sent
+        </Badge>
+        <span className="type-caption text-ink-muted whitespace-nowrap">{jakartaTime.format(new Date(r.sentAt))}</span>
+        {r.resentAt && (
+          <span className="type-caption text-ink-muted whitespace-nowrap">Resent {jakartaTime.format(new Date(r.resentAt))}</span>
+        )}
+      </div>
+    );
+  }
+  if (r.ready && r.lastError) {
+    return (
+      <div className="flex flex-col gap-1 max-w-56">
+        <Badge size="sm" status="error" className="normal-case tracking-normal w-fit">
+          <CircleAlert className="h-3.5 w-3.5" aria-hidden />
+          Failed
+        </Badge>
+        <span className="type-caption text-[color:var(--status-error)]">{r.lastError.message}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {r.ready ? (
+        <Badge size="sm" status="upcoming" className="normal-case tracking-normal w-fit">
+          <Send className="h-3.5 w-3.5" aria-hidden />
+          Ready
+        </Badge>
+      ) : (
+        <Badge size="sm" status="closed" className="normal-case tracking-normal w-fit">
+          <Clock className="h-3.5 w-3.5" aria-hidden />
+          Waiting
+        </Badge>
+      )}
+      {r.resentAt && (
+        <span className="type-caption text-ink-muted whitespace-nowrap">Partly sent {jakartaTime.format(new Date(r.resentAt))}</span>
+      )}
+    </div>
+  );
+}
 
 /**
  * AdminRemarksSheets — emails each registrant their adjudicator remarks PDFs
@@ -78,7 +159,7 @@ export default function AdminRemarksSheets() {
       return;
     }
     setResendKey(key);
-    setResendIds(r.participants.filter((p) => p.missing.length === 0).map((p) => p.registrationId));
+    setResendIds(r.participants.filter(isSendable).map((p) => p.registrationId));
   }
 
   async function resend(r: Registrant) {
@@ -264,11 +345,14 @@ export default function AdminRemarksSheets() {
           <section className="flex flex-col gap-3">
             <Eyebrow withRule>Registrants ({registrants.length})</Eyebrow>
             <div className="bg-surface-elevated border border-rule-hairline overflow-x-auto">
-              <table className="min-w-full">
+              <table className="min-w-full border-collapse type-body-sm text-ink-body">
                 <thead className="bg-surface-canvas-warm">
-                  <tr className="text-left text-body-sm font-bold text-ink-body">
+                  <tr className="text-left font-bold">
                     <th className="px-4 py-3">Registrant</th>
-                    <th className="px-4 py-3">Participants</th>
+                    <th className="px-4 py-3">Participant</th>
+                    <th className="px-4 py-3">Category</th>
+                    <th className="px-4 py-3">Judges</th>
+                    <th className="px-4 py-3">Sheet</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3" />
                   </tr>
@@ -276,126 +360,166 @@ export default function AdminRemarksSheets() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center type-body-sm text-ink-muted">Loading…</td>
+                      <td colSpan={7} className="px-4 py-8 text-center text-ink-muted">Loading…</td>
                     </tr>
                   ) : registrants.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center type-body-sm text-ink-muted">No registrants.</td>
+                      <td colSpan={7} className="px-4 py-8 text-center text-ink-muted">No registrants.</td>
                     </tr>
                   ) : (
                     registrants.map((r) => {
                       const key = `${r.email} ${r.type}`;
-                      const sendable = r.participants.filter((p) => p.missing.length === 0);
+                      const sendable = r.participants.filter(isSendable);
+                      const span = r.participants.length;
+                      const TypeIcon = TYPE_META[r.type].icon;
                       return (
-                    <Fragment key={key}>
-                      <tr className="border-t border-rule-hairline type-body-sm text-ink-body align-top">
-                        <td className="px-4 py-3">
-                          <div>{r.name}</div>
-                          <div className="type-caption text-ink-muted">{r.email} · {r.type}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {r.participants.map((p) => (
-                            <div key={p.registrationId}>
-                              {p.name} · {p.category}
-                              {p.sentAt ? (
-                                <span className="ml-2 type-caption text-[color:var(--status-upcoming)]">
-                                  ✓ sent {jakartaTime.format(new Date(p.sentAt))}
-                                </span>
-                              ) : p.missing.length > 0 ? (
-                                <span className="ml-2 type-caption text-ink-muted">needs {p.missing.join(", ")}</span>
-                              ) : null}
-                            </div>
-                          ))}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          {r.sentAt ? (
-                            <>
-                              Sent {jakartaTime.format(new Date(r.sentAt))}
-                              {r.resentAt && (
-                                <div className="type-caption text-ink-muted">Resent {jakartaTime.format(new Date(r.resentAt))}</div>
+                        <Fragment key={key}>
+                          {r.participants.map((p, i) => (
+                            <tr
+                              key={p.registrationId}
+                              className={cn("align-top", i === 0 ? "border-t-2 border-rule-subtle" : "border-t border-rule-hairline")}
+                            >
+                              {i === 0 && (
+                                <td rowSpan={span} className="px-4 py-3 border-r border-rule-hairline">
+                                  <div className="w-52">
+                                    <div className="font-bold text-ink-primary">{r.name}</div>
+                                    <div className="type-caption text-ink-muted break-words">{r.email}</div>
+                                    <Badge size="sm" className="mt-2 normal-case tracking-normal">
+                                      <TypeIcon className="h-3.5 w-3.5" aria-hidden />
+                                      {TYPE_META[r.type].label}
+                                    </Badge>
+                                  </div>
+                                </td>
                               )}
-                            </>
-                          ) : r.resentAt ? (
-                            `Sent (selected) ${jakartaTime.format(new Date(r.resentAt))}`
-                          ) : r.ready && r.lastError ? (
-                            <span className="text-[color:var(--status-error)] whitespace-normal" title={r.lastError.message}>
-                              Failed {jakartaTime.format(new Date(r.lastError.at))}: {r.lastError.message}
-                            </span>
-                          ) : r.ready ? (
-                            <span className="text-[color:var(--status-upcoming)]">Ready</span>
-                          ) : (
-                            <span className="text-ink-muted">Waiting for finalized remarks</span>
+                              <td className="px-4 py-3 font-medium">{p.name}</td>
+                              <td className="px-4 py-3">
+                                <div className="whitespace-nowrap">{p.category}</div>
+                                {p.song && <div className="type-caption text-ink-muted italic">{p.song}</div>}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex flex-col gap-1">
+                                  {(status?.judges ?? []).map((judge, j) => {
+                                    const meta = JUDGE_META[p.judgeStatus[j]];
+                                    const JudgeIcon = meta.icon;
+                                    return (
+                                      <Badge
+                                        key={judge}
+                                        size="sm"
+                                        status={meta.status}
+                                        className="normal-case tracking-normal w-fit"
+                                        title={`${judge}: ${meta.label}`}
+                                      >
+                                        <JudgeIcon className="h-3.5 w-3.5" aria-hidden />
+                                        {judge.split(" ")[0]}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {p.sentAt ? (
+                                  <span className="inline-flex items-center gap-1.5 text-[color:var(--status-open)]">
+                                    <MailCheck className="h-4 w-4" aria-hidden />
+                                    {jakartaTime.format(new Date(p.sentAt))}
+                                  </span>
+                                ) : (
+                                  <span className="text-ink-muted">Not sent</span>
+                                )}
+                              </td>
+                              {i === 0 && (
+                                <>
+                                  <td rowSpan={span} className="px-4 py-3 border-l border-rule-hairline">
+                                    <RecipientStatus r={r} />
+                                  </td>
+                                  <td rowSpan={span} className="px-4 py-3 text-right">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openResend(r)}
+                                      disabled={sendable.length === 0}
+                                      title={sendable.length === 0 ? "No participant has finalized remarks yet" : undefined}
+                                    >
+                                      {r.sentAt || r.resentAt ? "Resend…" : "Send…"}
+                                    </Button>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          ))}
+                          {resendKey === key && (
+                            <tr className="bg-surface-canvas-warm">
+                              <td colSpan={7} className="px-4 py-4">
+                                <div className="flex flex-col gap-3">
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <span className="font-bold">Send to {r.email} with:</span>
+                                    <button
+                                      type="button"
+                                      className="type-caption text-burgundy underline underline-offset-2"
+                                      onClick={() => setResendIds(sendable.map((p) => p.registrationId))}
+                                    >
+                                      Select all
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="type-caption text-burgundy underline underline-offset-2"
+                                      onClick={() => setResendIds([])}
+                                    >
+                                      Clear all
+                                    </button>
+                                  </div>
+                                  {r.participants.map((p) => (
+                                    <label
+                                      key={p.registrationId}
+                                      className={cn("inline-flex items-center gap-2", !isSendable(p) && "opacity-50")}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4 accent-burgundy"
+                                        disabled={!isSendable(p)}
+                                        checked={resendIds.includes(p.registrationId)}
+                                        onChange={(e) =>
+                                          setResendIds((prev) =>
+                                            e.target.checked
+                                              ? [...prev, p.registrationId]
+                                              : prev.filter((id) => id !== p.registrationId)
+                                          )
+                                        }
+                                      />
+                                      {p.name} · {p.category}
+                                      {!isSendable(p) && <span className="type-caption text-ink-muted">(remarks not finalized)</span>}
+                                    </label>
+                                  ))}
+                                  <div className="flex gap-2">
+                                    <Button variant="elegant" size="sm" onClick={() => resend(r)} disabled={isResending || resendIds.length === 0}>
+                                      {isResending && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+                                      Send {resendIds.length} sheet{resendIds.length === 1 ? "" : "s"}
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => setResendKey(null)} disabled={isResending}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openResend(r)}
-                            disabled={sendable.length === 0}
-                            title={sendable.length === 0 ? "No participant has finalized remarks yet" : undefined}
-                          >
-                            {r.sentAt || r.resentAt ? "Resend…" : "Send…"}
-                          </Button>
-                        </td>
-                      </tr>
-                      {resendKey === key && (
-                        <tr className="bg-surface-canvas-warm type-body-sm text-ink-body">
-                          <td colSpan={4} className="px-4 py-4">
-                            <div className="flex flex-col gap-3">
-                              <div className="flex flex-wrap items-center gap-3">
-                                <span className="font-bold">Send to {r.email} with:</span>
-                                <button
-                                  type="button"
-                                  className="type-caption text-burgundy underline underline-offset-2"
-                                  onClick={() => setResendIds(sendable.map((p) => p.registrationId))}
-                                >
-                                  Select all
-                                </button>
-                                <button
-                                  type="button"
-                                  className="type-caption text-burgundy underline underline-offset-2"
-                                  onClick={() => setResendIds([])}
-                                >
-                                  Clear all
-                                </button>
-                              </div>
-                              {r.participants.map((p) => (
-                                <label key={p.registrationId} className={cn("inline-flex items-center gap-2", p.missing.length > 0 && "opacity-50")}>
-                                  <input
-                                    type="checkbox"
-                                    className="h-4 w-4 accent-burgundy"
-                                    disabled={p.missing.length > 0}
-                                    checked={resendIds.includes(p.registrationId)}
-                                    onChange={(e) =>
-                                      setResendIds((prev) =>
-                                        e.target.checked ? [...prev, p.registrationId] : prev.filter((id) => id !== p.registrationId)
-                                      )
-                                    }
-                                  />
-                                  {p.name} · {p.category}
-                                  {p.missing.length > 0 && <span className="type-caption text-ink-muted">(needs {p.missing.join(", ")})</span>}
-                                </label>
-                              ))}
-                              <div className="flex gap-2">
-                                <Button variant="elegant" size="sm" onClick={() => resend(r)} disabled={isResending || resendIds.length === 0}>
-                                  {isResending && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
-                                  Send {resendIds.length} sheet{resendIds.length === 1 ? "" : "s"}
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => setResendKey(null)} disabled={isResending}>
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
+                        </Fragment>
                       );
                     })
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 type-caption text-ink-muted">
+              <span>Judges:</span>
+              {(Object.keys(JUDGE_META) as JudgeStatus[]).map((s) => {
+                const LegendIcon = JUDGE_META[s].icon;
+                return (
+                  <Badge key={s} size="sm" status={JUDGE_META[s].status} className="normal-case tracking-normal">
+                    <LegendIcon className="h-3.5 w-3.5" aria-hidden />
+                    {JUDGE_META[s].label}
+                  </Badge>
+                );
+              })}
             </div>
           </section>
         )}
