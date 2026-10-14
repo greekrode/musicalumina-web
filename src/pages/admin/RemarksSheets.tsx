@@ -31,8 +31,8 @@ const jakartaTime = new Intl.DateTimeFormat("en-GB", {
  * (one per participant + category) via the remarks-sheets edge function.
  * An address becomes ready once both judges' scores, with remarks, are
  * finalized for every one of its registrations. "Send test" works any time:
- * it mails one address's email (ready if any, else the first, with
- * placeholder remarks) to the given address only. "Send to all ready" sends
+ * it mails one address's email (the ready one with the longest remarks, else
+ * the first address with sample remarks) to the given address only. "Send to all ready" sends
  * each ready address once.
  */
 export default function AdminRemarksSheets() {
@@ -133,8 +133,8 @@ export default function AdminRemarksSheets() {
             Emails each registrant a thank-you note with a PDF of the adjudicators' remarks for every
             participant and category they registered. An address is ready once both judges' scores
             (with remarks) are finalized for all of its participants, and is only emailed once. Send
-            a test to yourself first: it works before scoring too, with placeholder text in empty
-            remarks boxes.
+            a test to yourself first: it uses the ready address with the longest remarks, or sample
+            remarks before any scores are finalized.
           </p>
         </header>
 

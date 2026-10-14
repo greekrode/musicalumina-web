@@ -20,7 +20,8 @@ import { renderRemarksSheet, type SheetAssets } from "./render.ts";
  * its registrations has finalized scores with remarks from both judges, and at most once per event
  * (remarks_sheet_sends). "send" handles SEND_BATCH addresses per call; the
  * admin page calls again until remaining is 0. With testEmail it sends one
- * address's email (ready if any, else the first, with placeholder remarks)
+ * address's email (the ready one with the longest remarks, else the first
+ * address with SAMPLE_REMARKS)
  * to testEmail instead and marks nothing sent.
  *
  * The browser calls this with the anon key (the functions gateway accepts
@@ -36,6 +37,11 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SEND_BATCH = 5;
 const LINK_TTL_SECONDS = 365 * 24 * 60 * 60;
 const BUCKET = "remarks-sheets";
+/** Test-send stand-in before any address is ready. */
+const SAMPLE_REMARKS: [string, string] = [
+  "Lovely tone and a confident start. Keep the left hand lighter so the melody sings above it, and shape each phrase towards its peak. Watch the tempo in the faster passages: steady practice with a metronome will help. Well done on a musical performance!",
+  "Great stage presence and clear dynamics. Work on smoother legato between the hand positions and let the pedal changes follow the harmony. The ending could breathe a little more. Keep up the good work!",
+];
 
 /**
  * Templates live in the public-assets bucket. `judges` is the template's row
@@ -216,20 +222,20 @@ serve(
     if (error) throw error;
     const assets = await loadAssets(sheet.template);
 
-    // A test may go out before any score is finalized: it uses the first ready
-    // address if there is one, otherwise the first address, with a placeholder
-    // in any empty remarks box, so the layout and email can be checked early.
-    const batch = isTest
-      ? [registrants.find((r) => r.ready) ?? registrants[0]].filter(Boolean).map((r) => ({
+    // Test send: the ready address with the longest remarks (worst case for the
+    // auto-sized text). Before anything is ready, the first address with sample
+    // remarks, so the layout and email can be checked early.
+    const remarksLength = (r: Registrant) =>
+      r.participants.reduce((n, p) => n + p.remarks[0].length + p.remarks[1].length, 0);
+    const ready = registrants.filter((r) => r.ready);
+    const batch = !isTest
+      ? registrants.filter((r) => r.ready && !r.sentAt).slice(0, SEND_BATCH)
+      : ready.length
+      ? [ready.reduce((a, b) => (remarksLength(b) > remarksLength(a) ? b : a))]
+      : registrants.slice(0, 1).map((r) => ({
         ...r,
-        participants: r.participants.map((p) => ({
-          ...p,
-          remarks: p.remarks.map((text, i) =>
-            text || `[Test] Remarks from ${sheet.judges[i]} will appear here once scored.`
-          ) as [string, string],
-        })),
-      }))
-      : registrants.filter((r) => r.ready && !r.sentAt).slice(0, SEND_BATCH);
+        participants: r.participants.map((p) => ({ ...p, remarks: [...SAMPLE_REMARKS] as [string, string] })),
+      }));
     const sent: string[] = [];
     const failed: { email: string; error: string }[] = [];
 
