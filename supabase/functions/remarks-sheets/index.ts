@@ -92,7 +92,7 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
 
   const [scoresRes, sendsRes] = await Promise.all([
     ids.length
-      ? db.from("event_scoring").select("registration_id, jury_name, remarks").in("registration_id", ids)
+      ? db.from("event_scoring").select("registration_id, jury_name, remarks, finalized").in("registration_id", ids)
       : Promise.resolve({ data: [], error: null }),
     db.from("remarks_sheet_sends").select("registrant_email, sent_at").eq("event_id", eventId).eq("is_test", false),
   ]);
@@ -102,6 +102,9 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
   // Judge names compared case- and spacing-insensitively.
   const judgeIndex = new Map(judges.map((j, i) => [j.trim().replace(/\s+/g, " ").toLowerCase(), i]));
   const remarksByReg = new Map<string, [string, string]>();
+  // Remarks only count once the score is finalized (locked); until then a
+  // judge can still edit them, so the sheet must not go out.
+  const unlockedByReg = new Map<string, [boolean, boolean]>();
   const unknownJudges = new Set<string>();
   for (const s of scoresRes.data ?? []) {
     const index = judgeIndex.get(String(s.jury_name ?? "").trim().replace(/\s+/g, " ").toLowerCase());
@@ -112,6 +115,9 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
     const pair = remarksByReg.get(s.registration_id) ?? ["", ""];
     pair[index] = String(s.remarks ?? "").trim();
     remarksByReg.set(s.registration_id, pair);
+    const unlocked = unlockedByReg.get(s.registration_id) ?? [false, false];
+    unlocked[index] = s.finalized !== true;
+    unlockedByReg.set(s.registration_id, unlocked);
   }
   const sentAt = new Map<string, string>((sendsRes.data ?? []).map((s) => [s.registrant_email, s.sent_at]));
 
@@ -122,13 +128,16 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
     const cat = Array.isArray(r.event_categories) ? r.event_categories[0] : r.event_categories;
     const sub = Array.isArray(r.event_subcategories) ? r.event_subcategories[0] : r.event_subcategories;
     const remarks = remarksByReg.get(r.id) ?? ["", ""];
+    const unlocked = unlockedByReg.get(r.id) ?? [false, false];
     const participant: Participant = {
       registrationId: r.id,
       name: String(r.participant_name ?? "").trim(),
       category: [cat?.name, sub?.name].filter(Boolean).join(" - "),
       song: String(r.song_title ?? "").trim(),
       remarks,
-      missing: judges.filter((_, i) => !remarks[i]),
+      missing: judges.flatMap((judge, i) =>
+        !remarks[i] ? [`${judge} (no remarks)`] : unlocked[i] ? [`${judge} (not finalized)`] : [],
+      ),
     };
     const registrant: Registrant = byEmail.get(email) ?? {
       email,
