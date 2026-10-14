@@ -44,8 +44,6 @@ const COPY: Record<RegistrantType, { badge: string; thanks: string; attached: st
   },
 };
 
-const P = "margin:0 0 16px 0;font-size:15px;line-height:1.8;color:#444;";
-
 export function buildRemarksEmail(input: {
   type: RegistrantType;
   registrantName: string;
@@ -56,78 +54,85 @@ export function buildRemarksEmail(input: {
   const copy = COPY[type];
   const event = escapeHtml(eventTitle);
   const opening = type === "personal"
-    ? `Thank you for performing at the <strong>${event}</strong>.`
-    : `Thank you for being part of the <strong>${event}</strong>.`;
+    ? `Thank you for performing at the ${event}.`
+    : `Thank you for being part of the ${event}.`;
   const sheetRows = sheets
     .map(
       (s) =>
-        `<p style="margin:0 0 6px 0;font-size:14px;color:#444;">&#9834;&nbsp; <strong>${escapeHtml(s.participant)}</strong> <span style="color:#777;">· ${escapeHtml(s.category)}</span></p>`,
+        `<tr><td valign="top" style="padding:0 10px 6px 0;color:#b07d12;">&#9834;</td><td style="padding:0 0 6px 0;"><span style="color:#491822;font-weight:bold;">${escapeHtml(s.participant)}</span> <span style="color:#6b5d58;">· ${escapeHtml(s.category)}</span></td></tr>`,
     )
     .join("");
 
   const subject = `${eventTitle} – ${copy.badge}`;
+  // Layout and palette follow the LSPF 2026 photo & video email
+  // (musicalumina-tools/scripts/email-templates/lspf2026-photo-video.html).
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>${escapeHtml(subject)}</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(subject)}</title>
 </head>
-<body style="margin:0;padding:0;background:#FFFBEF;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#2d2d2d;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFFBEF;padding:40px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(73,24,34,0.10);">
-          <tr>
-            <td style="background:#491822;background:linear-gradient(135deg,#491822 0%,#6b2432 100%);padding:40px 48px;text-align:center;">
-              <p style="margin:0 0 6px 0;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.7);">Musica Lumina Presents</p>
-              <h1 style="margin:0;font-size:28px;font-weight:700;color:#ffffff;line-height:1.3;">${event}</h1>
-              <p style="margin:14px 0 0 0;font-size:14px;color:#E2A225;letter-spacing:1px;">${copy.badge}</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:40px 48px;">
-              <p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;">Dear <strong>${escapeHtml(registrantName)}</strong>,</p>
-              <p style="${P}">${opening} ${copy.thanks}</p>
-              <p style="${P}margin-bottom:28px;">${copy.attached}</p>
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFFBEF;border-left:4px solid #491822;border-radius:0 8px 8px 0;margin-bottom:28px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <p style="margin:0 0 12px 0;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#491822;">What's Attached</p>
-                    ${sheetRows}
-                    <p style="margin:12px 0 0 0;font-size:13px;color:#777;line-height:1.7;">One PDF per participant and category, named after the participant and category.</p>
-                  </td>
-                </tr>
-              </table>
-              <p style="${P}margin-bottom:28px;">${copy.note}</p>
-              <p style="${P}margin-bottom:32px;">Thank you again for entrusting us with this moment. ${copy.closing}</p>
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:36px;">
-                <tr>
-                  <td style="background:#FFFBEF;border-radius:8px;padding:20px 24px;text-align:center;">
-                    <p style="margin:0 0 6px 0;font-size:13px;color:#888;">Questions? Reach us anytime.</p>
-                    <p style="margin:0;font-size:14px;">
-                      <a href="https://www.instagram.com/musicalumina" style="color:#491822;text-decoration:none;margin:0 10px;">Instagram</a> ·
-                      <a href="mailto:contact@musicalumina.com" style="color:#491822;text-decoration:none;margin:0 10px;">Email</a> ·
-                      <a href="https://wa.me/628211720765" style="color:#491822;text-decoration:none;margin:0 10px;">WhatsApp</a>
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:0;font-size:15px;line-height:1.8;">Warm regards,<br/><strong>Musica Lumina Team</strong></p>
-            </td>
-          </tr>
-          <tr>
-            <td style="background:#F9F3E2;padding:20px 48px;text-align:center;border-top:1px solid #EDE3CC;">
-              <p style="margin:0;font-size:12px;color:#9a8a6d;line-height:1.6;">
-                © ${new Date().getFullYear()} Musica Lumina · ${event}<br/>
-                Jury comment sheets are intended for the recipient's personal review — please handle them with care.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+<body style="margin:0;padding:0;background-color:#f6f1e7;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f6f1e7;">${copy.badge} from the ${event}, attached to this email.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f6f1e7;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#fffbf2;border:1px solid #eadfca;">
+        <tr>
+          <td align="center" style="padding:32px 32px 24px 32px;border-bottom:1px solid #eadfca;">
+            <img src="https://www.musicalumina.com/assets/ML-LogoColor-CYLi1NKy.png" alt="Musica Lumina" height="48" style="display:block;height:48px;width:auto;border:0;">
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px 8px 40px;font-family:Georgia,'Times New Roman',serif;">
+            <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#b07d12;">${event}</p>
+            <h1 style="margin:0;font-size:30px;line-height:1.25;font-weight:normal;color:#491822;">${copy.badge}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px 8px 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#3d3230;">
+            <p style="margin:0 0 14px 0;">Dear ${escapeHtml(registrantName)},</p>
+            <p style="margin:0 0 14px 0;">${opening} ${copy.thanks}</p>
+            <p style="margin:0;">${copy.attached}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 40px 8px 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #eadfca;background-color:#ffffff;">
+              <tr>
+                <td style="padding:20px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#3d3230;">
+                  <p style="margin:0 0 10px 0;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#b07d12;font-weight:bold;">What's Attached</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">${sheetRows}</table>
+                  <p style="margin:8px 0 0 0;font-size:13px;color:#6b5d58;font-style:italic;">One PDF per participant and category, named after the participant and category.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 40px 0 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#3d3230;">
+            <p style="margin:0 0 14px 0;">${copy.note}</p>
+            <p style="margin:0;">Thank you again for entrusting us with this moment. ${copy.closing}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 40px 36px 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#3d3230;">
+            <p style="margin:0 0 20px 0;padding-top:24px;border-top:1px solid #eadfca;">For more info: contact us via <a href="https://wa.me/628211720765" target="_blank" style="color:#491822;font-weight:bold;">WhatsApp</a> or <a href="https://www.instagram.com/lspf.official" target="_blank" style="color:#491822;font-weight:bold;">Instagram</a>.</p>
+            <p style="margin:0;">Warm regards,<br><span style="font-family:Georgia,'Times New Roman',serif;color:#491822;">Musica Lumina</span></p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:20px 40px;background-color:#491822;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#e8d9c7;">
+            You are receiving this email because you registered for the ${event}.<br>
+            Jury comment sheets are for the recipient's personal review — please handle them with care.<br>
+            <a href="https://www.musicalumina.com" target="_blank" style="color:#e3a42a;text-decoration:none;">musicalumina.com</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
 </body>
 </html>`;
   return { subject, html };
