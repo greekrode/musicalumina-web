@@ -11,7 +11,14 @@ import { cn } from "@/lib/utils";
 
 type EventOption = { id: string; title: string };
 type Participant = { registrationId: string; name: string; category: string; song: string; missing: string[] };
-type Registrant = { email: string; name: string; participants: Participant[]; ready: boolean; sentAt: string | null };
+type Registrant = {
+  email: string;
+  type: "teacher" | "parents" | "personal";
+  name: string;
+  participants: Participant[];
+  ready: boolean;
+  sentAt: string | null;
+};
 type Status = { judges: string[]; registrants: Registrant[]; unknownJudges: string[] };
 type SendResult = { sent: string[]; failed: { email: string; error: string }[]; remaining: number };
 
@@ -29,11 +36,12 @@ const jakartaTime = new Intl.DateTimeFormat("en-GB", {
 /**
  * AdminRemarksSheets — emails each registrant their adjudicator remarks PDFs
  * (one per participant + category) via the remarks-sheets edge function.
- * An address becomes ready once both judges' scores, with remarks, are
- * finalized for every one of its registrations. "Send test" works any time:
- * it mails one address's email (the ready one with the longest remarks, else
- * the first address with sample remarks) to the given address only. "Send to all ready" sends
- * each ready address once.
+ * One email per registrant email + type (teacher / parents / personal), with
+ * every sheet attached as a PDF. A recipient becomes ready once both judges'
+ * scores, with remarks, are finalized for every one of its registrations.
+ * "Send test" works any time: it mails one recipient's email (the ready one
+ * with the longest remarks, else the first with sample remarks) to the given
+ * address only. "Send to all ready" sends each ready recipient once.
  */
 export default function AdminRemarksSheets() {
   const [events, setEvents] = useState<EventOption[]>([]);
@@ -98,12 +106,12 @@ export default function AdminRemarksSheets() {
   }
 
   async function sendAll() {
-    if (!window.confirm(`Email remarks to ${readyCount} registrant address${readyCount === 1 ? "" : "es"}? Each address is only emailed once.`)) return;
+    if (!window.confirm(`Email remarks to ${readyCount} recipient${readyCount === 1 ? "" : "s"}? Each is only emailed once.`)) return;
     setIsSending(true);
     const failed: SendResult["failed"] = [];
     let sent = 0;
     try {
-      // The function sends a few addresses per call; keep going until none are left
+      // The function sends a few recipients per call; keep going until none are left
       // or a whole batch fails (then stop so the error can be looked at).
       for (;;) {
         const result = await invokeRemarksSheets<SendResult>({ action: "send", eventId });
@@ -130,11 +138,12 @@ export default function AdminRemarksSheets() {
           <Eyebrow withRule>Manage · Remarks Sheets</Eyebrow>
           <h1 className="type-display-md text-burgundy">Remarks Sheets</h1>
           <p className="type-body-sm text-ink-muted max-w-2xl">
-            Emails each registrant a thank-you note with a PDF of the adjudicators' remarks for every
-            participant and category they registered. An address is ready once both judges' scores
-            (with remarks) are finalized for all of its participants, and is only emailed once. Send
-            a test to yourself first: it uses the ready address with the longest remarks, or sample
-            remarks before any scores are finalized.
+            Emails each registrant a thank-you note with the jury comment sheets attached as PDFs, one
+            per participant and category. Someone registered as both teacher and parent gets one
+            email for each role. A recipient is ready once both judges' scores (with remarks) are
+            finalized for all of its participants, and is only emailed once. Send a test to yourself
+            first: it uses the ready recipient with the longest remarks, or sample remarks before any
+            scores are finalized.
           </p>
         </header>
 
@@ -160,7 +169,7 @@ export default function AdminRemarksSheets() {
         {status && (
           <section className="bg-surface-elevated border border-rule-hairline p-6 flex flex-col gap-5">
             <p className="type-body-sm text-ink-body">
-              Judges: {status.judges.join(" & ")} · {registrants.length} addresses ·{" "}
+              Judges: {status.judges.join(" & ")} · {registrants.length} recipients ·{" "}
               <strong>{readyCount} ready</strong> · {waitingCount} waiting for finalized remarks · {sentCount} sent
             </p>
             {status.unknownJudges.length > 0 && (
@@ -214,10 +223,10 @@ export default function AdminRemarksSheets() {
                     </tr>
                   ) : (
                     registrants.map((r) => (
-                      <tr key={r.email} className="border-t border-rule-hairline type-body-sm text-ink-body align-top">
+                      <tr key={`${r.email} ${r.type}`} className="border-t border-rule-hairline type-body-sm text-ink-body align-top">
                         <td className="px-4 py-3">
                           <div>{r.name}</div>
-                          <div className="type-caption text-ink-muted">{r.email}</div>
+                          <div className="type-caption text-ink-muted">{r.email} · {r.type}</div>
                         </td>
                         <td className="px-4 py-3">
                           {r.participants.map((p) => (
