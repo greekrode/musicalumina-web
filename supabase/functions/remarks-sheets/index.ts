@@ -17,10 +17,11 @@ import { renderRemarksSheet, type SheetAssets } from "./render.ts";
  * from event_scoring. Sheets are stored privately in the remarks-sheets bucket
  * and emailed as signed links, one email per registrant address covering all
  * of that address's participants. An address is only sent once every one of
- * its registrations has remarks from both judges, and at most once per event
+ * its registrations has finalized scores with remarks from both judges, and at most once per event
  * (remarks_sheet_sends). "send" handles SEND_BATCH addresses per call; the
- * admin page calls again until remaining is 0. With testEmail it sends the
- * first ready address's email to testEmail instead and marks nothing sent.
+ * admin page calls again until remaining is 0. With testEmail it sends one
+ * address's email (ready if any, else the first, with placeholder remarks)
+ * to testEmail instead and marks nothing sent.
  *
  * The browser calls this with the anon key (the functions gateway accepts
  * Supabase JWTs only) and passes the admin's Clerk session token in
@@ -215,8 +216,20 @@ serve(
     if (error) throw error;
     const assets = await loadAssets(sheet.template);
 
-    const pending = registrants.filter((r) => r.ready && (isTest || !r.sentAt));
-    const batch = pending.slice(0, isTest ? 1 : SEND_BATCH);
+    // A test may go out before any score is finalized: it uses the first ready
+    // address if there is one, otherwise the first address, with a placeholder
+    // in any empty remarks box, so the layout and email can be checked early.
+    const batch = isTest
+      ? [registrants.find((r) => r.ready) ?? registrants[0]].filter(Boolean).map((r) => ({
+        ...r,
+        participants: r.participants.map((p) => ({
+          ...p,
+          remarks: p.remarks.map((text, i) =>
+            text || `[Test] Remarks from ${sheet.judges[i]} will appear here once scored.`
+          ) as [string, string],
+        })),
+      }))
+      : registrants.filter((r) => r.ready && !r.sentAt).slice(0, SEND_BATCH);
     const sent: string[] = [];
     const failed: { email: string; error: string }[] = [];
 

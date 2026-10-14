@@ -29,9 +29,11 @@ const jakartaTime = new Intl.DateTimeFormat("en-GB", {
 /**
  * AdminRemarksSheets — emails each registrant their adjudicator remarks PDFs
  * (one per participant + category) via the remarks-sheets edge function.
- * An address becomes ready once both judges have written remarks for every
- * one of its registrations. "Send test" mails the first ready address's email
- * to the given address only; "Send to all ready" sends each ready address once.
+ * An address becomes ready once both judges' scores, with remarks, are
+ * finalized for every one of its registrations. "Send test" works any time:
+ * it mails one address's email (ready if any, else the first, with
+ * placeholder remarks) to the given address only. "Send to all ready" sends
+ * each ready address once.
  */
 export default function AdminRemarksSheets() {
   const [events, setEvents] = useState<EventOption[]>([]);
@@ -87,7 +89,7 @@ export default function AdminRemarksSheets() {
       const result = await invokeRemarksSheets<SendResult>({ action: "send", eventId, testEmail });
       if (result.sent.length) toast.success(`Test email sent to ${testEmail} (sheets of ${result.sent[0]})`);
       else if (result.failed.length) toast.error(`Test failed: ${result.failed[0].error}`);
-      else toast.error("No address is ready yet");
+      else toast.error("No registrants for this event");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
@@ -129,9 +131,10 @@ export default function AdminRemarksSheets() {
           <h1 className="type-display-md text-burgundy">Remarks Sheets</h1>
           <p className="type-body-sm text-ink-muted max-w-2xl">
             Emails each registrant a thank-you note with a PDF of the adjudicators' remarks for every
-            participant and category they registered. An address is ready once both judges have
-            written remarks for all of its participants, and is only emailed once. Send a test to
-            yourself first.
+            participant and category they registered. An address is ready once both judges' scores
+            (with remarks) are finalized for all of its participants, and is only emailed once. Send
+            a test to yourself first: it works before scoring too, with placeholder text in empty
+            remarks boxes.
           </p>
         </header>
 
@@ -158,7 +161,7 @@ export default function AdminRemarksSheets() {
           <section className="bg-surface-elevated border border-rule-hairline p-6 flex flex-col gap-5">
             <p className="type-body-sm text-ink-body">
               Judges: {status.judges.join(" & ")} · {registrants.length} addresses ·{" "}
-              <strong>{readyCount} ready</strong> · {waitingCount} waiting for remarks · {sentCount} sent
+              <strong>{readyCount} ready</strong> · {waitingCount} waiting for finalized remarks · {sentCount} sent
             </p>
             {status.unknownJudges.length > 0 && (
               <p className="type-body-sm text-[color:var(--status-error)]">
@@ -176,7 +179,7 @@ export default function AdminRemarksSheets() {
                   placeholder="you@example.com"
                 />
               </div>
-              <Button variant="outline" onClick={sendTest} disabled={isSending || !testEmail || readyCount + sentCount === 0}>
+              <Button variant="outline" onClick={sendTest} disabled={isSending || !testEmail || registrants.length === 0}>
                 Send test
               </Button>
               <Button variant="elegant" onClick={sendAll} disabled={isSending || readyCount === 0}>
@@ -232,7 +235,7 @@ export default function AdminRemarksSheets() {
                           ) : r.ready ? (
                             <span className="text-[color:var(--status-upcoming)]">Ready</span>
                           ) : (
-                            <span className="text-ink-muted">Waiting for remarks</span>
+                            <span className="text-ink-muted">Waiting for finalized remarks</span>
                           )}
                         </td>
                       </tr>
