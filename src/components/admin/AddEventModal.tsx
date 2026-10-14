@@ -64,8 +64,8 @@ const formSchema = z.object({
     .number({ invalid_type_error: "Seats per session is required" })
     .int("Use a whole number")
     .min(1, "At least 1 seat"),
-  // Festival audience ticket (IDR), charged by QRIS at the check-in desk.
-  // Empty turns QRIS off.
+  // Festival audience ticket (IDR), paid at the check-in desk by QRIS, cash
+  // or bank transfer. Empty: the desk records tickets without payment.
   ticket_price: z.number().int().positive("Price must be above 0").nullable(),
   lark_base: optionalText,
   lark_table: optionalText,
@@ -722,7 +722,7 @@ export function AddEventModal({
                 <Label htmlFor="ev-ticket-price">
                   Ticket price{" "}
                   <span className="type-caption text-ink-muted font-normal">
-                    — paid by QRIS at the check-in desk; empty turns QRIS off
+                    — paid at the check-in desk (QRIS, cash, bank transfer); empty records tickets without payment
                   </span>
                 </Label>
                 <Controller
