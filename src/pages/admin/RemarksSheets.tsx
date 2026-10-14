@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   CircleAlert,
   CircleCheck,
@@ -54,6 +54,9 @@ const POLL_MAX_MS = 20 * 60_000;
 
 const SELECT_CLASSES =
   "h-11 px-3 py-2 rounded-sm border border-burgundy/20 bg-surface-elevated font-sans text-body-sm text-ink-body focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20";
+
+/** YYYY-MM-DD in Jakarta time (en-CA formats dates that way). */
+const jakartaDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" });
 
 const jakartaTime = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Jakarta",
@@ -186,40 +189,60 @@ export default function AdminRemarksSheets() {
     }
   }
 
+  // Only events happening within a week either side of today (Jakarta dates):
+  // remarks go out right after an event, so older and later ones are noise.
   useEffect(() => {
     supabase
       .from("events")
-      .select("id, title")
+      .select("id, title, start_date, event_date")
       .order("start_date", { ascending: false })
       .then(({ data, error }) => {
         if (error) {
           toast.error("Failed to load events");
           return;
         }
-        const rows = data || [];
-        setEvents(rows);
+        const dayMs = 24 * 60 * 60 * 1000;
+        const from = jakartaDay.format(new Date(Date.now() - 7 * dayMs));
+        const to = jakartaDay.format(new Date(Date.now() + 7 * dayMs));
+        const rows = (data || []).filter((e) => {
+          const days = (Array.isArray(e.event_date) && e.event_date.length ? e.event_date : [e.start_date])
+            .filter(Boolean)
+            .map((d) => String(d).slice(0, 10));
+          return days.some((d) => d >= from && d <= to);
+        });
+        setEvents(rows.map(({ id, title }) => ({ id, title })));
         setEventId((prev) => prev || rows[0]?.id || "");
       });
   }, []);
 
-  // quiet: refresh in place (background progress) without blanking the table.
+  // One request returns judges, template check and every registrant's data
+  // together. Only the latest request may update the page, so a slow answer
+  // for a previously selected event can never overwrite the current one.
+  const latestLoad = useRef(0);
   const load = useCallback(async (id: string, quiet = false) => {
+    const seq = ++latestLoad.current;
     if (!quiet) {
       setIsLoading(true);
       setLoadError("");
       setStatus(null);
     }
     try {
-      setStatus(await invokeRemarksSheets<Status>({ action: "status", eventId: id }));
+      const next = await invokeRemarksSheets<Status>({ action: "status", eventId: id });
+      if (seq !== latestLoad.current) return;
+      setStatus(next);
+      setLoadError("");
     } catch (error) {
-      if (!quiet) setLoadError(error instanceof Error ? error.message : String(error));
+      if (seq !== latestLoad.current || quiet) return;
+      setStatus(null);
+      setLoadError(error instanceof Error ? error.message : String(error));
     } finally {
-      if (!quiet) setIsLoading(false);
+      if (seq === latestLoad.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     setBackgroundSince(null);
+    setResendKey(null);
     if (eventId) load(eventId);
   }, [eventId, load]);
 
@@ -294,11 +317,15 @@ export default function AdminRemarksSheets() {
             onChange={(e) => setEventId(e.target.value)}
             disabled={events.length === 0 || isSending}
           >
-            {events.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.title}
-              </option>
-            ))}
+            {events.length === 0 ? (
+              <option value="">No events within 7 days of today</option>
+            ) : (
+              events.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.title}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
@@ -341,7 +368,7 @@ export default function AdminRemarksSheets() {
           </section>
         )}
 
-        {eventId && (
+        {eventId && !loadError && (
           <section className="flex flex-col gap-3">
             <Eyebrow withRule>Registrants ({registrants.length})</Eyebrow>
             <div className="bg-surface-elevated border border-rule-hairline overflow-x-auto">
