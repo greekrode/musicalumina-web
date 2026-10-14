@@ -707,6 +707,7 @@ export interface Database {
           radius_m: number;
           enabled: boolean;
           updated_at: string;
+          test_until: string | null;
         };
         Insert: {
           event_id: string;
@@ -715,6 +716,7 @@ export interface Database {
           radius_m?: number;
           enabled?: boolean;
           updated_at?: string;
+          test_until?: string | null;
         };
         Update: {
           event_id?: string;
@@ -723,6 +725,7 @@ export interface Database {
           radius_m?: number;
           enabled?: boolean;
           updated_at?: string;
+          test_until?: string | null;
         };
       };
       teacher_walkin_links: {
@@ -737,6 +740,7 @@ export interface Database {
           used_at: string | null;
           customer_id: string | null;
           new_customer: boolean | null;
+          is_test: boolean;
         };
         Insert: never;
         Update: never;

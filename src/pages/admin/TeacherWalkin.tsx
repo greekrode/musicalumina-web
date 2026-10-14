@@ -16,6 +16,7 @@ type Customer = Database["public"]["Tables"]["customers"]["Row"];
 type Submission = {
   usedAt: string;
   newCustomer: boolean;
+  isTest: boolean;
   customer: Pick<Customer, "name" | "whatsapp" | "email"> | null;
 };
 type GateDraft = { latitude: string; longitude: string; radius: string; enabled: boolean };
@@ -44,7 +45,8 @@ const jakartaTime = new Intl.DateTimeFormat("en-GB", {
  * AdminTeacherWalkin — the walk-in teacher QR for one event. Admins set the
  * venue location and radius (teacher_walkin_gates), download the QR that
  * opens /teacher-walkin/<event id>, and see who submitted the form. The form
- * itself only opens on the event's days, inside the radius.
+ * itself only opens on the event's days, inside the radius. "Start test" also
+ * opens it on other days for 2 hours so the real flow can be tried early.
  */
 export default function AdminTeacherWalkin() {
   const [events, setEvents] = useState<ActiveEvent[]>([]);
@@ -56,6 +58,8 @@ export default function AdminTeacherWalkin() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [testUntil, setTestUntil] = useState<string | null>(null);
+  const [isSettingTest, setIsSettingTest] = useState(false);
 
   const event = events.find((e) => e.id === eventId);
   const link = eventId ? `${window.location.origin}/teacher-walkin/${eventId}` : "";
@@ -85,7 +89,7 @@ export default function AdminTeacherWalkin() {
         supabase.from("teacher_walkin_gates").select("*").eq("event_id", id).maybeSingle(),
         supabase
           .from("teacher_walkin_links")
-          .select("used_at, new_customer, customer_id")
+          .select("used_at, new_customer, customer_id, is_test")
           .eq("event_id", id)
           .not("used_at", "is", null)
           .order("used_at", { ascending: false }),
@@ -95,6 +99,7 @@ export default function AdminTeacherWalkin() {
 
       const row = gateRes.data;
       setHasGate(Boolean(row));
+      setTestUntil(row?.test_until ?? null);
       setGate(
         row
           ? {
@@ -117,6 +122,7 @@ export default function AdminTeacherWalkin() {
         links.map((l) => ({
           usedAt: l.used_at ?? "",
           newCustomer: Boolean(l.new_customer),
+          isTest: l.is_test,
           customer: (l.customer_id && byId.get(l.customer_id)) || null,
         }))
       );
@@ -208,11 +214,30 @@ export default function AdminTeacherWalkin() {
     }
   };
 
+  const changeTestWindow = async (until: string | null) => {
+    setIsSettingTest(true);
+    try {
+      const { error } = await supabase
+        .from("teacher_walkin_gates")
+        .update({ test_until: until, updated_at: new Date().toISOString() })
+        .eq("event_id", eventId);
+      if (error) throw error;
+      setTestUntil(until);
+      toast.success(until ? "Test mode on for 2 hours" : "Test mode ended");
+    } catch (error) {
+      console.error("Error changing teacher walk-in test mode:", error);
+      toast.error("Failed to change test mode (admin role required)");
+    } finally {
+      setIsSettingTest(false);
+    }
+  };
+
   const eventDays = Array.isArray(event?.event_date)
     ? event.event_date
         .filter((d): d is string => typeof d === "string")
         .map((d) => jakartaDate.format(new Date(d)))
     : [];
+  const testActive = testUntil !== null && new Date(testUntil).getTime() > Date.now();
   const fileSlug = (event?.title ?? "event").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   return (
@@ -324,6 +349,39 @@ export default function AdminTeacherWalkin() {
                   Not set yet: the form stays closed until the venue location is saved.
                 </p>
               )}
+            {hasGate && (
+              <div className="border-t border-rule-hairline pt-5 flex flex-col gap-3">
+                <Eyebrow>Test mode</Eyebrow>
+                {testActive ? (
+                  <p className="type-body-sm text-[color:var(--status-upcoming)]">
+                    On until {jakartaTime.format(new Date(testUntil))} WIB: the form opens today
+                    even though it is not an event day. Submissions are real and marked Test.
+                  </p>
+                ) : (
+                  <p className="type-body-sm text-ink-muted">
+                    Opens the form outside the event days for 2 hours so you can try the real flow.
+                    The radius still applies: to test away from the venue, save your current
+                    location first, then set the venue back before the event.
+                  </p>
+                )}
+                <div>
+                  {testActive ? (
+                    <Button variant="outline" size="sm" onClick={() => changeTestWindow(null)} disabled={isSettingTest}>
+                      End test
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => changeTestWindow(new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString())}
+                      disabled={isSettingTest}
+                    >
+                      Start test (2 hours)
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
             </section>
 
             <section className="bg-surface-elevated border border-rule-hairline p-6 flex flex-col items-center gap-4 lg:w-80">
@@ -390,7 +448,10 @@ export default function AdminTeacherWalkin() {
                         <td className="px-4 py-3">{s.customer?.name ?? "(deleted)"}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{s.customer?.whatsapp ?? "—"}</td>
                         <td className="px-4 py-3">{s.customer?.email ?? "—"}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{s.newCustomer ? "New" : "Already listed"}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {s.newCustomer ? "New" : "Already listed"}
+                          {s.isTest && <span className="ml-2 type-caption text-[color:var(--status-upcoming)]">Test</span>}
+                        </td>
                       </tr>
                     ))
                   )}
