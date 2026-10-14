@@ -13,6 +13,8 @@ import { renderRemarksSheet, type SheetAssets } from "./render.ts";
  *   { action: "send-test", eventId, testEmail } -> { sent: string[], failed: { email, error }[] }
  *   { action: "send-all", eventId } -> { queued }   (sends in the background)
  *   { action: "continue", eventId, startedAt }      (internal: next background batch)
+ *   { action: "resend", eventId, email, type, registrationIds } -> { sent, failed }
+ *       (sends now, only the chosen participants; any number of times)
  *
  * One PDF per verified registration (participant + category): the event's
  * template filled with name, category, repertoire and both judges' remarks
@@ -86,6 +88,8 @@ interface Participant {
   song: string;
   remarks: [string, string];
   missing: string[];
+  /** Latest successful email (send or resend) that carried this sheet. */
+  sentAt: string | null;
 }
 
 interface Registrant {
@@ -94,7 +98,10 @@ interface Registrant {
   name: string;
   participants: Participant[];
   ready: boolean;
+  /** The "send to all ready" email; resends do not set it. */
   sentAt: string | null;
+  /** Latest resend, if any. */
+  resentAt: string | null;
   /** Latest failed send (background sends report here), cleared by a success. */
   lastError: { at: string; message: string } | null;
 }
@@ -125,7 +132,7 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
       ? db.from("event_scoring").select("registration_id, jury_name, remarks, finalized").in("registration_id", ids)
       : Promise.resolve({ data: [], error: null }),
     db.from("remarks_sheet_sends")
-      .select("registrant_email, registrant_type, sent_at, error")
+      .select("registrant_email, registrant_type, registration_ids, is_resend, sent_at, error")
       .eq("event_id", eventId)
       .eq("is_test", false)
       .order("sent_at"),
@@ -154,11 +161,17 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
     unlockedByReg.set(s.registration_id, unlocked);
   }
   const sentAt = new Map<string, string>();
+  const resentAt = new Map<string, string>();
   const lastError = new Map<string, { at: string; message: string }>();
+  const sheetSentAt = new Map<string, string>();
   for (const s of sendsRes.data ?? []) {
     const key = `${s.registrant_email} ${s.registrant_type}`;
-    if (s.error) lastError.set(key, { at: s.sent_at, message: s.error });
-    else sentAt.set(key, s.sent_at);
+    if (s.error) {
+      if (!s.is_resend) lastError.set(key, { at: s.sent_at, message: s.error });
+      continue;
+    }
+    (s.is_resend ? resentAt : sentAt).set(key, s.sent_at);
+    for (const id of s.registration_ids ?? []) sheetSentAt.set(id, s.sent_at);
   }
 
   const byRecipient = new Map<string, Registrant>();
@@ -180,6 +193,7 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
       missing: judges.flatMap((judge, i) =>
         !remarks[i] ? [`${judge} (no remarks)`] : unlocked[i] ? [`${judge} (not finalized)`] : [],
       ),
+      sentAt: sheetSentAt.get(r.id) ?? null,
     };
     const registrant: Registrant = byRecipient.get(key) ?? {
       email,
@@ -188,6 +202,7 @@ async function loadRegistrants(eventId: string, judges: [string, string]) {
       participants: [],
       ready: true,
       sentAt: sentAt.get(key) ?? null,
+      resentAt: resentAt.get(key) ?? null,
       lastError: sentAt.has(key) ? null : lastError.get(key) ?? null,
     };
     registrant.participants.push(participant);
@@ -208,6 +223,22 @@ async function loadAssets(template: string): Promise<SheetAssets> {
   return { template: t, headerFont: h, bodyFont: b };
 }
 
+/**
+ * denomailer encodes any non-ASCII subject as a single, unfolded
+ * quoted-printable word that mail clients show raw (=?utf-8?Q?...=e2=80=93).
+ * ASCII passes through untouched, so subjects and attachment names are
+ * folded to ASCII: accents dropped, dashes and quotes mapped, the rest removed.
+ */
+function toAscii(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[^\x20-\x7e]/g, "");
+}
+
 async function sendRegistrant(smtp: SMTPClient, registrant: Registrant, to: string, eventTitle: string, assets: SheetAssets) {
   const attachments = [];
   let bytes = 0;
@@ -215,7 +246,7 @@ async function sendRegistrant(smtp: SMTPClient, registrant: Registrant, to: stri
     const pdf = await renderRemarksSheet(assets, { name: p.name, category: p.category, song: p.song, remarks: p.remarks });
     bytes += pdf.length;
     attachments.push({
-      filename: `${p.name} - ${p.category}.pdf`.replace(/[\\/:*?"<>|]/g, ""),
+      filename: toAscii(`${p.name} - ${p.category}.pdf`).replace(/[\\/:*?"<>|]/g, ""),
       content: pdf,
       encoding: "binary" as const,
       contentType: "application/pdf",
@@ -234,7 +265,7 @@ async function sendRegistrant(smtp: SMTPClient, registrant: Registrant, to: stri
     from: `Musica Lumina <${Deno.env.get("SMTP_USERNAME")}>`,
     to,
     replyTo: REPLY_TO,
-    subject,
+    subject: toAscii(subject),
     html,
     content: "auto",
     attachments,
@@ -243,10 +274,17 @@ async function sendRegistrant(smtp: SMTPClient, registrant: Registrant, to: stri
 
 /**
  * Sends each recipient's email (to `testTo` instead when given). A row in
- * remarks_sheet_sends is claimed first so two runs cannot both send; a failed
+ * remarks_sheet_sends is claimed first so two runs cannot both send the
+ * "send to all ready" email (resends are logged but not limited); a failed
  * send keeps its row with the error so the admin page can show it.
  */
-async function sendBatch(eventId: string, template: string, batch: Registrant[], testTo: string | null) {
+async function sendBatch(
+  eventId: string,
+  template: string,
+  batch: Registrant[],
+  options: { testTo?: string; resend?: boolean } = {},
+) {
+  const testTo = options.testTo ?? null;
   const { data: event, error } = await db.from("events").select("title").eq("id", eventId).single();
   if (error) throw error;
   const assets = await loadAssets(template);
@@ -275,6 +313,7 @@ async function sendBatch(eventId: string, template: string, batch: Registrant[],
           registrant_type: registrant.type,
           registration_ids: registrant.participants.map((p) => p.registrationId),
           is_test: testTo !== null,
+          is_resend: options.resend === true,
           sent_to: testTo ?? registrant.email,
         })
         .select("id")
@@ -312,7 +351,7 @@ async function sendStep(eventId: string, startedAt: string) {
   const pending = registrants.filter((r) => r.ready && !r.sentAt && !(r.lastError && r.lastError.at >= startedAt));
   if (pending.length === 0) return;
   const batch = pending.slice(0, SEND_BATCH);
-  const { sent, failed } = await sendBatch(eventId, sheet.template, batch, null);
+  const { sent, failed } = await sendBatch(eventId, sheet.template, batch);
   console.log("remarks-sheets step", { eventId, sent: sent.length, failed: failed.length, left: pending.length - batch.length });
   if (pending.length > batch.length) {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/remarks-sheets`, {
@@ -326,7 +365,7 @@ async function sendStep(eventId: string, startedAt: string) {
 
 serve(
   withCors(async (req) => {
-    const { action, eventId, testEmail, startedAt } = await req.json().catch(() => ({}));
+    const { action, eventId, testEmail, startedAt, email, type, registrationIds } = await req.json().catch(() => ({}));
     if (!UUID.test(String(eventId))) return jsonResponse({ error: "Invalid event" }, 400);
     const sheet = SHEETS[eventId];
     if (!sheet) return jsonResponse({ error: "This event has no remarks sheet template." }, 400);
@@ -358,6 +397,19 @@ serve(
       return jsonResponse({ queued });
     }
 
+    // Resend one recipient's email with the chosen participants, now. Only
+    // sheets whose remarks are finalized by both judges can be included.
+    if (action === "resend") {
+      const recipient = registrants.find((r) => r.email === String(email ?? "").toLowerCase() && r.type === type);
+      if (!recipient) return jsonResponse({ error: "Recipient not found" }, 404);
+      const wanted = new Set(Array.isArray(registrationIds) ? registrationIds.map(String) : []);
+      const participants = recipient.participants.filter((p) => wanted.has(p.registrationId));
+      if (participants.length === 0) return jsonResponse({ error: "Choose at least one participant" }, 400);
+      const notReady = participants.filter((p) => p.missing.length > 0).map((p) => p.name);
+      if (notReady.length) return jsonResponse({ error: `Remarks not finalized for ${notReady.join(", ")}` }, 400);
+      return jsonResponse(await sendBatch(eventId, sheet.template, [{ ...recipient, participants }], { resend: true }));
+    }
+
     if (action !== "send-test") return jsonResponse({ error: "Invalid action" }, 400);
     const to = String(testEmail ?? "").trim();
     if (!EMAIL.test(to)) return jsonResponse({ error: "Invalid test email" }, 400);
@@ -375,6 +427,6 @@ serve(
         participants: r.participants.map((p) => ({ ...p, remarks: [...SAMPLE_REMARKS] as [string, string] })),
       }));
     if (batch.length === 0) return jsonResponse({ sent: [], failed: [] });
-    return jsonResponse(await sendBatch(eventId, sheet.template, batch, to));
+    return jsonResponse(await sendBatch(eventId, sheet.template, batch, { testTo: to }));
   }),
 );

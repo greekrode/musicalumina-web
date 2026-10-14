@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -10,7 +10,14 @@ import { invokeRemarksSheets, supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 type EventOption = { id: string; title: string };
-type Participant = { registrationId: string; name: string; category: string; song: string; missing: string[] };
+type Participant = {
+  registrationId: string;
+  name: string;
+  category: string;
+  song: string;
+  missing: string[];
+  sentAt: string | null;
+};
 type Registrant = {
   email: string;
   type: "teacher" | "parents" | "personal";
@@ -18,6 +25,7 @@ type Registrant = {
   participants: Participant[];
   ready: boolean;
   sentAt: string | null;
+  resentAt: string | null;
   lastError: { at: string; message: string } | null;
 };
 type Status = { judges: string[]; registrants: Registrant[]; unknownJudges: string[] };
@@ -58,6 +66,44 @@ export default function AdminRemarksSheets() {
   const [testEmail, setTestEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [backgroundSince, setBackgroundSince] = useState<number | null>(null);
+  // Resend panel: which recipient is open and which of its participants are ticked.
+  const [resendKey, setResendKey] = useState<string | null>(null);
+  const [resendIds, setResendIds] = useState<string[]>([]);
+  const [isResending, setIsResending] = useState(false);
+
+  function openResend(r: Registrant) {
+    const key = `${r.email} ${r.type}`;
+    if (resendKey === key) {
+      setResendKey(null);
+      return;
+    }
+    setResendKey(key);
+    setResendIds(r.participants.filter((p) => p.missing.length === 0).map((p) => p.registrationId));
+  }
+
+  async function resend(r: Registrant) {
+    setIsResending(true);
+    try {
+      const result = await invokeRemarksSheets<TestResult>({
+        action: "resend",
+        eventId,
+        email: r.email,
+        type: r.type,
+        registrationIds: resendIds,
+      });
+      if (result.sent.length) {
+        toast.success(`Sent ${resendIds.length} sheet${resendIds.length === 1 ? "" : "s"} to ${r.email}`);
+        setResendKey(null);
+      } else {
+        toast.error(`Failed: ${result.failed[0]?.error ?? "unknown error"}`);
+      }
+      load(eventId, true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsResending(false);
+    }
+  }
 
   useEffect(() => {
     supabase
@@ -224,20 +270,25 @@ export default function AdminRemarksSheets() {
                     <th className="px-4 py-3">Registrant</th>
                     <th className="px-4 py-3">Participants</th>
                     <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center type-body-sm text-ink-muted">Loading…</td>
+                      <td colSpan={4} className="px-4 py-8 text-center type-body-sm text-ink-muted">Loading…</td>
                     </tr>
                   ) : registrants.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center type-body-sm text-ink-muted">No registrants.</td>
+                      <td colSpan={4} className="px-4 py-8 text-center type-body-sm text-ink-muted">No registrants.</td>
                     </tr>
                   ) : (
-                    registrants.map((r) => (
-                      <tr key={`${r.email} ${r.type}`} className="border-t border-rule-hairline type-body-sm text-ink-body align-top">
+                    registrants.map((r) => {
+                      const key = `${r.email} ${r.type}`;
+                      const sendable = r.participants.filter((p) => p.missing.length === 0);
+                      return (
+                    <Fragment key={key}>
+                      <tr className="border-t border-rule-hairline type-body-sm text-ink-body align-top">
                         <td className="px-4 py-3">
                           <div>{r.name}</div>
                           <div className="type-caption text-ink-muted">{r.email} · {r.type}</div>
@@ -246,15 +297,26 @@ export default function AdminRemarksSheets() {
                           {r.participants.map((p) => (
                             <div key={p.registrationId}>
                               {p.name} · {p.category}
-                              {p.missing.length > 0 && (
+                              {p.sentAt ? (
+                                <span className="ml-2 type-caption text-[color:var(--status-upcoming)]">
+                                  ✓ sent {jakartaTime.format(new Date(p.sentAt))}
+                                </span>
+                              ) : p.missing.length > 0 ? (
                                 <span className="ml-2 type-caption text-ink-muted">needs {p.missing.join(", ")}</span>
-                              )}
+                              ) : null}
                             </div>
                           ))}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {r.sentAt ? (
-                            `Sent ${jakartaTime.format(new Date(r.sentAt))}`
+                            <>
+                              Sent {jakartaTime.format(new Date(r.sentAt))}
+                              {r.resentAt && (
+                                <div className="type-caption text-ink-muted">Resent {jakartaTime.format(new Date(r.resentAt))}</div>
+                              )}
+                            </>
+                          ) : r.resentAt ? (
+                            `Sent (selected) ${jakartaTime.format(new Date(r.resentAt))}`
                           ) : r.ready && r.lastError ? (
                             <span className="text-[color:var(--status-error)] whitespace-normal" title={r.lastError.message}>
                               Failed {jakartaTime.format(new Date(r.lastError.at))}: {r.lastError.message}
@@ -265,8 +327,72 @@ export default function AdminRemarksSheets() {
                             <span className="text-ink-muted">Waiting for finalized remarks</span>
                           )}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openResend(r)}
+                            disabled={sendable.length === 0}
+                            title={sendable.length === 0 ? "No participant has finalized remarks yet" : undefined}
+                          >
+                            {r.sentAt || r.resentAt ? "Resend…" : "Send…"}
+                          </Button>
+                        </td>
                       </tr>
-                    ))
+                      {resendKey === key && (
+                        <tr className="bg-surface-canvas-warm type-body-sm text-ink-body">
+                          <td colSpan={4} className="px-4 py-4">
+                            <div className="flex flex-col gap-3">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <span className="font-bold">Send to {r.email} with:</span>
+                                <button
+                                  type="button"
+                                  className="type-caption text-burgundy underline underline-offset-2"
+                                  onClick={() => setResendIds(sendable.map((p) => p.registrationId))}
+                                >
+                                  Select all
+                                </button>
+                                <button
+                                  type="button"
+                                  className="type-caption text-burgundy underline underline-offset-2"
+                                  onClick={() => setResendIds([])}
+                                >
+                                  Clear all
+                                </button>
+                              </div>
+                              {r.participants.map((p) => (
+                                <label key={p.registrationId} className={cn("inline-flex items-center gap-2", p.missing.length > 0 && "opacity-50")}>
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 accent-burgundy"
+                                    disabled={p.missing.length > 0}
+                                    checked={resendIds.includes(p.registrationId)}
+                                    onChange={(e) =>
+                                      setResendIds((prev) =>
+                                        e.target.checked ? [...prev, p.registrationId] : prev.filter((id) => id !== p.registrationId)
+                                      )
+                                    }
+                                  />
+                                  {p.name} · {p.category}
+                                  {p.missing.length > 0 && <span className="type-caption text-ink-muted">(needs {p.missing.join(", ")})</span>}
+                                </label>
+                              ))}
+                              <div className="flex gap-2">
+                                <Button variant="elegant" size="sm" onClick={() => resend(r)} disabled={isResending || resendIds.length === 0}>
+                                  {isResending && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+                                  Send {resendIds.length} sheet{resendIds.length === 1 ? "" : "s"}
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => setResendKey(null)} disabled={isResending}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
