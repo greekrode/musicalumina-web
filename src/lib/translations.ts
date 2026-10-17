@@ -428,7 +428,6 @@ export const translations = {
           link_expired: "This link has expired. Please start again.",
           invalid_input: "Please check your name, email and WhatsApp number.",
           rate_limited: "Too many attempts. Please wait a few minutes and try again.",
-          verification: "Please complete the security check first.",
           location_denied:
             "Location access was blocked. Allow location for this site in your browser settings, then try again.",
           location_unavailable:
@@ -904,7 +903,6 @@ export const translations = {
           link_expired: "Tautan ini sudah kedaluwarsa. Silakan mulai lagi.",
           invalid_input: "Mohon periksa nama, email, dan nomor WhatsApp Anda.",
           rate_limited: "Terlalu banyak percobaan. Mohon tunggu beberapa menit lalu coba lagi.",
-          verification: "Mohon selesaikan verifikasi keamanan terlebih dahulu.",
           location_denied:
             "Akses lokasi diblokir. Izinkan lokasi untuk situs ini di pengaturan browser Anda, lalu coba lagi.",
           location_unavailable:

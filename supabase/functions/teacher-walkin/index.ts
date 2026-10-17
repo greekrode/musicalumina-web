@@ -1,17 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jsonResponse, withCors } from "../_shared/n8n.ts";
-import { clientIp, verifyTurnstile } from "../_shared/guard.ts";
+import { clientIp } from "../_shared/guard.ts";
 import { encodeCustomerPass } from "../_shared/pass.ts";
 
 /**
  * teacher-walkin — the walk-in teacher QR at an event venue.
  *
- *   { action: "open", eventId, latitude, longitude, accuracy, turnstileToken }
+ *   { action: "open", eventId, latitude, longitude, accuracy }
  *       -> { token, expiresAt }
  *   { action: "submit", token, name, email, whatsapp } -> { ok, pass }
  *
- * "open" needs Turnstile, is rate-limited per IP, and only succeeds on one of
+ * "open" is rate-limited per IP and only succeeds on one of
  * the event's days (Jakarta) with a browser location inside the venue gate
  * (teacher_walkin_gates). It returns a random single-use token; only its
  * SHA-256 is stored. "submit" uses up the token and adds the teacher to
@@ -57,7 +57,7 @@ async function rpc(name: string, args: Record<string, unknown>): Promise<Record<
 }
 
 async function open(req: Request, body: Record<string, unknown>): Promise<Response> {
-  const { eventId, latitude, longitude, accuracy, turnstileToken } = body;
+  const { eventId, latitude, longitude, accuracy } = body;
   if (
     typeof eventId !== "string" || !UUID.test(eventId) ||
     !isNumberIn(latitude, -90, 90) || !isNumberIn(longitude, -180, 180) ||
@@ -75,10 +75,6 @@ async function open(req: Request, body: Record<string, unknown>): Promise<Respon
     return jsonResponse({ error: "Too many attempts. Please wait a few minutes.", code: "rate_limited" }, 429);
   }
   await db.from("abuse_attempts").insert({ bucket: "teacher-walkin", client_ip: ip });
-
-  if (!(await verifyTurnstile(req, turnstileToken, "teacher"))) {
-    return jsonResponse({ error: "Verification failed. Please refresh and try again.", code: "verification" }, 403);
-  }
 
   const token = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); // base64url, 43 chars

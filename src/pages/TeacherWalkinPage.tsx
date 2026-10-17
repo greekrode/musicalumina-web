@@ -2,14 +2,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { FunctionsHttpError } from "@supabase/supabase-js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Loader2, MapPin } from "lucide-react";
 import { useLanguage } from "../lib/LanguageContext";
 import PageTransition from "../components/PageTransition";
 import { edgeFunctions, supabase } from "../lib/supabase";
-import { Turnstile, type TurnstileHandle } from "../components/Turnstile";
 import { Section, Container } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +45,6 @@ const RESTART_BY_ERROR: Record<string, boolean> = {
   link_expired: true,
   invalid_input: false,
   rate_limited: false,
-  verification: false,
   location_denied: false,
   location_unavailable: false,
   location_unsupported: false,
@@ -97,7 +95,6 @@ export default function TeacherWalkinPage() {
   const { eventId = "" } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const turnstileRef = useRef<TurnstileHandle>(null);
   const token = new URLSearchParams(location.hash.slice(1)).get("t");
   const storageKey = `teacher-walkin-pass:${eventId}`;
 
@@ -150,11 +147,6 @@ export default function TeacherWalkinPage() {
 
   const verify = async () => {
     setErrorCode(null);
-    const turnstileToken = turnstileRef.current?.getToken() ?? null;
-    if (!turnstileToken) {
-      setErrorCode("verification");
-      return;
-    }
     if (!navigator.geolocation) {
       setErrorCode("location_unsupported");
       return;
@@ -180,14 +172,12 @@ export default function TeacherWalkinPage() {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
-        turnstileToken,
       });
       navigate({ hash: `t=${linkToken}` }, { replace: true });
     } catch (error) {
       fail(error);
     } finally {
       setIsVerifying(false);
-      turnstileRef.current?.reset();
     }
   };
 
@@ -291,7 +281,6 @@ export default function TeacherWalkinPage() {
                     <MapPin className="h-5 w-5 flex-shrink-0 text-marigold mt-0.5" />
                     {t("pageCopy.teacherWalkin.locationHelp")}
                   </p>
-                  <Turnstile ref={turnstileRef} action="teacher" className="flex justify-center" />
                   {errorCode && <ErrorBanner code={errorCode} onStartOver={startOver} />}
                   <Button type="button" size="lg" onClick={verify} disabled={isVerifying} className="w-full">
                     {isVerifying && <Loader2 className="h-4 w-4 animate-spin" />}
