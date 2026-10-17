@@ -34,6 +34,7 @@ type PastEvent = Database["public"]["Tables"]["events"]["Row"] & {
       [subcategory: string]: Array<{
         prize_title: string;
         participant_name: string;
+        song_title?: string | null;
       }>;
     };
   };
@@ -644,7 +645,11 @@ function SubcategoryWinners({
   winners,
 }: {
   name: string;
-  winners: Array<{ prize_title: string; participant_name: string }>;
+  winners: Array<{
+    prize_title: string;
+    participant_name: string;
+    song_title?: string | null;
+  }>;
 }) {
   return (
     <article className="bg-surface-canvas-warm border border-rule-hairline p-6 lg:p-7 flex flex-col gap-5">
@@ -656,6 +661,11 @@ function SubcategoryWinners({
             <span className="font-serif text-title-lg text-burgundy leading-tight text-balance">
               {winner.participant_name}
             </span>
+            {winner.song_title && (
+              <span className="type-caption text-ink-muted">
+                {winner.song_title}
+              </span>
+            )}
           </li>
         ))}
       </ul>

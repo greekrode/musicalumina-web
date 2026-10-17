@@ -337,10 +337,12 @@ export async function getEventById(id: string) {
 
     // For completed events, fetch winners
     if (eventWithCount.status === "completed") {
-      const { data: winners, error: winnersError } = await supabase
-        .from("event_winners")
-        .select(
-          `
+      const [{ data: winners, error: winnersError }, detailsResult] =
+        await Promise.all([
+          supabase
+            .from("event_winners")
+            .select(
+              `
           id,
           participant_name,
           prize_title,
@@ -349,36 +351,63 @@ export async function getEventById(id: string) {
           event_categories!inner (
             id,
             name,
-            order_index
+            order_index,
+            repertoire
           ),
           event_subcategories!inner (
             id,
             name,
-            order_index
+            order_index,
+            repertoire
           )
         `
-        )
-        .eq("event_id", id)
-        .order("prize_title");
+            )
+            .eq("event_id", id),
+          supabase.rpc("get_event_winner_details", { p_event_id: id }),
+        ]);
+
+      // Score/song are enhancements: if the lookup fails, still list winners.
+      // The generated Database type has no Functions section, so type the rpc rows here.
+      type WinnerDetails = {
+        winner_id: string;
+        score: number | null;
+        song_title: string | null;
+      };
+      const detailsById = new Map(
+        ((detailsResult.data ?? []) as WinnerDetails[]).map((d) => [
+          d.winner_id,
+          d,
+        ])
+      );
 
       if (winnersError) {
         throw winnersError;
       }
 
-      // Group winners by category and subcategory, maintaining order
+      type WinnerEntry = {
+        participant_name: string;
+        prize_title: string;
+        song_title: string | null;
+        score: number;
+      };
       type CategoryData = {
         order: number;
         subcategories: Record<
           string,
-          {
-            order: number;
-            winners: Array<{
-              participant_name: string;
-              prize_title: string;
-            }>;
-          }
+          { order: number; winners: WinnerEntry[] }
         >;
       };
+
+      const hasRepertoire = (value: unknown) =>
+        Array.isArray(value) && value.length > 0;
+      const PRIZE_RANK: Record<string, number> = {
+        "high scorer": 0,
+        gold: 1,
+        silver: 2,
+        bronze: 3,
+      };
+      const prizeRank = (title: string) =>
+        PRIZE_RANK[title.trim().toLowerCase()] ?? 99;
 
       const groupedWinners = winners.reduce(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase nested-join response type; proper typing would require a dedicated winners-view type
@@ -412,9 +441,17 @@ export async function getEventById(id: string) {
             };
           }
 
+          // Only categories without a mandatory repertoire list show the song.
+          const isFreeRepertoire =
+            !hasRepertoire(categoryData?.repertoire) &&
+            !hasRepertoire(subcategoryData?.repertoire);
+          const details = detailsById.get(winner.id);
+
           acc[category].subcategories[subcategory].winners.push({
             participant_name: winner.participant_name,
             prize_title: winner.prize_title,
+            song_title: isFreeRepertoire ? (details?.song_title ?? null) : null,
+            score: details?.score ?? -1,
           });
 
           return acc;
@@ -422,24 +459,39 @@ export async function getEventById(id: string) {
         {}
       );
 
-      // Sort categories by order_index, then sort subcategories within each category
+      // Sort categories/subcategories by order_index; winners by prize tier,
+      // then score descending, then name for a stable order.
       const sortedWinners: Record<
         string,
-        Record<string, Array<{ participant_name: string; prize_title: string }>>
+        Record<
+          string,
+          Array<{
+            participant_name: string;
+            prize_title: string;
+            song_title: string | null;
+          }>
+        >
       > = {};
       Object.entries(groupedWinners)
         .sort(([, a], [, b]) => a.order - b.order)
         .forEach(([category, categoryData]) => {
-          const sortedSubcategories: Record<
-            string,
-            Array<{ participant_name: string; prize_title: string }>
-          > = {};
+          sortedWinners[category] = {};
           Object.entries(categoryData.subcategories)
             .sort(([, a], [, b]) => a.order - b.order)
             .forEach(([subcategory, subcategoryData]) => {
-              sortedSubcategories[subcategory] = subcategoryData.winners;
+              sortedWinners[category][subcategory] = subcategoryData.winners
+                .sort(
+                  (a, b) =>
+                    prizeRank(a.prize_title) - prizeRank(b.prize_title) ||
+                    b.score - a.score ||
+                    a.participant_name.localeCompare(b.participant_name)
+                )
+                .map(({ participant_name, prize_title, song_title }) => ({
+                  participant_name,
+                  prize_title,
+                  song_title,
+                }));
             });
-          sortedWinners[category] = sortedSubcategories;
         });
 
       return { ...eventWithCount, winners: sortedWinners };
