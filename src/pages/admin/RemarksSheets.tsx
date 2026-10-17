@@ -33,6 +33,8 @@ type Participant = {
   song: string;
   /** Per judge, in Status.judges order. */
   judgeStatus: JudgeStatus[];
+  /** Did not perform: no sheet, does not hold the recipient back. */
+  absent: boolean;
   sentAt: string | null;
 };
 type Registrant = {
@@ -44,13 +46,17 @@ type Registrant = {
   sentAt: string | null;
   resentAt: string | null;
   lastError: { at: string; message: string } | null;
+  /** Latest logged attempt of any kind; a background run is done with a recipient once this is past its start. */
+  lastAttemptAt: string | null;
 };
+/** A background run the page is watching: since when, and which recipients it covers. */
+type BackgroundRun = { since: number; includeSent: boolean; only?: string };
 type Status = { judges: string[]; registrants: Registrant[]; unknownJudges: string[] };
 type TestResult = { sent: string[]; failed: { email: string; error: string }[] };
 
 /** While a background send runs, refresh the list this often (and stop after the cap). */
 const POLL_MS = 10_000;
-const POLL_MAX_MS = 20 * 60_000;
+const POLL_MAX_MS = 90 * 60_000;
 
 const SELECT_CLASSES =
   "h-11 px-3 py-2 rounded-sm border border-burgundy/20 bg-surface-elevated font-sans text-body-sm text-ink-body focus:outline-none focus:border-marigold focus:ring-2 focus:ring-marigold/20";
@@ -78,9 +84,9 @@ const JUDGE_META: Record<JudgeStatus, { label: string; status: BadgeStatus; icon
   none: { label: "No remarks", status: "closed", icon: CircleDashed },
 };
 
-/** A sheet can go out once every judge's remarks are finalized. */
+/** A sheet can go out once every judge's remarks are finalized; absent participants get none. */
 function isSendable(p: Participant): boolean {
-  return p.judgeStatus.every((s) => s === "final");
+  return !p.absent && p.judgeStatus.every((s) => s === "final");
 }
 
 /** Recipient-level status pill, plus resend / error detail under it. */
@@ -110,6 +116,14 @@ function RecipientStatus({ r }: { r: Registrant }) {
       </div>
     );
   }
+  if (r.participants.every((p) => p.absent)) {
+    return (
+      <Badge size="sm" status="closed" className="normal-case tracking-normal w-fit">
+        <CircleDashed className="h-3.5 w-3.5" aria-hidden />
+        No sheets
+      </Badge>
+    );
+  }
   return (
     <div className="flex flex-col gap-1">
       {r.ready ? (
@@ -135,11 +149,13 @@ function RecipientStatus({ r }: { r: Registrant }) {
  * (one per participant + category) via the remarks-sheets edge function.
  * One email per registrant email + type (teacher / parents / personal), with
  * every sheet attached as a PDF. A recipient becomes ready once both judges'
- * scores, with remarks, are finalized for every one of its registrations.
- * "Send test" works any time: it mails one recipient's email (the ready one
- * with the longest remarks, else the first with sample remarks) to the given
- * address only. "Send to all ready" queues every ready recipient on the
- * server (sent in the background, each once); the page only polls progress.
+ * scores, with remarks, are finalized for all of its participants; in a
+ * completed event, participants with no remarks in a fully finalized category
+ * did not perform, get no sheet, and do not hold the recipient back.
+ * "Send test" works any time: it mails one small recipient's email (the ready
+ * one with the longest remarks, else the first with sample remarks) to the
+ * given address only. "Send to unsent" / "Send to all ready" and resends run
+ * on the server in the background; the page only polls progress.
  */
 export default function AdminRemarksSheets() {
   const [events, setEvents] = useState<EventOption[]>([]);
@@ -149,7 +165,7 @@ export default function AdminRemarksSheets() {
   const [isLoading, setIsLoading] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [backgroundSince, setBackgroundSince] = useState<number | null>(null);
+  const [backgroundRun, setBackgroundRun] = useState<BackgroundRun | null>(null);
   // Resend panel: which recipient is open and which of its participants are ticked.
   const [resendKey, setResendKey] = useState<string | null>(null);
   const [resendIds, setResendIds] = useState<string[]>([]);
@@ -168,19 +184,16 @@ export default function AdminRemarksSheets() {
   async function resend(r: Registrant) {
     setIsResending(true);
     try {
-      const result = await invokeRemarksSheets<TestResult>({
+      const { startedAt } = await invokeRemarksSheets<{ queued: number; startedAt: string }>({
         action: "resend",
         eventId,
         email: r.email,
         type: r.type,
         registrationIds: resendIds,
       });
-      if (result.sent.length) {
-        toast.success(`Sent ${resendIds.length} sheet${resendIds.length === 1 ? "" : "s"} to ${r.email}`);
-        setResendKey(null);
-      } else {
-        toast.error(`Failed: ${result.failed[0]?.error ?? "unknown error"}`);
-      }
+      setBackgroundRun({ since: Date.parse(startedAt), includeSent: true, only: `${r.email} ${r.type}` });
+      toast.success(`Sending ${resendIds.length} sheet${resendIds.length === 1 ? "" : "s"} to ${r.email} in the background.`);
+      setResendKey(null);
       load(eventId, true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
@@ -241,7 +254,7 @@ export default function AdminRemarksSheets() {
   }, []);
 
   useEffect(() => {
-    setBackgroundSince(null);
+    setBackgroundRun(null);
     setResendKey(null);
     if (eventId) load(eventId);
   }, [eventId, load]);
@@ -249,13 +262,21 @@ export default function AdminRemarksSheets() {
   const registrants = status?.registrants ?? [];
   const sentCount = registrants.filter((r) => r.sentAt).length;
   const readyCount = registrants.filter((r) => r.ready && !r.sentAt).length;
-  const waitingCount = registrants.filter((r) => !r.ready).length;
+  const allReadyCount = registrants.filter((r) => r.ready).length;
+  const noSheetsCount = registrants.filter((r) => r.participants.every((p) => p.absent)).length;
+  const waitingCount = registrants.filter((r) => !r.ready).length - noSheetsCount;
   const failedCount = registrants.filter((r) => r.ready && !r.sentAt && r.lastError).length;
-  // Still working while some ready recipient has neither been sent nor failed since the run started.
+  // Still working while some recipient the run covers has no logged attempt since the run started.
   const isBackgroundRunning =
-    backgroundSince !== null &&
-    Date.now() - backgroundSince < POLL_MAX_MS &&
-    registrants.some((r) => r.ready && !r.sentAt && !(r.lastError && new Date(r.lastError.at).getTime() >= backgroundSince));
+    backgroundRun !== null &&
+    Date.now() - backgroundRun.since < POLL_MAX_MS &&
+    registrants.some(
+      (r) =>
+        (backgroundRun.only
+          ? `${r.email} ${r.type}` === backgroundRun.only
+          : r.ready && (backgroundRun.includeSent || !r.sentAt)) &&
+        !(r.lastAttemptAt && Date.parse(r.lastAttemptAt) >= backgroundRun.since),
+    );
 
   useEffect(() => {
     if (!isBackgroundRunning) return;
@@ -277,12 +298,20 @@ export default function AdminRemarksSheets() {
     }
   }
 
-  async function sendAll() {
-    if (!window.confirm(`Email remarks to ${readyCount} recipient${readyCount === 1 ? "" : "s"}? Each is only emailed once.`)) return;
+  async function sendAll(includeSent: boolean) {
+    const count = includeSent ? allReadyCount : readyCount;
+    const question = includeSent
+      ? `Email remarks to all ${count} ready recipient${count === 1 ? "" : "s"}, including ${count - readyCount} already emailed (sent again as a resend)?`
+      : `Email remarks to ${count} recipient${count === 1 ? "" : "s"} not emailed yet?`;
+    if (!window.confirm(question)) return;
     setIsSending(true);
     try {
-      const { queued } = await invokeRemarksSheets<{ queued: number }>({ action: "send-all", eventId });
-      setBackgroundSince(Date.now());
+      const { queued, startedAt } = await invokeRemarksSheets<{ queued: number; startedAt: string }>({
+        action: "send-all",
+        eventId,
+        includeSent,
+      });
+      setBackgroundRun({ since: Date.parse(startedAt), includeSent });
       toast.success(`Sending ${queued} email${queued === 1 ? "" : "s"} in the background. You can close this page.`);
       load(eventId, true);
     } catch (error) {
@@ -302,9 +331,10 @@ export default function AdminRemarksSheets() {
             Emails each registrant a thank-you note with the jury comment sheets attached as PDFs, one
             per participant and category. Someone registered as both teacher and parent gets one
             email for each role. A recipient is ready once both judges' scores (with remarks) are
-            finalized for all of its participants, and is only emailed once. Send a test to yourself
-            first: it uses the ready recipient with the longest remarks, or sample remarks before any
-            scores are finalized.
+            finalized for all of its participants. Participants with no remarks in a finalized
+            category did not perform: they get no sheet and don't hold the email back. Send a test
+            to yourself first: it uses a ready recipient with up to 3 sheets and the longest remarks,
+            or sample remarks before any scores are finalized.
           </p>
         </header>
 
@@ -336,6 +366,7 @@ export default function AdminRemarksSheets() {
             <p className="type-body-sm text-ink-body">
               Judges: {status.judges.join(" & ")} · {registrants.length} recipients ·{" "}
               <strong>{readyCount} ready</strong> · {waitingCount} waiting for finalized remarks · {sentCount} sent
+              {noSheetsCount > 0 && <> · {noSheetsCount} with no sheets</>}
               {failedCount > 0 && <span className="text-[color:var(--status-error)]"> · {failedCount} failed</span>}
             </p>
             {status.unknownJudges.length > 0 && (
@@ -357,9 +388,17 @@ export default function AdminRemarksSheets() {
               <Button variant="outline" onClick={sendTest} disabled={isSending || !testEmail || registrants.length === 0}>
                 Send test
               </Button>
-              <Button variant="elegant" onClick={sendAll} disabled={isSending || isBackgroundRunning || readyCount === 0}>
+              <Button variant="elegant" onClick={() => sendAll(false)} disabled={isSending || isBackgroundRunning || readyCount === 0}>
                 {isSending || isBackgroundRunning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Send className="h-4 w-4 mr-1.5" />}
-                {failedCount > 0 && !isBackgroundRunning ? "Retry / send to all ready" : "Send to all ready"} ({readyCount})
+                {failedCount > 0 && !isBackgroundRunning ? "Retry / send to unsent" : "Send to unsent"} ({readyCount})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => sendAll(true)}
+                disabled={isSending || isBackgroundRunning || allReadyCount === 0}
+                title="Every ready recipient, including those already emailed (sent again as a resend)"
+              >
+                Send to all ready, incl. sent ({allReadyCount})
               </Button>
               {isBackgroundRunning && (
                 <span className="type-body-sm text-ink-muted">Sending in the background ({sentCount} sent so far). You can close this page.</span>
@@ -450,7 +489,7 @@ export default function AdminRemarksSheets() {
                                     {jakartaTime.format(new Date(p.sentAt))}
                                   </span>
                                 ) : (
-                                  <span className="text-ink-muted">Not sent</span>
+                                  <span className="text-ink-muted">{p.absent ? "No sheet (did not perform)" : "Not sent"}</span>
                                 )}
                               </td>
                               {i === 0 && (
@@ -513,7 +552,9 @@ export default function AdminRemarksSheets() {
                                         }
                                       />
                                       {p.name} · {p.category}
-                                      {!isSendable(p) && <span className="type-caption text-ink-muted">(remarks not finalized)</span>}
+                                      {!isSendable(p) && (
+                                        <span className="type-caption text-ink-muted">({p.absent ? "did not perform" : "remarks not finalized"})</span>
+                                      )}
                                     </label>
                                   ))}
                                   <div className="flex gap-2">
