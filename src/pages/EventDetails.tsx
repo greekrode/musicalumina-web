@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import moment from "moment";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight, ChevronDown, FileDown } from "lucide-react";
 import TermsModal from "../components/TermsModal";
 import RegistrationModal from "../components/RegistrationModal";
@@ -210,6 +210,11 @@ function EventDetails() {
     );
   }
 
+  // A finished event lives on its results page.
+  if (event.status === "completed") {
+    return <Navigate to={`/past-event/${event.id}`} replace />;
+  }
+
   const isQuotaFull =
     event.max_quota &&
     event.registration_count !== undefined &&
@@ -245,20 +250,18 @@ function EventDetails() {
   });
 
   const statusBadge =
-    event.status === "completed"
-      ? { status: "ended" as const, label: t("eventCard.statusConcluded") }
-      : event.status === "ongoing"
-        ? {
-            status: "open" as const,
-            label: isRegistrationClosed
-              ? t("eventCard.statusOngoing")
-              : t("eventCard.statusOpen"),
-          }
-        : isQuotaFull
-          ? { status: "closed" as const, label: t("eventDetails.quotaFull") }
-          : isRegistrationClosed
-            ? { status: "closed" as const, label: t("eventDetails.registrationClosed") }
-            : { status: "upcoming" as const, label: t("eventCard.statusUpcoming") };
+    event.status === "ongoing"
+      ? {
+          status: "open" as const,
+          label: isRegistrationClosed
+            ? t("eventCard.statusOngoing")
+            : t("eventCard.statusOpen"),
+        }
+      : isQuotaFull
+        ? { status: "closed" as const, label: t("eventDetails.quotaFull") }
+        : isRegistrationClosed
+          ? { status: "closed" as const, label: t("eventDetails.registrationClosed") }
+          : { status: "upcoming" as const, label: t("eventCard.statusUpcoming") };
 
   const typeLabel = t(`eventCard.eventTypes.${event.type}`);
   const prospectusUrl = getEventProspectusUrl(event.id, language);
