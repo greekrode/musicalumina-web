@@ -191,20 +191,22 @@ function PastEventDetails() {
       {/* ================================================================
           GALLERY — editorial photo essay
           ================================================================ */}
-      <section className="pb-12 lg:pb-16">
-        <Container>
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={viewportOnce}
-            transition={{ duration: 0.7, ease: EASE }}
-            className="flex flex-col gap-5"
-          >
-            <Eyebrow withRule>{t("pageCopy.pastEvents.galleryEyebrow")}</Eyebrow>
-            <EventGallery images={photos} isLoading={photosLoading} />
-          </motion.div>
-        </Container>
-      </section>
+      {(photosLoading || photos.length > 0) && (
+        <section className="pb-12 lg:pb-16">
+          <Container>
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={viewportOnce}
+              transition={{ duration: 0.7, ease: EASE }}
+              className="flex flex-col gap-5"
+            >
+              <Eyebrow withRule>{t("pageCopy.pastEvents.galleryEyebrow")}</Eyebrow>
+              <EventGallery images={photos} isLoading={photosLoading} />
+            </motion.div>
+          </Container>
+        </section>
+      )}
 
       {/* ================================================================
           NARRATIVE — long-form description
