@@ -418,6 +418,23 @@ export const translations = {
         passShow: "Show this QR code at the entrance. Our staff will scan it to let you in.",
         passSave: "Take a screenshot in case you lose signal. Opening this page again on this phone also shows it.",
         startOver: "Start again",
+        inAppTitle: "Open this page in Safari or Chrome",
+        inAppBody:
+          "This page is open inside another app (WhatsApp, Instagram, LINE…), which often can't share your location. Tap the ⋯ or ⋮ menu and choose “Open in browser” (or “Open in Safari”), or copy the link below and paste it into Safari or Chrome.",
+        copyLink: "Copy link",
+        linkCopied: "Link copied",
+        locationStepsTitle: "How to turn location on",
+        reload: "Reload page",
+        locationSteps: {
+          iosSafari:
+            "Open Settings → Privacy & Security → Location Services and turn it on.\nOn the same screen, tap Safari Websites, choose “While Using the App” and turn on Precise Location.\nOpen Settings → Apps → Safari → Location and choose “Ask” or “Allow” (older iPhones: Settings → Safari → Location).\nBack in Safari, tap “aA” in the address bar → Website Settings → Location → Allow, then reload this page.",
+          iosApp:
+            "Open Settings → Privacy & Security → Location Services and turn it on.\nOn the same screen, tap your browser (Chrome, Firefox, Edge…), choose “While Using the App” and turn on Precise Location.\nReload this page and tap Allow when asked.",
+          android:
+            "Swipe down from the top of the screen and turn on Location.\nIn Chrome, tap the icon left of the web address → Permissions → Location → Allow.\nStill blocked? Open Settings → Apps → Chrome → Permissions → Location → Allow.\nReload this page and tap Allow when asked.",
+          mac:
+            "Open System Settings → Privacy & Security → Location Services, turn it on, and turn it on for your browser.\nSafari: Safari → Settings → Websites → Location → set this site to Allow. Chrome: click the icon left of the web address → Location → Allow.\nReload this page.",
+        },
         errors: {
           closed: "This form is not open for this event.",
           not_event_day: "This form only opens on the event day.",
@@ -893,6 +910,23 @@ export const translations = {
         passShow: "Tunjukkan kode QR ini di pintu masuk. Staf kami akan memindainya.",
         passSave: "Simpan tangkapan layar untuk berjaga-jaga jika sinyal hilang. Membuka halaman ini lagi di ponsel ini juga akan menampilkannya.",
         startOver: "Mulai lagi",
+        inAppTitle: "Buka halaman ini di Safari atau Chrome",
+        inAppBody:
+          "Halaman ini terbuka di dalam aplikasi lain (WhatsApp, Instagram, LINE…) yang sering tidak bisa membagikan lokasi. Ketuk menu ⋯ atau ⋮ lalu pilih “Buka di browser” (atau “Open in Safari”), atau salin tautan di bawah dan tempel di Safari atau Chrome.",
+        copyLink: "Salin tautan",
+        linkCopied: "Tautan disalin",
+        locationStepsTitle: "Cara mengaktifkan lokasi",
+        reload: "Muat ulang halaman",
+        locationSteps: {
+          iosSafari:
+            "Buka Pengaturan → Privasi & Keamanan → Layanan Lokasi, lalu aktifkan.\nDi layar yang sama, ketuk Situs Web Safari, pilih “Saat Menggunakan App”, dan aktifkan Lokasi Akurat.\nBuka Pengaturan → App → Safari → Lokasi, pilih “Tanya” atau “Izinkan” (iPhone lama: Pengaturan → Safari → Lokasi).\nKembali ke Safari, ketuk “aA” di bilah alamat → Pengaturan Situs Web → Lokasi → Izinkan, lalu muat ulang halaman ini.",
+          iosApp:
+            "Buka Pengaturan → Privasi & Keamanan → Layanan Lokasi, lalu aktifkan.\nDi layar yang sama, ketuk browser Anda (Chrome, Firefox, Edge…), pilih “Saat Menggunakan App”, dan aktifkan Lokasi Akurat.\nMuat ulang halaman ini dan ketuk Izinkan saat diminta.",
+          android:
+            "Usap layar dari atas lalu aktifkan Lokasi.\nDi Chrome, ketuk ikon di kiri alamat web → Izin → Lokasi → Izinkan.\nMasih diblokir? Buka Setelan → Aplikasi → Chrome → Izin → Lokasi → Izinkan.\nMuat ulang halaman ini dan ketuk Izinkan saat diminta.",
+          mac:
+            "Buka Pengaturan Sistem → Privasi & Keamanan → Layanan Lokasi, aktifkan, lalu aktifkan untuk browser Anda.\nSafari: Safari → Pengaturan → Situs Web → Lokasi → atur situs ini ke Izinkan. Chrome: klik ikon di kiri alamat web → Lokasi → Izinkan.\nMuat ulang halaman ini.",
+        },
         errors: {
           closed: "Formulir ini tidak dibuka untuk acara ini.",
           not_event_day: "Formulir ini hanya dibuka pada hari acara.",

@@ -5,7 +5,7 @@ import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Loader2, MapPin } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Copy, Loader2, MapPin, RotateCw } from "lucide-react";
 import { useLanguage } from "../lib/LanguageContext";
 import PageTransition from "../components/PageTransition";
 import { edgeFunctions, supabase } from "../lib/supabase";
@@ -56,6 +56,32 @@ class WalkinError extends Error {
     super(code);
   }
 }
+
+/** Which "turn location on" steps to show. */
+type Platform = "iosSafari" | "iosApp" | "android" | "mac" | "other";
+
+/**
+ * Best-effort guess from the user agent; it only picks help text. Browsers
+ * never re-ask for location once it is blocked, so the page can only explain
+ * how to unblock it. In-app browsers (WhatsApp, Instagram, LINE…) usually
+ * can't share location at all, so those visitors are sent to a real browser.
+ */
+function detectDevice(): { platform: Platform; inApp: boolean } {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(ua);
+  const inApp =
+    /FBAN|FBAV|FB_IAB|Instagram|Line\/|WhatsApp|TikTok|musical_ly|BytedanceWebview|Twitter|Snapchat|GSA\//i.test(ua) ||
+    (android && /; wv\)/.test(ua)) ||
+    (ios && !/Safari\//.test(ua)); // iOS web views drop the Safari token
+  const platform: Platform = ios
+    ? /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? "iosApp" : "iosSafari"
+    : android ? "android" : /Macintosh/.test(ua) ? "mac" : "other";
+  return { platform, inApp };
+}
+
+const DEVICE = detectDevice();
+const LOCATION_ERRORS: Record<string, true> = { location_denied: true, location_unavailable: true };
 
 async function teacherWalkin<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await edgeFunctions.invoke<T>("teacher-walkin", { body });
@@ -113,6 +139,7 @@ export default function TeacherWalkinPage() {
       return null;
     }
   });
+  const [locationBlocked, setLocationBlocked] = useState(false);
 
   usePageTitle(t("pageCopy.teacherWalkin.title"));
 
@@ -130,6 +157,27 @@ export default function TeacherWalkinPage() {
       cancelled = true;
     };
   }, [eventId]);
+
+  // Show the unblock steps before the tap when the browser already says "denied";
+  // clear them if the visitor allows location in settings and comes back.
+  useEffect(() => {
+    let status: PermissionStatus | null = null;
+    let cancelled = false;
+    const update = () => status && setLocationBlocked(status.state === "denied");
+    navigator.permissions
+      ?.query({ name: "geolocation" })
+      .then((s) => {
+        if (cancelled) return;
+        status = s;
+        update();
+        s.addEventListener("change", update);
+      })
+      .catch(() => {}); // not supported: the error after the tap explains instead
+    return () => {
+      cancelled = true;
+      status?.removeEventListener("change", update);
+    };
+  }, []);
 
   const {
     register,
@@ -281,7 +329,10 @@ export default function TeacherWalkinPage() {
                     <MapPin className="h-5 w-5 flex-shrink-0 text-marigold mt-0.5" />
                     {t("pageCopy.teacherWalkin.locationHelp")}
                   </p>
-                  {errorCode && <ErrorBanner code={errorCode} onStartOver={startOver} />}
+                  {DEVICE.inApp && <InAppNotice />}
+                  {(errorCode || locationBlocked) && (
+                    <ErrorBanner code={errorCode ?? "location_denied"} onStartOver={startOver} />
+                  )}
                   <Button type="button" size="lg" onClick={verify} disabled={isVerifying} className="w-full">
                     {isVerifying && <Loader2 className="h-4 w-4 animate-spin" />}
                     {isVerifying
@@ -371,6 +422,7 @@ function ErrorBanner({ code, onStartOver }: { code: string; onStartOver: () => v
       <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
       <div className="flex flex-col gap-3">
         <span>{t(`pageCopy.teacherWalkin.errors.${code}`)}</span>
+        {LOCATION_ERRORS[code] && <LocationSteps />}
         {RESTART_BY_ERROR[code] && (
           <Button type="button" variant="outline" size="sm" onClick={onStartOver} className="self-start">
             {t("pageCopy.teacherWalkin.startOver")}
@@ -381,7 +433,52 @@ function ErrorBanner({ code, onStartOver }: { code: string; onStartOver: () => v
   );
 }
 
-function StatusBanner({ kind, children }: { kind: "success" | "error"; children: React.ReactNode }) {
+function LocationSteps() {
+  const { t } = useLanguage();
+  if (DEVICE.platform === "other") return null;
+  const steps = t(`pageCopy.teacherWalkin.locationSteps.${DEVICE.platform}`).split("\n");
+  return (
+    <div className="flex flex-col gap-3 text-ink-body">
+      <span className="font-semibold">{t("pageCopy.teacherWalkin.locationStepsTitle")}</span>
+      <ol className="list-decimal pl-5 flex flex-col gap-1.5">
+        {steps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+      <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()} className="self-start">
+        <RotateCw className="h-4 w-4" />
+        {t("pageCopy.teacherWalkin.reload")}
+      </Button>
+    </div>
+  );
+}
+
+function InAppNotice() {
+  const { t } = useLanguage();
+  const [copied, setCopied] = useState(false);
+  const href = window.location.href;
+  const copy = () =>
+    navigator.clipboard?.writeText(href).then(
+      () => setCopied(true),
+      () => {} // some in-app browsers block the clipboard; the link stays visible to long-press
+    );
+  return (
+    <StatusBanner kind="warn">
+      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+      <div className="flex flex-col gap-3 min-w-0">
+        <span className="font-semibold">{t("pageCopy.teacherWalkin.inAppTitle")}</span>
+        <span>{t("pageCopy.teacherWalkin.inAppBody")}</span>
+        <span className="type-caption break-all select-all text-ink-body">{href}</span>
+        <Button type="button" variant="outline" size="sm" onClick={copy} className="self-start">
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          {copied ? t("pageCopy.teacherWalkin.linkCopied") : t("pageCopy.teacherWalkin.copyLink")}
+        </Button>
+      </div>
+    </StatusBanner>
+  );
+}
+
+function StatusBanner({ kind, children }: { kind: "success" | "warn" | "error"; children: React.ReactNode }) {
   return (
     <div
       role="status"
@@ -389,7 +486,9 @@ function StatusBanner({ kind, children }: { kind: "success" | "error"; children:
         "border-l-2 px-5 py-4 flex items-start gap-3 type-body-sm",
         kind === "success"
           ? "border-[color:var(--status-open)] bg-[color:var(--status-open-bg)] text-[color:var(--status-open)]"
-          : "border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)]"
+          : kind === "warn"
+            ? "border-[color:var(--status-upcoming)] bg-[color:var(--status-upcoming-bg)] text-[color:var(--status-upcoming)]"
+            : "border-[color:var(--status-error)] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)]"
       )}
     >
       {children}
