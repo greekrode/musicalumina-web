@@ -787,7 +787,6 @@ function SessionSchedule({
                   >
                     {item.performances.map((block) => {
                       const category = categoryPath(block.subcategory_id, categories);
-                      const time = `${formatJakartaClock(block.starts_at)}–${formatJakartaClock(block.ends_at)}`;
                       const groupOpen = !closedGroups.has(block.id);
                       const groupPanelId = `group-panel-${block.id}`;
                       const groupHeaderId = `group-header-${block.id}`;
@@ -806,8 +805,7 @@ function SessionSchedule({
                                 {category}
                               </span>
                               <span className="type-body-sm font-bold text-ink-body tabular-nums">
-                                {time}
-                                {" · # "}
+                                {"# "}
                                 {block.entries.length}{" "}
                                 {t("eventDetails.participants")}
                               </span>
