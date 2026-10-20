@@ -170,11 +170,12 @@ function PastMasterclassDetails() {
             {t("eventDetails.backToEvents")}
           </motion.button>
 
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
           <motion.div
             variants={reduceMotion ? undefined : stagger}
             initial={initial}
             animate="visible"
-            className="flex flex-col gap-6 max-w-4xl"
+            className="lg:col-span-7 flex flex-col gap-6"
           >
             <motion.div variants={fadeUpSoft}>
               <Eyebrow withRule tone="muted">
@@ -206,6 +207,25 @@ function PastMasterclassDetails() {
               </MetaItem>
             </motion.dl>
           </motion.div>
+          {event.poster_image && (
+            <motion.div
+              variants={reduceMotion ? undefined : fadeUp}
+              initial={initial}
+              animate="visible"
+              className="lg:col-span-5 relative aspect-[3/4] w-full max-w-md lg:max-w-none overflow-hidden bg-surface-canvas-warm border border-rule-hairline"
+            >
+              <img
+                src={event.poster_image}
+                alt={event.title}
+                className="h-full w-full object-cover"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-[2px] bg-marigold"
+              />
+            </motion.div>
+          )}
+          </div>
         </Container>
       </section>
 
