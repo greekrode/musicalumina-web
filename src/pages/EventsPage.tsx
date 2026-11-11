@@ -7,7 +7,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useEvents } from "../hooks/useEvents";
 import { useLanguage } from "../lib/LanguageContext";
-import { formatDateWithLocale } from "../lib/utils";
+import { formatDateWithLocale, formatEventMonthWithLocale } from "../lib/utils";
 import { Section, Container } from "@/components/ui/section";
 import {
   PageHeader,
@@ -249,6 +249,7 @@ function EventsPage() {
                         }
                         location={event.location}
                         status={event.status}
+                        monthOnly={event.date_month_only}
                         image={
                           event.poster_image ||
                           "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&q=80"
@@ -361,6 +362,7 @@ interface FeaturedEventRowProps {
     location: string;
     status: "upcoming" | "ongoing" | "completed";
     poster_image: string | null;
+    date_month_only: boolean;
   };
   language: string;
   t: (key: string) => string;
@@ -371,9 +373,9 @@ function FeaturedEventRow({ event, language, t }: FeaturedEventRowProps) {
     event.event_date && event.event_date.length > 0
       ? event.event_date
       : [event.start_date];
-  const formattedDates = dates
-    .map((d) => formatDateWithLocale(d, language))
-    .join(" · ");
+  const formattedDates = event.date_month_only
+    ? formatEventMonthWithLocale(event.start_date, language)
+    : dates.map((d) => formatDateWithLocale(d, language)).join(" · ");
 
   const accent =
     event.type === "masterclass"

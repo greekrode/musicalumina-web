@@ -198,7 +198,9 @@ function HomePage() {
                     >
                       <div className="flex flex-col gap-1 min-w-0">
                         <span className="type-label text-marigold">
-                          {t("pageCopy.home.heroNowBooking")}
+                          {event.status === "upcoming"
+                            ? t("eventCard.statusUpcoming")
+                            : t("pageCopy.home.heroNowBooking")}
                         </span>
                         <span className="type-body-md text-offWhite truncate">
                           {event.title}
@@ -402,6 +404,7 @@ function HomePage() {
                       }
                       location={event.location}
                       status={event.status}
+                      monthOnly={event.date_month_only}
                       image={
                         event.poster_image ||
                         "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&q=80"

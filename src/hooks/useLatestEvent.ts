@@ -6,6 +6,7 @@ type Event = {
   title: string;
   start_date: string;
   type: string;
+  status: "upcoming" | "ongoing" | "completed";
 };
 
 /**

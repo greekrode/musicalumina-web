@@ -512,10 +512,12 @@ export const getLatestUpcomingEvent = async () => {
       id,
       title,
       start_date,
-      type
+      type,
+      status
     `
     )
-    .eq("status", "ongoing")
+    .in("status", ["upcoming", "ongoing"])
+    .order("status", { ascending: false })
     .order("start_date", { ascending: true })
     .limit(3);
 

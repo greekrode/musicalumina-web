@@ -44,6 +44,7 @@ function EventList({ status }: EventListProps) {
             : [event.start_date]}
           location={event.location}
           status={event.status}
+          monthOnly={event.date_month_only}
           image={
             event.poster_image ||
             "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&q=80"

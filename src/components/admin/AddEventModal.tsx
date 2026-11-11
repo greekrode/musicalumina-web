@@ -50,6 +50,7 @@ const formSchema = z.object({
     })
     .nullish(),
   start_date: z.string().min(1, "Start date is required"),
+  date_month_only: z.boolean(),
   event_schedule: z.array(eventDateSchema).optional(),
   registration_deadline: optionalText,
   early_bird_end_date: optionalText,
@@ -146,6 +147,7 @@ export function AddEventModal({
       max_quota: undefined,
       session_seat_limit: 125,
       ticket_price: null,
+      date_month_only: false,
       lark_base: "",
       lark_table: "",
       event_duration: [],
@@ -278,6 +280,7 @@ export function AddEventModal({
           max_quota: maxQuota,
           session_seat_limit: values.session_seat_limit,
           ticket_price: values.ticket_price,
+          date_month_only: values.date_month_only,
           status: values.status,
           lark_base: values.lark_base || null,
           lark_table: values.lark_table || null,
@@ -461,6 +464,10 @@ export function AddEventModal({
               {errors.start_date && (
                 <FieldError>{errors.start_date.message}</FieldError>
               )}
+              <label className="flex items-center gap-2 type-body-sm text-ink-muted">
+                <input type="checkbox" {...register("date_month_only")} />
+                Exact day not announced: show only month and year
+              </label>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="ev-deadline">

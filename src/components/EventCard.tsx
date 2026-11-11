@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import type { EventStatus, EventType } from "../lib/database.types";
 import { useLanguage } from "../lib/LanguageContext";
-import { formatDateWithLocale } from "../lib/utils";
+import { formatDateWithLocale, formatEventMonthWithLocale } from "../lib/utils";
 import {
   Card,
   CardContent,
@@ -32,6 +32,8 @@ interface EventCardProps {
   location: string;
   status: EventStatus;
   image: string;
+  /** Exact day not announced: show month and year of `dates[0]` only. */
+  monthOnly?: boolean;
 }
 
 type CardAccent = "event" | "masterclass" | "group" | "past";
@@ -51,6 +53,7 @@ function EventCard({
   location,
   status,
   image,
+  monthOnly = false,
 }: EventCardProps) {
   const { t, language } = useLanguage();
 
@@ -88,9 +91,9 @@ function EventCard({
     return { status: "open", label: t("eventCard.statusOpen") };
   })();
 
-  const formattedDates = dates
-    .map((d) => formatDateWithLocale(d, language))
-    .join(" · ");
+  const formattedDates = monthOnly
+    ? formatEventMonthWithLocale(dates[0] ?? "", language)
+    : dates.map((d) => formatDateWithLocale(d, language)).join(" · ");
 
   return (
     <Card

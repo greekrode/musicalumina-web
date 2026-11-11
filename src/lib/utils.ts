@@ -45,6 +45,24 @@ export function formatDateWithLocale(
 }
 
 /**
+ * Month-and-year label for an event whose exact day is not announced yet
+ * (`events.date_month_only`): `"May 2027 (date TBA)"` / `"Mei 2027 (tanggal menyusul)"`.
+ */
+export function formatEventMonthWithLocale(
+  dateString: string,
+  language: string
+): string {
+  if (!dateString) return "TBA";
+  const date = new Date(dateString);
+  const month = date.toLocaleDateString(language === "id" ? "id-ID" : "en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  });
+  return language === "id" ? `${month} (tanggal menyusul)` : `${month} (date TBA)`;
+}
+
+/**
  * Like {@link formatDateWithLocale} but appends the time of day.
  *
  * English uses 12-hour AM/PM; Indonesian uses 24-hour HH:mm.
